@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2024", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "types": ["vite-plus/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "dev/**/*.ts", "dev/**/*.tsx", "vite.config.ts"]
+}

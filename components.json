@@ -1,0 +1,15 @@
+{
+  "$schema": "https://solid-ui.com/schema.json",
+  "style": "default",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "css": "packages/ui/src/styles/app.css",
+    "baseColor": "zinc",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "packages/ui/src/components",
+    "utils": "packages/ui/src/lib/utils"
+  }
+}

@@ -1,0 +1,3 @@
+-- D1 migrations directory for my-moment
+-- Run: wrangler d1 migrations create my-moment <name>
+-- Then: pnpm d1:migrate:local

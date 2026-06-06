@@ -1,0 +1,18 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+allowBuilds:
+  core-js-pure: true
+  esbuild: true
+  sharp: true
+  workerd: true
+
+minimumReleaseAge: 1440
+
+minimumReleaseAgeExclude:
+  - '@tanstack/router-core@1.171.11'
+  - '@tanstack/router-generator@1.167.15'
+  - '@tanstack/router-plugin@1.168.16'
+  - '@tanstack/router-utils@1.162.2'
+  - '@tanstack/solid-router@1.170.13'

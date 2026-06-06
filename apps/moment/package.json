@@ -1,0 +1,21 @@
+{
+  "name": "@my-moment/app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build"
+  },
+  "dependencies": {
+    "@my-moment/ui": "workspace:*",
+    "@tanstack/solid-router": "1.170.13",
+    "better-auth": "1.6.14",
+    "hono": "4.12.23",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@hono/vite-dev-server": "0.26.0",
+    "@tanstack/router-plugin": "1.168.16"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "my-moment",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @my-moment/app dev",
+    "build": "pnpm --filter @my-moment/app build",
+    "dev:worker": "pnpm build && wrangler dev",
+    "deploy": "pnpm build && wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply DB --local --persist-to .wrangler --config wrangler.toml",
+    "d1:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.toml",
+    "check": "tsgo --noEmit",
+    "lint": "vp lint",
+    "format": "vp fmt"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "@tailwindcss/vite": "4.3.0",
+    "@types/node": "25.9.1",
+    "@typescript/native-preview": "beta",
+    "solid-js": "1.9.13",
+    "tailwindcss": "4.3.0",
+    "typescript": "6.0.3",
+    "vite-plugin-solid": "2.11.12",
+    "vite-plus": "0.1.24",
+    "wrangler": "4.98.0"
+  },
+  "packageManager": "pnpm@11.5.0"
+}
