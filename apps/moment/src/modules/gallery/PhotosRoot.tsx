@@ -24,7 +24,6 @@ export function PhotosRoot(props: PhotosRootProps) {
 
   return (
     <div>
-      {/* Header with view mode toggle */}
       <div class="mb-6 flex items-center justify-between">
         <div>
           <h2 class="text-lg font-semibold text-foreground">Moments</h2>
@@ -35,7 +34,6 @@ export function PhotosRoot(props: PhotosRootProps) {
         <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
       </div>
 
-      {/* Gallery content */}
       <div id="gallery-scroll-container" class="h-full overflow-auto">
         {viewMode() === "grid" ? (
           <MasonryView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
@@ -44,7 +42,6 @@ export function PhotosRoot(props: PhotosRootProps) {
         )}
       </div>
 
-      {/* Photo viewer overlay */}
       {viewerIndex() !== null && (
         <PhotoViewer
           photos={photos()}

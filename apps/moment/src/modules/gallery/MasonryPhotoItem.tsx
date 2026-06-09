@@ -1,6 +1,6 @@
 import { createSignal, Show } from "solid-js";
 import { Badge } from "@my-moment/ui";
-import { Thumbhash } from "~/components/Thumbhash";
+import { LazyImage } from "~/components/LazyImage";
 import type { PhotoItem } from "~/types/photo";
 
 interface MasonryPhotoItemProps {
@@ -27,35 +27,27 @@ export function MasonryPhotoItem(props: MasonryPhotoItemProps) {
       style={{ "padding-top": `${100 / ratio()}%` }}
       onClick={() => props.onClick?.()}
     >
-      {/* Thumbhash placeholder */}
-      <Show when={photo().thumbHash}>
-        <Thumbhash thumbHash={photo().thumbHash!} class="absolute inset-0" />
-      </Show>
-
-      {/* Thumbnail image */}
       <Show when={!imageError()}>
-        <img
+        <LazyImage
           src={photo().thumbnailUrl}
           alt={photo().title}
-          class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
+          thumbHash={photo().thumbHash ?? null}
+          class="absolute inset-0 h-full w-full"
+          rootMargin="400px"
           onLoad={() => setImageLoaded(true)}
           onError={() => setImageError(true)}
         />
       </Show>
 
-      {/* Error state */}
       <Show when={imageError()}>
         <div class="absolute inset-0 flex items-center justify-center bg-muted">
           <span class="text-xs text-muted-foreground">Failed to load</span>
         </div>
       </Show>
 
-      {/* Hover overlay (only when image is loaded) */}
       <Show when={imageLoaded()}>
         <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-        {/* Content on hover */}
         <div class="pointer-events-none absolute inset-x-0 bottom-0 p-3 text-white">
           <h3 class="truncate text-sm font-medium opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             {photo().title}
@@ -77,7 +69,6 @@ export function MasonryPhotoItem(props: MasonryPhotoItemProps) {
             </Show>
           </div>
 
-          {/* Tags */}
           <Show when={photo().tags.length > 0}>
             <div class="mt-2 flex flex-wrap gap-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               {photo().tags.map((tag) => (

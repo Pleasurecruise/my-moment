@@ -2,7 +2,7 @@
   {
     "id": "image1",
     "url": "/api/photos/image1.png",
-    "thumbnailUrl": "/api/photos/image1.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image1.jpg",
     "title": "image1.png",
     "width": 3072,
     "height": 4096,
@@ -11,12 +11,13 @@
     "date": "2026-06-09T13:59:55.934Z",
     "description": "",
     "size": 9114365,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "dce70935067268cf86488748878897688560340846"
   },
   {
     "id": "image10",
     "url": "/api/photos/image10.png",
-    "thumbnailUrl": "/api/photos/image10.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image10.jpg",
     "title": "image10.png",
     "width": 1079,
     "height": 1435,
@@ -25,12 +26,13 @@
     "date": "2026-06-09T13:59:58.323Z",
     "description": "",
     "size": 1154727,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "99e7092d0646786f78d79798988359679770720846"
   },
   {
     "id": "image11",
     "url": "/api/photos/image11.png",
-    "thumbnailUrl": "/api/photos/image11.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image11.jpg",
     "title": "image11.png",
     "width": 3072,
     "height": 4096,
@@ -39,12 +41,13 @@
     "date": "2026-06-09T14:00:01.014Z",
     "description": "",
     "size": 3052768,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "dcf7090d008477958c08b6688ee4b8b88fc7f8868b"
   },
   {
     "id": "image12",
     "url": "/api/photos/image12.png",
-    "thumbnailUrl": "/api/photos/image12.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image12.jpg",
     "title": "image12.png",
     "width": 4096,
     "height": 3078,
@@ -53,12 +56,13 @@
     "date": "2026-06-09T14:00:02.763Z",
     "description": "",
     "size": 580052,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "6508061582b706b93c7a5e689795898265705c09b7"
   },
   {
     "id": "image13",
     "url": "/api/photos/image13.png",
-    "thumbnailUrl": "/api/photos/image13.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image13.jpg",
     "title": "image13.png",
     "width": 3072,
     "height": 4096,
@@ -67,12 +71,13 @@
     "date": "2026-06-09T14:00:08.870Z",
     "description": "",
     "size": 11012701,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "9a180625026097a398989599775997b67a70e9f55e"
   },
   {
     "id": "image14",
     "url": "/api/photos/image14.png",
-    "thumbnailUrl": "/api/photos/image14.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image14.jpg",
     "title": "image14.png",
     "width": 4096,
     "height": 3072,
@@ -81,12 +86,13 @@
     "date": "2026-06-09T14:00:16.609Z",
     "description": "",
     "size": 7242333,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "a2f7053d8a9165548f8786847759b7998ea0e5085a"
   },
   {
     "id": "image15",
     "url": "/api/photos/image15.png",
-    "thumbnailUrl": "/api/photos/image15.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image15.jpg",
     "title": "image15.png",
     "width": 3072,
     "height": 4096,
@@ -95,12 +101,13 @@
     "date": "2026-06-09T14:00:19.775Z",
     "description": "",
     "size": 5764382,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "20d705550e9897af886867578695b8887670640747"
   },
   {
     "id": "image16",
     "url": "/api/photos/image16.png",
-    "thumbnailUrl": "/api/photos/image16.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image16.jpg",
     "title": "image16.png",
     "width": 4096,
     "height": 3072,
@@ -109,12 +116,13 @@
     "date": "2026-06-09T14:00:22.737Z",
     "description": "",
     "size": 4599523,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "63b609458cbd7778ba8978509768667a8a80b90889"
   },
   {
     "id": "image17",
     "url": "/api/photos/image17.png",
-    "thumbnailUrl": "/api/photos/image17.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image17.jpg",
     "title": "image17.png",
     "width": 4096,
     "height": 3072,
@@ -123,12 +131,13 @@
     "date": "2026-06-09T14:00:35.785Z",
     "description": "",
     "size": 4548516,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "e0c6091d846079788f778792799787887360440757"
   },
   {
     "id": "image18",
     "url": "/api/photos/image18.png",
-    "thumbnailUrl": "/api/photos/image18.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image18.jpg",
     "title": "image18.png",
     "width": 4096,
     "height": 3072,
@@ -137,12 +146,13 @@
     "date": "2026-06-09T14:00:39.082Z",
     "description": "",
     "size": 4790045,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "62e70d1d849977978f7787637798887976805907a8"
   },
   {
     "id": "image19",
     "url": "/api/photos/image19.png",
-    "thumbnailUrl": "/api/photos/image19.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image19.jpg",
     "title": "image19.png",
     "width": 4096,
     "height": 3072,
@@ -151,12 +161,13 @@
     "date": "2026-06-09T14:00:42.706Z",
     "description": "",
     "size": 5839651,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "e4c60d35848477777f8888737867787a87707a0897"
   },
   {
     "id": "image2",
     "url": "/api/photos/image2.png",
-    "thumbnailUrl": "/api/photos/image2.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image2.jpg",
     "title": "image2.png",
     "width": 3072,
     "height": 4096,
@@ -165,12 +176,13 @@
     "date": "2026-06-09T14:00:49.510Z",
     "description": "",
     "size": 19566776,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "e7180e3d0877798f7968897767778787ba60a80b86"
   },
   {
     "id": "image20",
     "url": "/api/photos/image20.png",
-    "thumbnailUrl": "/api/photos/image20.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image20.jpg",
     "title": "image20.png",
     "width": 3072,
     "height": 4096,
@@ -179,12 +191,13 @@
     "date": "2026-06-09T14:00:52.868Z",
     "description": "",
     "size": 5988597,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "9818061d0276c88f9b59779878767668388f9bf0c8"
   },
   {
     "id": "image21",
     "url": "/api/photos/image21.png",
-    "thumbnailUrl": "/api/photos/image21.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image21.jpg",
     "title": "image21.png",
     "width": 3072,
     "height": 4096,
@@ -193,12 +206,13 @@
     "date": "2026-06-09T14:00:56.654Z",
     "description": "",
     "size": 6216885,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "a4e711150287877f78488777787877878160120736"
   },
   {
     "id": "image22",
     "url": "/api/photos/image22.png",
-    "thumbnailUrl": "/api/photos/image22.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image22.jpg",
     "title": "image22.png",
     "width": 4096,
     "height": 3072,
@@ -207,12 +221,13 @@
     "date": "2026-06-09T14:01:01.232Z",
     "description": "",
     "size": 7668545,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "61e705458a5276ab6f8858c568769cb27b80b60768"
   },
   {
     "id": "image23",
     "url": "/api/photos/image23.png",
-    "thumbnailUrl": "/api/photos/image23.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image23.jpg",
     "title": "image23.png",
     "width": 3072,
     "height": 4096,
@@ -221,12 +236,13 @@
     "date": "2026-06-09T14:01:03.869Z",
     "description": "",
     "size": 4949455,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "dd180e0d008f776497f856a7896b877798860f3559"
   },
   {
     "id": "image24",
     "url": "/api/photos/image24.png",
-    "thumbnailUrl": "/api/photos/image24.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image24.jpg",
     "title": "image24.png",
     "width": 3072,
     "height": 4096,
@@ -235,12 +251,13 @@
     "date": "2026-06-09T14:01:07.522Z",
     "description": "",
     "size": 6131202,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "61d70d450a78787f87887767877678978860640947"
   },
   {
     "id": "image25",
     "url": "/api/photos/image25.png",
-    "thumbnailUrl": "/api/photos/image25.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image25.jpg",
     "title": "image25.png",
     "width": 3072,
     "height": 4096,
@@ -249,12 +266,13 @@
     "date": "2026-06-09T14:01:10.608Z",
     "description": "",
     "size": 5867659,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "63f70d1502ca788f67c86838778a677855a5506509"
   },
   {
     "id": "image26",
     "url": "/api/photos/image26.png",
-    "thumbnailUrl": "/api/photos/image26.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image26.jpg",
     "title": "image26.png",
     "width": 4096,
     "height": 3072,
@@ -263,12 +281,13 @@
     "date": "2026-06-09T14:01:13.211Z",
     "description": "",
     "size": 4527515,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "e5f70d15828788689f887787775787798a70b70777"
   },
   {
     "id": "image27",
     "url": "/api/photos/image27.png",
-    "thumbnailUrl": "/api/photos/image27.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image27.jpg",
     "title": "image27.png",
     "width": 4096,
     "height": 3072,
@@ -277,12 +296,13 @@
     "date": "2026-06-09T14:01:16.044Z",
     "description": "",
     "size": 5499466,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "57180e0d8408a7788f84797888677879f772763f68"
   },
   {
     "id": "image28",
     "url": "/api/photos/image28.png",
-    "thumbnailUrl": "/api/photos/image28.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image28.jpg",
     "title": "image28.png",
     "width": 3072,
     "height": 4096,
@@ -291,12 +311,13 @@
     "date": "2026-06-09T14:01:19.416Z",
     "description": "",
     "size": 3534664,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "63080e0504867870788878b8777598888880770887"
   },
   {
     "id": "image29",
     "url": "/api/photos/image29.png",
-    "thumbnailUrl": "/api/photos/image29.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image29.jpg",
     "title": "image29.png",
     "width": 4096,
     "height": 3072,
@@ -305,12 +326,13 @@
     "date": "2026-06-09T14:01:23.709Z",
     "description": "",
     "size": 8341910,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "22f80d15827676887f9778888888787a7961805706"
   },
   {
     "id": "image3",
     "url": "/api/photos/image3.png",
-    "thumbnailUrl": "/api/photos/image3.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image3.jpg",
     "title": "image3.png",
     "width": 3072,
     "height": 4096,
@@ -319,12 +341,13 @@
     "date": "2026-06-09T14:01:31.845Z",
     "description": "",
     "size": 25096846,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "d7e8112d0458778f76b7788887867888877055fa27"
   },
   {
     "id": "image4",
     "url": "/api/photos/image4.png",
-    "thumbnailUrl": "/api/photos/image4.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image4.jpg",
     "title": "image4.png",
     "width": 2732,
     "height": 4096,
@@ -333,12 +356,13 @@
     "date": "2026-06-09T14:01:39.032Z",
     "description": "",
     "size": 14829176,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "e5e6054d0ccb748fa80918a8a79769874880980388"
   },
   {
     "id": "image5",
     "url": "/api/photos/image5.png",
-    "thumbnailUrl": "/api/photos/image5.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image5.jpg",
     "title": "image5.png",
     "width": 4096,
     "height": 3072,
@@ -347,12 +371,13 @@
     "date": "2026-06-09T14:01:44.581Z",
     "description": "",
     "size": 14982580,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "9f08121d827788887f788784786887895586406608"
   },
   {
     "id": "image6",
     "url": "/api/photos/image6.png",
-    "thumbnailUrl": "/api/photos/image6.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image6.jpg",
     "title": "image6.png",
     "width": 3072,
     "height": 4096,
@@ -361,12 +386,13 @@
     "date": "2026-06-09T14:01:51.174Z",
     "description": "",
     "size": 18410169,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "63f809350646677f88c89668766478968560540755"
   },
   {
     "id": "image7",
     "url": "/api/photos/image7.png",
-    "thumbnailUrl": "/api/photos/image7.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image7.jpg",
     "title": "image7.png",
     "width": 1080,
     "height": 2004,
@@ -375,12 +401,13 @@
     "date": "2026-06-09T14:01:53.282Z",
     "description": "",
     "size": 1977003,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "94f7052c08f56a988696c0549ad69f78f88987"
   },
   {
     "id": "image8",
     "url": "/api/photos/image8.png",
-    "thumbnailUrl": "/api/photos/image8.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image8.jpg",
     "title": "image8.png",
     "width": 1080,
     "height": 2006,
@@ -389,12 +416,13 @@
     "date": "2026-06-09T14:01:56.202Z",
     "description": "",
     "size": 1255645,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "dae711140476f7878887873758989442200904"
   },
   {
     "id": "image9",
     "url": "/api/photos/image9.png",
-    "thumbnailUrl": "/api/photos/image9.png",
+    "thumbnailUrl": "/api/photos/thumbnails/image9.jpg",
     "title": "image9.png",
     "width": 2000,
     "height": 1080,
@@ -403,6 +431,7 @@
     "date": "2026-06-09T14:01:58.850Z",
     "description": "",
     "size": 725530,
-    "format": "PNG"
+    "format": "PNG",
+    "thumbHash": "ddd70d248a6578888f88877b7776b57a605a06"
   }
 ]

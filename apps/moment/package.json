@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@hono/vite-dev-server": "0.26.0",
-    "@tanstack/router-plugin": "1.168.18"
+    "@tanstack/router-plugin": "1.168.18",
+    "sharp": "0.34.5"
   }
 }

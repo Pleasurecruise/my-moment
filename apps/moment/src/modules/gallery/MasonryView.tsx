@@ -12,12 +12,28 @@ export function MasonryView(props: MasonryViewProps) {
 
   const photos = () => props.photos;
 
-  // Distribute photos into columns
   const columns = createMemo(() => {
     const cols: PhotoItem[][] = Array.from({ length: columnCount() }, () => []);
-    photos().forEach((photo, i) => {
-      cols[i % columnCount()]!.push(photo);
+    const heights = Array.from({ length: columnCount() }, () => 0);
+
+    photos().forEach((photo) => {
+      const ar =
+        photo.aspectRatio || (photo.width && photo.height ? photo.width / photo.height : 1);
+      const normalizedH = 1 / (ar || 1);
+
+      let shortest = 0;
+      let minH = heights[0]!;
+      for (let c = 1; c < columnCount(); c++) {
+        if (heights[c]! < minH) {
+          minH = heights[c]!;
+          shortest = c;
+        }
+      }
+
+      cols[shortest]!.push(photo);
+      heights[shortest] = minH + normalizedH;
     });
+
     return cols;
   });
 

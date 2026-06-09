@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { getAuth } from "./src/lib/auth";
-import manifest from "./src/data/manifest.json" with { type: "json" };
 
 type Bindings = {
   DB: D1Database;
@@ -35,13 +34,24 @@ app.get("/api/health", (c) =>
   }),
 );
 
-app.get("/api/gallery", (c) => c.json(manifest));
+app.get("/api/gallery", async (c) => {
+  const cached = await c.env.MOMENT_CACHE.get("manifest", "json");
+  if (cached) return c.json(cached);
+
+  const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
+  if (!obj) return c.json([]);
+
+  const data = await obj.json();
+  await c.env.MOMENT_CACHE.put("manifest", JSON.stringify(data), { expirationTtl: 300 });
+  return c.json(data);
+});
 
 app.get("/api/photos/*", async (c) => {
   const filename = c.req.path.replace(/^\/api\/photos\//, "");
   if (!filename) return c.notFound();
 
-  const obj = await c.env.MOMENT_BUCKET.get(`img/${filename}`);
+  const key = filename.startsWith("thumbnails/") ? filename : `img/${filename}`;
+  const obj = await c.env.MOMENT_BUCKET.get(key);
   if (!obj) return c.notFound();
 
   const mimeMap: Record<string, string> = {
@@ -102,6 +112,11 @@ app.get("/api/bootstrap", (c) => {
       },
     ],
   });
+});
+
+app.get("/api/gallery/invalidate", async (c) => {
+  await c.env.MOMENT_CACHE.delete("manifest");
+  return c.json({ ok: true });
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

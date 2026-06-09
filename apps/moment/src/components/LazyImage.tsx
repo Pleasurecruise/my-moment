@@ -1,5 +1,5 @@
 import { createSignal, Show, splitProps, type ComponentProps } from "solid-js";
-import { createIntersectionObserver } from "@solid-primitives/intersection-observer";
+import { createVisibilityObserver } from "@solid-primitives/intersection-observer";
 import { cn } from "@my-moment/ui";
 import { Thumbhash } from "./Thumbhash";
 
@@ -16,18 +16,29 @@ export function LazyImage(props: LazyImageProps) {
     "threshold",
     "class",
     "style",
+    "onLoad",
+    "onError",
   ]);
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 
-  const intersection = createIntersectionObserver(containerRef, {
+  const useVisibility = createVisibilityObserver({
     rootMargin: local.rootMargin ?? "200px",
     threshold: local.threshold ?? 0,
   });
-
-  const shouldLoad = () => Boolean(intersection());
+  const isVisible = useVisibility(containerRef);
 
   const [isLoaded, setIsLoaded] = createSignal(false);
   const [hasError, setHasError] = createSignal(false);
+
+  const handleLoad = (e: Event) => {
+    setIsLoaded(true);
+    local.onLoad?.(e);
+  };
+
+  const handleError = (e: Event) => {
+    setHasError(true);
+    local.onError?.(e);
+  };
 
   return (
     <div
@@ -39,7 +50,7 @@ export function LazyImage(props: LazyImageProps) {
         <Thumbhash thumbHash={local.thumbHash!} class="absolute inset-0 scale-110 blur-sm" />
       </Show>
 
-      <Show when={shouldLoad() && !hasError()}>
+      <Show when={isVisible() && !hasError()}>
         <img
           {...rest}
           class={cn(
@@ -47,8 +58,9 @@ export function LazyImage(props: LazyImageProps) {
             isLoaded() ? "opacity-100" : "opacity-0",
           )}
           loading="lazy"
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
+          decoding="async"
+          onLoad={handleLoad}
+          onError={handleError}
         />
       </Show>
 
