@@ -1,7 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
-import { createRootRoute, Outlet, useRouter } from "@tanstack/solid-router";
-import { useSession, signIn, signOut } from "../lib/services/auth";
-import { Home, Archive, NotebookText, Sun, Moon, LogIn, LogOut } from "lucide-solid";
+import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router";
+import { useSession, signIn, signOut } from "~/lib/services/auth";
+import { Images, Camera, ShoppingBag, Sun, Moon, LogIn, LogOut } from "lucide-solid";
 import { Avatar, Button } from "@my-moment/ui";
 
 export const Route = createRootRoute({
@@ -11,9 +11,9 @@ export const Route = createRootRoute({
 const THEME_KEY = "my-moment:theme";
 
 const TABS = [
-  { href: "/", label: "Today", Icon: Home },
-  { href: "/archive", label: "Archive", Icon: Archive },
-  { href: "/note", label: "Note", Icon: NotebookText },
+  { href: "/", label: "Gallery", Icon: Images },
+  { href: "/snapshot", label: "Snapshot", Icon: Camera },
+  { href: "/haul", label: "Haul", Icon: ShoppingBag },
 ] as const;
 
 function RootLayout() {
@@ -86,8 +86,8 @@ function RootLayout() {
               {TABS.map(({ href, label, Icon }) => {
                 const active = currentPath() === href;
                 return (
-                  <a
-                    href={href}
+                  <Link
+                    to={href}
                     class={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
                       active
                         ? "text-accent bg-accent/10"
@@ -96,47 +96,50 @@ function RootLayout() {
                   >
                     <Icon size={13} />
                     <span class="hidden lg:inline">{label}</span>
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
 
             <div class="flex items-center gap-2 shrink-0">
               {/* theme toggle */}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
                 onclick={toggleTheme}
-                class="flex items-center justify-center h-8 w-8 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label={isDark() ? "Switch to light mode" : "Switch to dark mode"}
               >
                 <Show when={isDark()} fallback={<Moon size={15} />}>
                   <Sun size={15} />
                 </Show>
-              </button>
+              </Button>
 
               {/* auth */}
               <div class="relative">
                 <Show
                   when={user()}
                   fallback={
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
                       onclick={() => setAuthOpen((v) => !v)}
-                      class="flex h-8 w-8 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       aria-label="Sign in"
                     >
                       <LogIn size={15} />
-                    </button>
+                    </Button>
                   }
                 >
                   {(u) => (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      class="rounded-full focus-visible:ring-2 focus-visible:ring-accent shrink-0"
                       onclick={() => setAuthOpen((v) => !v)}
-                      class="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent shrink-0"
                     >
                       <Avatar src={u().image ?? undefined} fallback={u().name ?? "?"} size="sm" />
-                    </button>
+                    </Button>
                   )}
                 </Show>
 

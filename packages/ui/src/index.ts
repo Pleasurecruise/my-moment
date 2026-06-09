@@ -13,5 +13,7 @@ export {
   CardFooter,
 } from "./components/Card";
 
+export { Skeleton, type SkeletonProps } from "./components/Skeleton";
+
 // Utilities
 export { cn } from "./lib/utils";

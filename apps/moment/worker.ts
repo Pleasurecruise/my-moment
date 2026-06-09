@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getAuth } from "./src/lib/auth";
+import manifest from "./src/data/manifest.json" with { type: "json" };
 
 type Bindings = {
   DB: D1Database;
@@ -33,6 +34,34 @@ app.get("/api/health", (c) =>
     runtime: "cloudflare-worker",
   }),
 );
+
+app.get("/api/gallery", (c) => c.json(manifest));
+
+app.get("/api/photos/*", async (c) => {
+  const filename = c.req.path.replace(/^\/api\/photos\//, "");
+  if (!filename) return c.notFound();
+
+  const obj = await c.env.MOMENT_BUCKET.get(`img/${filename}`);
+  if (!obj) return c.notFound();
+
+  const mimeMap: Record<string, string> = {
+    webp: "image/webp",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    avif: "image/avif",
+  };
+  const ext = filename.split(".").pop()!.toLowerCase();
+  const mime = mimeMap[ext] ?? "application/octet-stream";
+
+  return new Response(obj.body, {
+    headers: {
+      "content-type": mime,
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
+});
 
 app.get("/api/bootstrap", (c) => {
   const today = new Intl.DateTimeFormat("en-GB", {

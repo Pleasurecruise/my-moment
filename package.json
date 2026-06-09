@@ -10,7 +10,7 @@
     "deploy": "pnpm build && wrangler deploy",
     "storybook": "pnpm --filter @my-moment/ui storybook",
     "storybook:build": "pnpm --filter @my-moment/ui storybook:build",
-    "d1:migrate:local": "wrangler d1 migrations apply DB --local --persist-to .wrangler --config wrangler.toml",
+    "d1:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.toml",
     "d1:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.toml",
     "check": "vp check",
     "lint": "vp lint",

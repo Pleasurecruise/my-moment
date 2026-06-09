@@ -1,19 +1,17 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { createResource } from "solid-js";
+import { PhotosRoot } from "~/modules/gallery/PhotosRoot";
+import type { PhotoItem } from "~/types/photo";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
 function HomePage() {
-  return (
-    <div class="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-      {/* ── Main column ── */}
-      <div class="min-w-0">
-        <p class="py-20 text-center text-sm text-muted-foreground">No moments yet.</p>
-      </div>
+  const [photos] = createResource<PhotoItem[]>(async () => {
+    const res = await fetch("/api/gallery");
+    return res.json();
+  });
 
-      {/* ── Right rail (sticky, hidden on mobile) ── */}
-      <aside class="hidden min-w-0 lg:block sticky top-8 self-start" />
-    </div>
-  );
+  return <PhotosRoot photos={photos() ?? []} />;
 }

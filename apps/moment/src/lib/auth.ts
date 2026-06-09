@@ -9,7 +9,6 @@ export interface AuthEnv {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
-  ALLOWED_EMAIL?: string;
 }
 
 export interface AuthSession {
@@ -30,17 +29,6 @@ export function createAuth(env: AuthEnv) {
       google: {
         clientId: env.GOOGLE_CLIENT_ID,
         clientSecret: env.GOOGLE_CLIENT_SECRET,
-      },
-    },
-    databaseHooks: {
-      user: {
-        create: {
-          before: async (user) => {
-            if (env.ALLOWED_EMAIL && user.email !== env.ALLOWED_EMAIL) {
-              return false;
-            }
-          },
-        },
       },
     },
     session: {
