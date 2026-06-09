@@ -3,16 +3,21 @@ packages:
   - "apps/*"
 
 allowBuilds:
+  "@swc/core": true
   core-js-pure: true
   esbuild: true
+  msw: true
   sharp: true
   workerd: true
 
 minimumReleaseAge: 1440
 
 minimumReleaseAgeExclude:
-  - '@tanstack/router-core@1.171.11'
-  - '@tanstack/router-generator@1.167.15'
-  - '@tanstack/router-plugin@1.168.16'
-  - '@tanstack/router-utils@1.162.2'
-  - '@tanstack/solid-router@1.170.13'
+  - "better-auth@1.6.15"
+  - "@better-auth/core@1.6.15"
+  - "@better-auth/drizzle-adapter@1.6.15"
+  - "@better-auth/kysely-adapter@1.6.15"
+  - "@better-auth/memory-adapter@1.6.15"
+  - "@better-auth/mongo-adapter@1.6.15"
+  - "@better-auth/prisma-adapter@1.6.15"
+  - "@better-auth/telemetry@1.6.15"

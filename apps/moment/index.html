@@ -8,9 +8,7 @@
     <script>
       (function () {
         var t = localStorage.getItem("my-moment:theme");
-        var dark = t
-          ? t === "dark"
-          : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var dark = t ? t === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
         if (dark) document.documentElement.classList.add("dark");
       })();
     </script>

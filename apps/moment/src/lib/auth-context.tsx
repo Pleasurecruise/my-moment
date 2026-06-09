@@ -28,9 +28,7 @@ export function AuthProvider(props: ParentProps) {
     }
   });
 
-  return (
-    <AuthCtx.Provider value={auth}>{props.children}</AuthCtx.Provider>
-  );
+  return <AuthCtx.Provider value={auth}>{props.children}</AuthCtx.Provider>;
 }
 
 export function useAuth() {

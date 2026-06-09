@@ -13,7 +13,7 @@ export interface BadgeProps extends ComponentProps<"div"> {
 }
 
 export function Badge(props: BadgeProps) {
-  const [local, rest] = splitProps(props, ["class", "variant"]);
+  const [local, rest] = splitProps(props, ["class", "variant", "children"]);
 
   return (
     <div
@@ -23,6 +23,8 @@ export function Badge(props: BadgeProps) {
         badgeVariants[local.variant ?? "default"],
         local.class,
       )}
-    />
+    >
+      {local.children}
+    </div>
   );
 }

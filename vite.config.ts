@@ -6,6 +6,6 @@ export default defineConfig({
   },
   fmt: {
     indent: "tab",
-    ignorePatterns: ["dist/**", "build/**", ".wrangler/**"],
+    ignorePatterns: ["dist/**", "build/**", ".wrangler/**", "**/routeTree.gen.ts"],
   },
 });

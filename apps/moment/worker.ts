@@ -26,32 +26,6 @@ app.all("/api/auth/*", async (c) => {
   return auth.handler(c.req.raw);
 });
 
-app.get("/api/auth/session", async (c) => {
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers,
-  });
-
-  return c.json({
-    user: session?.user ?? null,
-    session: session?.session ?? null,
-  });
-});
-
-app.get("/api/login/google", async (c) => {
-  const auth = getAuth(c.env);
-  const redirectTo = c.req.query("redirect") || "/";
-
-  const response = await auth.api.signInSocial({
-    body: {
-      provider: "google",
-      callbackURL: `${c.env.BETTER_AUTH_URL}${redirectTo}`,
-    },
-    asResponse: true,
-  });
-  return response as Response;
-});
-
 app.get("/api/health", (c) =>
   c.json({
     ok: true,

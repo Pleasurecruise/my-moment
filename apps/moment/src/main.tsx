@@ -1,6 +1,5 @@
 import { render } from "solid-js/web";
 import { RouterProvider } from "@tanstack/solid-router";
-import { AuthProvider } from "./lib/auth-context";
 import { getRouter } from "./router";
 import "./styles/app.css";
 
@@ -18,12 +17,5 @@ if (!root) {
 }
 
 if (!root.innerHTML) {
-  render(
-    () => (
-      <AuthProvider>
-        <RouterProvider router={router} />
-      </AuthProvider>
-    ),
-    root,
-  );
+  render(() => <RouterProvider router={router} />, root);
 }

@@ -15,13 +15,7 @@ const sizeClasses = {
 } as const;
 
 export function Avatar(props: AvatarProps) {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "src",
-    "alt",
-    "fallback",
-    "size",
-  ]);
+  const [local, rest] = splitProps(props, ["class", "src", "alt", "fallback", "size"]);
 
   return (
     <div
