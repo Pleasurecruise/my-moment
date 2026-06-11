@@ -16,7 +16,7 @@ export function ListView(props: ListViewProps) {
 
   const virtualizer = createVirtualizer({
     count: photos().length,
-    getScrollElement: () => document.getElementById("gallery-scroll-container"),
+    getScrollElement: () => document.getElementById("app-scroll-container"),
     estimateSize: () => desktopHeight,
     overscan: 5,
   });

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getAuth } from "./src/lib/auth";
+import { readManifest, writeManifest, appendPhoto, type PhotoManifest } from "./src/lib/kv";
 
 type Bindings = {
   DB: D1Database;
@@ -35,19 +36,7 @@ app.get("/api/health", (c) =>
 );
 
 app.get("/api/gallery", async (c) => {
-  const cached = await c.env.MOMENT_CACHE.get("manifest", "json");
-
-  let photos: unknown[] = [];
-  if (cached) {
-    photos = Array.isArray(cached) ? cached : [];
-  } else {
-    const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
-    if (obj) {
-      const data = await obj.json();
-      photos = Array.isArray(data) ? data : [];
-      await c.env.MOMENT_CACHE.put("manifest", JSON.stringify(photos), { expirationTtl: 300 });
-    }
-  }
+  const photos = await readManifest(c.env.MOMENT_CACHE);
 
   let canUpload = false;
   const allowed = c.env.ALLOWED_EMAIL;
@@ -139,16 +128,8 @@ app.post("/api/photos/upload", async (c) => {
 
   const form = await c.req.formData();
   const file = form.get("file");
+  const thumbnail = form.get("thumbnail");
   if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
-
-  const mimeMap: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "image/avif": "avif",
-  };
-  const ext = mimeMap[file.type] ?? "bin";
 
   let maxNum = 0;
   let cursor: string | undefined;
@@ -161,21 +142,64 @@ app.post("/api/photos/upload", async (c) => {
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
 
-  const key = `img/image${maxNum + 1}.${ext}`;
+  const num = maxNum + 1;
+  const imageKey = `img/image${num}.png`;
+  const thumbKey = `thumbnails/image${num}.jpg`;
 
-  await c.env.MOMENT_BUCKET.put(key, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type },
-  });
+  const [imageBuffer, thumbBuffer] = await Promise.all([
+    file.arrayBuffer(),
+    thumbnail instanceof File ? thumbnail.arrayBuffer() : file.arrayBuffer(),
+  ]);
 
-  // Invalidate gallery cache so new photo appears on next fetch
-  await c.env.MOMENT_CACHE.delete("manifest");
+  await Promise.all([
+    c.env.MOMENT_BUCKET.put(imageKey, imageBuffer, {
+      httpMetadata: { contentType: "image/png" },
+    }),
+    c.env.MOMENT_BUCKET.put(thumbKey, thumbBuffer, {
+      httpMetadata: { contentType: "image/jpeg" },
+    }),
+  ]);
 
-  return c.json({ key, name: file.name, size: file.size });
+  const photo: PhotoManifest = {
+    id: `image${num}`,
+    url: `/api/photos/${imageKey}`,
+    thumbnailUrl: `/api/photos/${thumbKey}`,
+    title: file.name,
+    width: Number(form.get("width")) || 0,
+    height: Number(form.get("height")) || 0,
+    aspectRatio: Number(form.get("aspectRatio")) || 0,
+    tags: [],
+    date: new Date().toISOString(),
+    description: "",
+    size: file.size,
+    format: "PNG",
+    thumbHash: (form.get("thumbHash") as string) || undefined,
+  };
+
+  await appendPhoto(c.env.MOMENT_CACHE, photo);
+
+  return c.json(photo);
 });
 
-app.get("/api/gallery/invalidate", async (c) => {
-  await c.env.MOMENT_CACHE.delete("manifest");
-  return c.json({ ok: true });
+app.post("/api/migrate", async (c) => {
+  const existing = await readManifest(c.env.MOMENT_CACHE);
+  if (existing.length > 0) {
+    return c.json({ migrated: false, count: existing.length, message: "KV already has data" });
+  }
+
+  const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
+  if (!obj) {
+    return c.json({ migrated: false, count: 0, message: "No manifest.json in R2" });
+  }
+
+  const data = await obj.json();
+  const photos = Array.isArray(data) ? data : [];
+
+  if (photos.length > 0) {
+    await writeManifest(c.env.MOMENT_CACHE, photos as PhotoManifest[]);
+  }
+
+  return c.json({ migrated: true, count: photos.length });
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

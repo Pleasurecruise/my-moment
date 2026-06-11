@@ -4,6 +4,7 @@ import { Upload, ArrowLeft } from "lucide-solid";
 import { Button, toast } from "@my-moment/ui";
 import { BatchPhotoUpload } from "~/components/BatchPhotoUpload";
 import type { BatchUploadHandler } from "~/components/BatchPhotoUpload";
+import { processImage } from "~/lib/image-processor";
 
 export const Route = createFileRoute("/upload")({
   component: UploadPage,
@@ -13,8 +14,17 @@ function UploadPage() {
   const navigate = useNavigate();
 
   const handleUpload: BatchUploadHandler = async (file, reportProgress, signal) => {
+    const processed = await processImage(file);
+
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", processed.image, file.name.replace(/\.[^.]+$/, ".png"));
+    form.append("thumbnail", processed.thumbnail, "thumbnail.jpg");
+    form.append("width", String(processed.width));
+    form.append("height", String(processed.height));
+    form.append("aspectRatio", String(processed.aspectRatio));
+    if (processed.thumbHash) {
+      form.append("thumbHash", processed.thumbHash);
+    }
 
     const res = await fetch("/api/photos/upload", {
       method: "POST",
@@ -55,7 +65,6 @@ function UploadPage() {
 
           if (ok > 0) {
             toast.success(`${ok} photo${ok > 1 ? "s" : ""} uploaded successfully`);
-            fetch("/api/gallery/invalidate").catch(() => {});
           }
           if (failed > 0) {
             toast.error(`Failed to upload ${failed} photo${failed > 1 ? "s" : ""}`);

@@ -5,4 +5,14 @@
     min-width: 320px;
     margin: 0;
   }
+
+  /* Hide scrollbars uniformly */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
 }

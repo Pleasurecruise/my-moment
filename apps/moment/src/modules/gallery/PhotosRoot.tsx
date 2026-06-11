@@ -92,7 +92,7 @@ export function PhotosRoot(props: PhotosRootProps) {
         </div>
       </Show>
 
-      <div id="gallery-scroll-container" class="h-full overflow-auto">
+      <div id="gallery-scroll-container">
         {viewMode() === "grid" ? (
           <MasonryView photos={filteredPhotos()} onPhotoClick={(i) => setViewerIndex(i)} />
         ) : (

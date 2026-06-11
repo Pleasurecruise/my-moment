@@ -56,7 +56,7 @@ function RootLayout() {
   };
 
   return (
-    <div class="min-h-screen bg-background text-foreground font-sans">
+    <div id="app-scroll-container" class="min-h-screen bg-background text-foreground font-sans overflow-x-hidden overflow-y-auto">
       <div class="mx-auto max-w-[70rem] px-4 sm:px-8 pb-24 pt-7">
         {/* ── Header ── */}
         <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-5 pb-4 border-b border-border mb-4">
