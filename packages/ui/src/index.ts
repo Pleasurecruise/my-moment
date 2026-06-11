@@ -16,5 +16,15 @@ export {
 export { Skeleton, type SkeletonProps } from "./components/Skeleton";
 export { Toaster, toast, type ToastVariant, type Toast } from "./components/Toast";
 
+export {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+} from "./components/Dialog";
+
 // Utilities
 export { cn } from "./lib/utils";

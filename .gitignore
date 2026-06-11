@@ -16,6 +16,7 @@ apps/moment/drizzle/
 .cache/
 .eslintcache
 *.tsbuildinfo
+.tanstack/
 
 # Logs
 logs/

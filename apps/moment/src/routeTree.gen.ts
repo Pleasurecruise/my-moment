@@ -11,8 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as SnapshotRouteImport } from './routes/snapshot'
-import { Route as HaulRouteImport } from './routes/haul'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HaulIndexRouteImport } from './routes/haul/index'
+import { Route as HaulAddRouteImport } from './routes/haul/add'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
@@ -24,49 +25,58 @@ const SnapshotRoute = SnapshotRouteImport.update({
   path: '/snapshot',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HaulRoute = HaulRouteImport.update({
-  id: '/haul',
-  path: '/haul',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HaulIndexRoute = HaulIndexRouteImport.update({
+  id: '/haul/',
+  path: '/haul/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HaulAddRoute = HaulAddRouteImport.update({
+  id: '/haul/add',
+  path: '/haul/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/haul': typeof HaulRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
+  '/haul/add': typeof HaulAddRoute
+  '/haul/': typeof HaulIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/haul': typeof HaulRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
+  '/haul/add': typeof HaulAddRoute
+  '/haul': typeof HaulIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/haul': typeof HaulRoute
   '/snapshot': typeof SnapshotRoute
   '/upload': typeof UploadRoute
+  '/haul/add': typeof HaulAddRoute
+  '/haul/': typeof HaulIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/haul' | '/snapshot' | '/upload'
+  fullPaths: '/' | '/snapshot' | '/upload' | '/haul/add' | '/haul/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/haul' | '/snapshot' | '/upload'
-  id: '__root__' | '/' | '/haul' | '/snapshot' | '/upload'
+  to: '/' | '/snapshot' | '/upload' | '/haul/add' | '/haul'
+  id: '__root__' | '/' | '/snapshot' | '/upload' | '/haul/add' | '/haul/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  HaulRoute: typeof HaulRoute
   SnapshotRoute: typeof SnapshotRoute
   UploadRoute: typeof UploadRoute
+  HaulAddRoute: typeof HaulAddRoute
+  HaulIndexRoute: typeof HaulIndexRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -85,13 +95,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof SnapshotRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/haul': {
-      id: '/haul'
-      path: '/haul'
-      fullPath: '/haul'
-      preLoaderRoute: typeof HaulRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -99,14 +102,29 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/haul/': {
+      id: '/haul/'
+      path: '/haul'
+      fullPath: '/haul/'
+      preLoaderRoute: typeof HaulIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/haul/add': {
+      id: '/haul/add'
+      path: '/haul/add'
+      fullPath: '/haul/add'
+      preLoaderRoute: typeof HaulAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  HaulRoute: HaulRoute,
   SnapshotRoute: SnapshotRoute,
   UploadRoute: UploadRoute,
+  HaulAddRoute: HaulAddRoute,
+  HaulIndexRoute: HaulIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

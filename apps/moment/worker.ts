@@ -1,12 +1,15 @@
 import { Hono } from "hono";
-import { getAuth } from "./src/lib/auth";
+import type { D1Database, R2Bucket, KVNamespace } from "@cloudflare/workers-types";
+import { getAuth } from "~/lib/auth";
 import {
   readManifest,
   writeManifest,
   deleteManifest,
   appendPhoto,
   type PhotoManifest,
-} from "./src/lib/kv";
+} from "~/lib/kv";
+import { listHaulItems, createHaulItem, deleteHaulItem } from "~/lib/server/haul/repository";
+import type { GoodsFormData } from "~/modules/haul/types";
 
 type Bindings = {
   DB: D1Database;
@@ -59,7 +62,10 @@ app.get("/api/photos/*", async (c) => {
   const filename = c.req.path.replace(/^\/api\/photos\//, "");
   if (!filename) return c.notFound();
 
-  const key = filename.startsWith("thumbnails/") ? filename : `img/${filename}`;
+  const key =
+    filename.startsWith("thumbnails/") || filename.startsWith("img/")
+      ? filename
+      : `img/${filename}`;
   const obj = await c.env.MOMENT_BUCKET.get(key);
   if (!obj) return c.notFound();
 
@@ -71,55 +77,17 @@ app.get("/api/photos/*", async (c) => {
     gif: "image/gif",
     avif: "image/avif",
   };
-  const ext = filename.split(".").pop()!.toLowerCase();
+  const parts = filename.split(".");
+  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "bin";
   const mime = mimeMap[ext] ?? "application/octet-stream";
 
+  if (!obj.body) return c.notFound();
+  // @ts-expect-error
   return new Response(obj.body, {
     headers: {
       "content-type": mime,
       "cache-control": "public, max-age=31536000, immutable",
     },
-  });
-});
-
-app.get("/api/bootstrap", (c) => {
-  const today = new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  }).format(new Date());
-
-  return c.json({
-    today,
-    quote: "Keep the detail. The mood can explain itself later.",
-    metrics: [
-      { label: "Saved", value: "12", tone: "notes this week" },
-      { label: "Focus", value: "84%", tone: "signal over noise" },
-      { label: "Media", value: "3", tone: "files waiting" },
-    ],
-    moments: [
-      {
-        id: "morning",
-        time: "08:15",
-        title: "Coffee before the meeting",
-        note: "The plan got clearer after writing the risky part down first.",
-        tag: "work",
-      },
-      {
-        id: "walk",
-        time: "13:40",
-        title: "A short walk fixed the paragraph",
-        note: "Not magic, just enough quiet to notice the obvious sentence.",
-        tag: "thought",
-      },
-      {
-        id: "evening",
-        time: "20:05",
-        title: "Save the receipt photo",
-        note: "Attach to the trip note when R2 persistence lands.",
-        tag: "todo",
-      },
-    ],
   });
 });
 
@@ -228,6 +196,108 @@ app.post("/api/migrate", async (c) => {
 app.get("/api/debug/photos", async (c) => {
   const photos = await readManifest(c.env.MOMENT_CACHE);
   return c.json(photos);
+});
+
+app.get("/api/haul", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const items = await listHaulItems(c.env.DB, session.user.id);
+  return c.json({ items });
+});
+
+app.post("/api/haul", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  let data: GoodsFormData;
+  try {
+    data = await c.req.json<GoodsFormData>();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+
+  if (!data.name?.trim() || !data.comment?.trim()) {
+    return c.json({ error: "name and comment are required" }, 400);
+  }
+
+  const item = await createHaulItem(c.env.DB, session.user.id, data);
+  return c.json(item, 201);
+});
+
+app.post("/api/haul/upload", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const form = await c.req.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+  if (!allowedTypes.includes(file.type)) {
+    return c.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, AVIF" }, 400);
+  }
+
+  let maxNum = 0;
+  let cursor: string | undefined;
+  do {
+    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/haul/image", cursor });
+    for (const obj of listed.objects) {
+      const match = obj.key.match(/^img\/haul\/image(\d+)\./);
+      if (match) maxNum = Math.max(maxNum, Number(match[1]));
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  const num = maxNum + 1;
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/avif": "avif",
+  };
+  const ext = extMap[file.type] ?? "png";
+  const imageKey = `img/haul/image${String(num).padStart(2, "0")}.${ext}`;
+
+  await c.env.MOMENT_BUCKET.put(imageKey, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
+
+  return c.json({
+    key: imageKey,
+    url: `/api/photos/haul/image${String(num).padStart(2, "0")}.${ext}`,
+  });
+});
+
+app.delete("/api/haul/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const id = c.req.param("id");
+  const deleted = await deleteHaulItem(c.env.DB, session.user.id, id);
+  if (!deleted) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true });
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
