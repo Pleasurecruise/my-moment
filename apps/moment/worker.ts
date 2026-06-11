@@ -1,6 +1,12 @@
 import { Hono } from "hono";
 import { getAuth } from "./src/lib/auth";
-import { readManifest, writeManifest, appendPhoto, type PhotoManifest } from "./src/lib/kv";
+import {
+  readManifest,
+  writeManifest,
+  deleteManifest,
+  appendPhoto,
+  type PhotoManifest,
+} from "./src/lib/kv";
 
 type Bindings = {
   DB: D1Database;
@@ -160,20 +166,29 @@ app.post("/api/photos/upload", async (c) => {
     }),
   ]);
 
+  const str = (key: string) => {
+    const v = form.get(key);
+    return typeof v === "string" ? v : undefined;
+  };
+
+  const exifDate = str("exifDate");
+  const exifGeo = str("exifGeo");
+
   const photo: PhotoManifest = {
     id: `image${num}`,
-    url: `/api/photos/${imageKey}`,
+    url: `/api/photos/image${num}.png`,
     thumbnailUrl: `/api/photos/${thumbKey}`,
     title: file.name,
     width: Number(form.get("width")) || 0,
     height: Number(form.get("height")) || 0,
     aspectRatio: Number(form.get("aspectRatio")) || 0,
     tags: [],
-    date: new Date().toISOString(),
+    date: exifDate ?? new Date().toISOString(),
     description: "",
     size: file.size,
-    format: "PNG",
-    thumbHash: (form.get("thumbHash") as string) || undefined,
+    format: file.name.split(".").pop()?.toUpperCase() || "PNG",
+    thumbHash: str("thumbHash"),
+    geo: exifGeo ? JSON.parse(exifGeo) : undefined,
   };
 
   await appendPhoto(c.env.MOMENT_CACHE, photo);
@@ -182,9 +197,17 @@ app.post("/api/photos/upload", async (c) => {
 });
 
 app.post("/api/migrate", async (c) => {
+  const force = c.req.query("force") === "true";
   const existing = await readManifest(c.env.MOMENT_CACHE);
-  if (existing.length > 0) {
-    return c.json({ migrated: false, count: existing.length, message: "KV already has data" });
+  if (existing.length > 0 && !force) {
+    return c.json({
+      migrated: false,
+      count: existing.length,
+      message: "KV already has data. Pass ?force=true to overwrite.",
+    });
+  }
+  if (force) {
+    await deleteManifest(c.env.MOMENT_CACHE);
   }
 
   const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
@@ -200,6 +223,11 @@ app.post("/api/migrate", async (c) => {
   }
 
   return c.json({ migrated: true, count: photos.length });
+});
+
+app.get("/api/debug/photos", async (c) => {
+  const photos = await readManifest(c.env.MOMENT_CACHE);
+  return c.json(photos);
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

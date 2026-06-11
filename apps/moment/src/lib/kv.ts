@@ -16,6 +16,7 @@ export interface PhotoManifest {
   description?: string;
   size?: number;
   format?: string;
+  geo?: { lat: number; lng: number };
 }
 
 export async function readManifest(kv: KVNamespace): Promise<PhotoManifest[]> {

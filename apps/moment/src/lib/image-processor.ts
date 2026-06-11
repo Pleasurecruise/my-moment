@@ -1,4 +1,5 @@
 import { rgbaToThumbHash } from "thumbhash";
+import exifr from "exifr";
 
 const THUMBNAIL_WIDTH = 600;
 const THUMBNAIL_QUALITY = 1.0;
@@ -10,6 +11,8 @@ export interface ImageProcessResult {
   height: number;
   aspectRatio: number;
   thumbHash: string | null;
+  exifDate: string | null;
+  exifGeo: { lat: number; lng: number } | null;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -31,62 +34,74 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number)
   });
 }
 
-function arrayBufferToHex(buffer: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buffer))
+function drawToCanvas(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+): CanvasRenderingContext2D {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2d context");
+  ctx.drawImage(img, 0, 0, width, height);
+  return ctx;
+}
+
+function arrayBufferToHex(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
 async function generateThumbHash(img: HTMLImageElement): Promise<string | null> {
-  try {
-    const hashSize = 100;
-    const scale = Math.min(1, hashSize / Math.max(img.width, img.height));
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
+  const hashSize = 100;
+  const scale = Math.min(1, hashSize / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, 0, 0, w, h);
-
-    const imageData = ctx.getImageData(0, 0, w, h);
-    const hash = rgbaToThumbHash(w, h, imageData.data);
-    return arrayBufferToHex(hash);
-  } catch (err) {
-    console.warn("ThumbHash generation failed:", err);
-    return null;
-  }
+  const ctx = drawToCanvas(img, w, h);
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const hash = rgbaToThumbHash(w, h, imageData.data);
+  return arrayBufferToHex(hash);
 }
 
 export async function processImage(file: File): Promise<ImageProcessResult> {
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImage(url);
-    const { width, height } = img;
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
     const aspectRatio = width / height;
 
-    const imageCanvas = document.createElement("canvas");
-    imageCanvas.width = width;
-    imageCanvas.height = height;
-    const imageCtx = imageCanvas.getContext("2d")!;
-    imageCtx.drawImage(img, 0, 0, width, height);
-    const image = await canvasToBlob(imageCanvas, "image/png");
+    // EXIF extraction
+    const exif = await exifr.parse(file, {
+      pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "GPSLatitude", "GPSLongitude"],
+      gps: true,
+    });
 
+    const d = exif?.DateTimeOriginal ?? exif?.CreateDate ?? exif?.ModifyDate;
+    const exifDate = d instanceof Date && !isNaN(d.getTime()) ? d.toISOString() : null;
+
+    const lat = exif?.GPSLatitude;
+    const lng = exif?.GPSLongitude;
+    const exifGeo = typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
+
+    // Full-size image
+    const imageCtx = drawToCanvas(img, width, height);
+    const image = await canvasToBlob(imageCtx.canvas, "image/png");
+
+    // Thumbnail
     const scale = Math.min(1, THUMBNAIL_WIDTH / Math.max(width, height));
     const thumbW = Math.round(width * scale);
     const thumbH = Math.round(height * scale);
-
-    const thumbCanvas = document.createElement("canvas");
-    thumbCanvas.width = thumbW;
-    thumbCanvas.height = thumbH;
-    const thumbCtx = thumbCanvas.getContext("2d")!;
-    thumbCtx.drawImage(img, 0, 0, thumbW, thumbH);
-    const thumbnail = await canvasToBlob(thumbCanvas, "image/jpeg", THUMBNAIL_QUALITY);
+    const thumbCtx = drawToCanvas(img, thumbW, thumbH);
+    const thumbnail = await canvasToBlob(thumbCtx.canvas, "image/jpeg", THUMBNAIL_QUALITY);
 
     const thumbHash = await generateThumbHash(img);
 
-    return { image, thumbnail, width, height, aspectRatio, thumbHash };
+    return { image, thumbnail, width, height, aspectRatio, thumbHash, exifDate, exifGeo };
   } finally {
     URL.revokeObjectURL(url);
   }

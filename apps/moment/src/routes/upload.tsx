@@ -25,6 +25,12 @@ function UploadPage() {
     if (processed.thumbHash) {
       form.append("thumbHash", processed.thumbHash);
     }
+    if (processed.exifDate) {
+      form.append("exifDate", processed.exifDate);
+    }
+    if (processed.exifGeo) {
+      form.append("exifGeo", JSON.stringify(processed.exifGeo));
+    }
 
     const res = await fetch("/api/photos/upload", {
       method: "POST",

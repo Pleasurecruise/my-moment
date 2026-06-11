@@ -31,14 +31,8 @@ export function PhotosRoot(props: PhotosRootProps) {
   const allPhotos = () => props.photos;
 
   const filteredPhotos = createMemo(() => {
-    const { selectedTags, selectedDateRange, sortOrder, tagFilterMode } = settings();
-    return filterAndSortPhotos(
-      allPhotos(),
-      selectedTags,
-      selectedDateRange,
-      sortOrder,
-      tagFilterMode,
-    );
+    const { selectedTags, sortOrder, tagFilterMode } = settings();
+    return filterAndSortPhotos(allPhotos(), selectedTags, sortOrder, tagFilterMode);
   });
 
   return (
@@ -80,7 +74,7 @@ export function PhotosRoot(props: PhotosRootProps) {
         </div>
       </div>
 
-      <Show when={settings().selectedTags.length > 0 || settings().selectedDateRange !== null}>
+      <Show when={settings().selectedTags.length > 0}>
         <div class="mb-4">
           <ActiveFilterChips />
         </div>
