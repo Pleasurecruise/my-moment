@@ -19,6 +19,7 @@ const VIEW_OPTIONS = [
 
 interface PhotosRootProps {
   photos: PhotoItem[];
+  canUpload?: boolean;
 }
 
 export function PhotosRoot(props: PhotosRootProps) {
@@ -46,13 +47,15 @@ export function PhotosRoot(props: PhotosRootProps) {
         <div>
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-semibold text-foreground">Moments</h2>
-            <Link
-              to="/upload"
-              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Upload photos"
-            >
-              <Upload size={12} />
-            </Link>
+            <Show when={props.canUpload}>
+              <Link
+                to="/upload"
+                class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Upload photos"
+              >
+                <Upload size={12} />
+              </Link>
+            </Show>
           </div>
           <p class="mt-1 text-sm text-muted-foreground">
             {filteredPhotos().length} photo{filteredPhotos().length !== 1 ? "s" : ""}

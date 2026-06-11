@@ -2,7 +2,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router";
 import { useSession, signIn, signOut } from "~/lib/services/auth";
 import { Images, Camera, ShoppingBag, Sun, Moon, LogIn, LogOut } from "lucide-solid";
-import { Avatar, Button } from "@my-moment/ui";
+import { Avatar, Button, Toaster } from "@my-moment/ui";
 import { GallerySettingsProvider } from "~/providers/gallery-settings-provider";
 
 export const Route = createRootRoute({
@@ -216,6 +216,8 @@ function RootLayout() {
         <GallerySettingsProvider>
           <Outlet />
         </GallerySettingsProvider>
+
+        <Toaster />
       </div>
     </div>
   );

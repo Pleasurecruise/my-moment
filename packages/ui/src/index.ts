@@ -14,6 +14,7 @@ export {
 } from "./components/Card";
 
 export { Skeleton, type SkeletonProps } from "./components/Skeleton";
+export { Toaster, toast, type ToastVariant, type Toast } from "./components/Toast";
 
 // Utilities
 export { cn } from "./lib/utils";

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 
 import { Upload, ArrowLeft } from "lucide-solid";
-import { Button } from "@my-moment/ui";
+import { Button, toast } from "@my-moment/ui";
 import { BatchPhotoUpload } from "~/components/BatchPhotoUpload";
 import type { BatchUploadHandler } from "~/components/BatchPhotoUpload";
 
@@ -51,9 +51,14 @@ function UploadPage() {
         clearOnComplete
         onComplete={(results) => {
           const ok = results.filter((r) => r.status === "success").length;
+          const failed = results.filter((r) => r.status === "error").length;
+
           if (ok > 0) {
-            // invalidate gallery cache so new photos appear on return
+            toast.success(`${ok} photo${ok > 1 ? "s" : ""} uploaded successfully`);
             fetch("/api/gallery/invalidate").catch(() => {});
+          }
+          if (failed > 0) {
+            toast.error(`Failed to upload ${failed} photo${failed > 1 ? "s" : ""}`);
           }
         }}
       />

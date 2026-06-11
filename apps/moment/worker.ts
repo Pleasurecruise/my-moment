@@ -36,14 +36,28 @@ app.get("/api/health", (c) =>
 
 app.get("/api/gallery", async (c) => {
   const cached = await c.env.MOMENT_CACHE.get("manifest", "json");
-  if (cached) return c.json(cached);
 
-  const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
-  if (!obj) return c.json([]);
+  let photos: unknown[] = [];
+  if (cached) {
+    photos = Array.isArray(cached) ? cached : [];
+  } else {
+    const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
+    if (obj) {
+      const data = await obj.json();
+      photos = Array.isArray(data) ? data : [];
+      await c.env.MOMENT_CACHE.put("manifest", JSON.stringify(photos), { expirationTtl: 300 });
+    }
+  }
 
-  const data = await obj.json();
-  await c.env.MOMENT_CACHE.put("manifest", JSON.stringify(data), { expirationTtl: 300 });
-  return c.json(data);
+  let canUpload = false;
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (allowed) {
+    const auth = getAuth(c.env);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    canUpload = session?.user?.email === allowed;
+  }
+
+  return c.json({ photos, canUpload });
 });
 
 app.get("/api/photos/*", async (c) => {
@@ -116,7 +130,7 @@ app.get("/api/bootstrap", (c) => {
 
 app.post("/api/photos/upload", async (c) => {
   const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "ALLOWED_EMAIL not configured" }, 500);
+  if (!allowed) return c.json({ error: "Upload not configured" }, 500);
 
   const auth = getAuth(c.env);
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
