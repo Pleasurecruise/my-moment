@@ -114,6 +114,51 @@ app.get("/api/bootstrap", (c) => {
   });
 });
 
+app.post("/api/photos/upload", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "ALLOWED_EMAIL not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const form = await c.req.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
+
+  const mimeMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/avif": "avif",
+  };
+  const ext = mimeMap[file.type] ?? "bin";
+
+  let maxNum = 0;
+  let cursor: string | undefined;
+  do {
+    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/image", cursor });
+    for (const obj of listed.objects) {
+      const match = obj.key.match(/^img\/image(\d+)\./);
+      if (match) maxNum = Math.max(maxNum, Number(match[1]));
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  const key = `img/image${maxNum + 1}.${ext}`;
+
+  await c.env.MOMENT_BUCKET.put(key, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
+
+  // Invalidate gallery cache so new photo appears on next fetch
+  await c.env.MOMENT_CACHE.delete("manifest");
+
+  return c.json({ key, name: file.name, size: file.size });
+});
+
 app.get("/api/gallery/invalidate", async (c) => {
   await c.env.MOMENT_CACHE.delete("manifest");
   return c.json({ ok: true });

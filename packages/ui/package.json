@@ -19,13 +19,14 @@
   },
   "dependencies": {
     "clsx": "2.1.1",
+    "lucide-solid": "1.17.0",
     "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@storybook/addon-a11y": "10.4.2",
-    "@storybook/addon-docs": "10.4.2",
-    "@storybook/addon-themes": "10.4.2",
-    "storybook": "10.4.2",
+    "@storybook/addon-a11y": "10.4.3",
+    "@storybook/addon-docs": "10.4.3",
+    "@storybook/addon-themes": "10.4.3",
+    "storybook": "10.4.3",
     "storybook-solidjs-vite": "10.1.1"
   }
 }

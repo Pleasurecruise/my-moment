@@ -3,6 +3,7 @@ import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router
 import { useSession, signIn, signOut } from "~/lib/services/auth";
 import { Images, Camera, ShoppingBag, Sun, Moon, LogIn, LogOut } from "lucide-solid";
 import { Avatar, Button } from "@my-moment/ui";
+import { GallerySettingsProvider } from "~/providers/gallery-settings-provider";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -90,7 +91,7 @@ function RootLayout() {
                     to={href}
                     class={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
                       active
-                        ? "text-accent bg-accent/10"
+                        ? "text-foreground bg-accent/20 font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
@@ -212,7 +213,9 @@ function RootLayout() {
           </div>
         </header>
 
-        <Outlet />
+        <GallerySettingsProvider>
+          <Outlet />
+        </GallerySettingsProvider>
       </div>
     </div>
   );

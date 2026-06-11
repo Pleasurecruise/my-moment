@@ -62,19 +62,30 @@ export function ListView(props: ListViewProps) {
   );
 }
 
-/** An individual photo row in the list view. */
 function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
   const photo = () => props.photo;
   const [imageError, setImageError] = createSignal(false);
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    try {
+      return new Date(dateStr).toLocaleDateString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <Card
-      class="flex flex-col gap-2 p-3 backdrop-blur-sm transition-colors hover:border-border/80 sm:h-44 sm:flex-row sm:gap-3"
+      class="group flex flex-col gap-2 p-3 backdrop-blur-sm transition-colors hover:border-border/80 sm:h-44 sm:flex-row sm:gap-3"
       role="button"
       tabIndex={0}
       onClick={() => props.onClick?.()}
     >
-      {/* Thumbnail */}
       <div class="relative w-full shrink-0 overflow-hidden rounded sm:h-full sm:w-56">
         <Show
           when={!imageError()}
@@ -87,14 +98,13 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
           <img
             src={photo().thumbnailUrl}
             alt={photo().title}
-            class="h-auto w-full object-cover sm:h-full sm:w-full"
+            class="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105 sm:h-full sm:w-full"
             style={{ "aspect-ratio": photo().aspectRatio ? `${photo().aspectRatio}` : undefined }}
             loading="lazy"
             onError={() => setImageError(true)}
           />
         </Show>
 
-        {/* Tags overlay on thumbnail */}
         <Show when={photo().tags.length > 0}>
           <div class="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-1 p-2">
             <For each={photo().tags.slice(0, 5)}>
@@ -111,7 +121,6 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
         </Show>
       </div>
 
-      {/* Metadata */}
       <div class="flex min-w-0 flex-1 flex-col overflow-hidden py-0.5">
         <h3 class="mb-1 text-sm font-medium text-foreground sm:text-base">{photo().title}</h3>
 
@@ -121,7 +130,7 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
 
         <div class="mt-auto space-y-1 text-[11px] text-muted-foreground">
           <Show when={photo().date}>
-            <span>{new Date(photo().date).toLocaleDateString()}</span>
+            <span>{formatDate(photo().date)}</span>
           </Show>
           <div class="flex items-center gap-2">
             <span>

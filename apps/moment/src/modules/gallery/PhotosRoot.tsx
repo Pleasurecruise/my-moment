@@ -1,9 +1,14 @@
-import { createSignal } from "solid-js";
+import { createSignal, createMemo, Show } from "solid-js";
+import { Link } from "@tanstack/solid-router";
+import { Upload, SlidersHorizontal } from "lucide-solid";
 import { Segment } from "~/components/Segment";
 import { MasonryView } from "./MasonryView";
 import { ListView } from "./ListView";
+import { FilterPanel, ActiveFilterChips } from "./FilterPanel";
 import { PhotoViewer } from "~/modules/viewer/PhotoViewer";
 import type { PhotoItem } from "~/types/photo";
+import { useGallerySettings } from "~/providers/gallery-settings-provider";
+import { filterAndSortPhotos } from "~/types/gallery";
 
 type ViewMode = "grid" | "list";
 
@@ -17,39 +22,89 @@ interface PhotosRootProps {
 }
 
 export function PhotosRoot(props: PhotosRootProps) {
+  const { settings } = useGallerySettings();
   const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
   const [viewerIndex, setViewerIndex] = createSignal<number | null>(null);
+  const [showFilters, setShowFilters] = createSignal(false);
 
-  const photos = () => props.photos;
+  const allPhotos = () => props.photos;
+
+  const filteredPhotos = createMemo(() => {
+    const { selectedTags, selectedDateRange, sortOrder, tagFilterMode } = settings();
+    return filterAndSortPhotos(
+      allPhotos(),
+      selectedTags,
+      selectedDateRange,
+      sortOrder,
+      tagFilterMode,
+    );
+  });
 
   return (
     <div>
       <div class="mb-6 flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-semibold text-foreground">Moments</h2>
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-semibold text-foreground">Moments</h2>
+            <Link
+              to="/upload"
+              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Upload photos"
+            >
+              <Upload size={12} />
+            </Link>
+          </div>
           <p class="mt-1 text-sm text-muted-foreground">
-            {photos().length} photo{photos().length !== 1 ? "s" : ""}
+            {filteredPhotos().length} photo{filteredPhotos().length !== 1 ? "s" : ""}
+            <Show when={filteredPhotos().length !== allPhotos().length}>
+              <span class="text-muted-foreground/60"> (filtered from {allPhotos().length})</span>
+            </Show>
           </p>
         </div>
-        <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
+        <div class="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters())}
+            class={`flex size-8 items-center justify-center rounded-md transition-colors ${
+              showFilters()
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+            aria-label="Toggle filters"
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+          <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
+        </div>
       </div>
+
+      <Show when={settings().selectedTags.length > 0 || settings().selectedDateRange !== null}>
+        <div class="mb-4">
+          <ActiveFilterChips />
+        </div>
+      </Show>
+
+      <Show when={showFilters()}>
+        <div class="mb-6 rounded-lg border border-border bg-card p-4">
+          <FilterPanel photos={allPhotos()} />
+        </div>
+      </Show>
 
       <div id="gallery-scroll-container" class="h-full overflow-auto">
         {viewMode() === "grid" ? (
-          <MasonryView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <MasonryView photos={filteredPhotos()} onPhotoClick={(i) => setViewerIndex(i)} />
         ) : (
-          <ListView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <ListView photos={filteredPhotos()} onPhotoClick={(i) => setViewerIndex(i)} />
         )}
       </div>
 
-      {viewerIndex() !== null && (
+      <Show when={viewerIndex() !== null}>
         <PhotoViewer
-          photos={photos()}
+          photos={filteredPhotos()}
           index={viewerIndex()!}
           onClose={() => setViewerIndex(null)}
           onIndexChange={(i) => setViewerIndex(i)}
         />
-      )}
+      </Show>
     </div>
   );
 }
