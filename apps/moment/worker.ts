@@ -8,7 +8,7 @@ import {
   appendPhoto,
   type PhotoManifest,
 } from "~/lib/kv";
-import { listHaulItems, createHaulItem, deleteHaulItem } from "~/lib/server/haul/repository";
+import { listAllHaulItems, createHaulItem, deleteHaulItem } from "~/lib/server/haul/repository";
 import type { GoodsFormData } from "~/modules/haul/types";
 
 type Bindings = {
@@ -199,16 +199,17 @@ app.get("/api/debug/photos", async (c) => {
 });
 
 app.get("/api/haul", async (c) => {
+  const items = await listAllHaulItems(c.env.DB);
+
+  let canManage = false;
   const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
+  if (allowed) {
+    const auth = getAuth(c.env);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    canManage = session?.user?.email === allowed;
+  }
 
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
-  const items = await listHaulItems(c.env.DB, session.user.id);
-  return c.json({ items });
+  return c.json({ items, canManage });
 });
 
 app.post("/api/haul", async (c) => {

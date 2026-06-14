@@ -32,6 +32,13 @@ export async function listHaulItems(d1: D1Database, userId: string): Promise<Goo
   return rows.map(rowToItem);
 }
 
+export async function listAllHaulItems(d1: D1Database): Promise<GoodsItem[]> {
+  const db = drizzle(d1);
+  const rows = await db.select().from(haulItems).orderBy(desc(haulItems.createdAt));
+
+  return rows.map(rowToItem);
+}
+
 export async function createHaulItem(
   d1: D1Database,
   userId: string,

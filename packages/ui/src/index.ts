@@ -14,17 +14,99 @@ export {
 } from "./components/Card";
 
 export { Skeleton, type SkeletonProps } from "./components/Skeleton";
-export { Toaster, toast, type ToastVariant, type Toast } from "./components/Toast";
 
+// Dialog (Kobalte)
 export {
   Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogClose,
+  DialogOverlay,
   DialogContent,
   DialogHeader,
+  DialogFooter,
   DialogTitle,
   DialogDescription,
   DialogBody,
-  DialogFooter,
 } from "./components/Dialog";
+
+// AlertDialog (Kobalte)
+export {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "./components/AlertDialog";
+
+// Toast (Kobalte)
+export {
+  Toaster,
+  ToastRoot,
+  ToastContent,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastProgress,
+  toast,
+  showToast,
+  type ToastVariant,
+  type ToastData,
+} from "./components/Toast";
+
+// Select (Kobalte)
+export {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectHiddenSelect,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectDescription,
+  SelectErrorMessage,
+  type SelectItemProps,
+} from "./components/Select";
+
+// Switch (Kobalte)
+export {
+  Switch,
+  SwitchInput,
+  SwitchControl,
+  SwitchThumb,
+  SwitchLabel,
+  SwitchDescription,
+  SwitchErrorMessage,
+} from "./components/Switch";
+
+// Popover (Kobalte)
+export {
+  Popover,
+  PopoverTrigger,
+  PopoverAnchor,
+  PopoverContent,
+  PopoverClose,
+  PopoverDescription,
+} from "./components/Popover";
+
+// Tooltip (Kobalte)
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipArrow } from "./components/Tooltip";
+
+// Form elements
+export { Textarea, type TextareaProps } from "./components/Textarea";
+export { Label, type LabelProps } from "./components/Label";
+export { Separator, type SeparatorProps } from "./components/Separator";
+
+// Tags
+export { Tag, type TagProps, type TagVariant } from "./components/Tag";
+export { TagInput, type TagInputProps, type TagInputVariant } from "./components/TagInput";
 
 // Utilities
 export { cn } from "./lib/utils";
