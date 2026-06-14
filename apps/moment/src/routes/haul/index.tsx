@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/solid-router";
+import { createFileRoute, useSearch } from "@tanstack/solid-router";
 import { createResource, onMount } from "solid-js";
+import { z } from "zod";
 import { HaulPage } from "~/modules/haul";
 import type { GoodsItem } from "~/modules/haul/types";
 import type { WishItem } from "~/modules/haul/types";
@@ -14,10 +15,15 @@ interface WishResponse {
 
 export const Route = createFileRoute("/haul/")({
   component: HaulRoute,
+  validateSearch: z.object({
+    item: z.string().optional(),
+    wish: z.string().optional(),
+  }),
   staleTime: 0,
 });
 
 function HaulRoute() {
+  const search = useSearch({ from: "/haul/" });
   const [haul, { refetch }] = createResource<HaulResponse>(async () => {
     const res = await fetch("/api/haul");
     if (!res.ok) {
@@ -45,6 +51,8 @@ function HaulRoute() {
       wishes={wishes}
       onRetry={() => refetch()}
       onWishRetry={() => refetchWishes()}
+      initialOpenItem={search().item}
+      initialOpenWish={search().wish}
     />
   );
 }

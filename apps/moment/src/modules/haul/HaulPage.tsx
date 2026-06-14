@@ -1,9 +1,17 @@
-import { Show, For, Match, Switch, createSignal, createMemo, type Resource } from "solid-js";
+import {
+  Show,
+  For,
+  Match,
+  Switch,
+  createSignal,
+  createMemo,
+  createEffect,
+  type Resource,
+} from "solid-js";
 import {
   Dialog,
   DialogContent,
   DialogBody,
-  DialogTitle,
   Button,
   AlertDialog,
   AlertDialogContent,
@@ -13,38 +21,16 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
-  Input,
   toast,
 } from "@my-moment/ui";
-import {
-  ShoppingBag,
-  Heart,
-  Plus,
-  SlidersHorizontal,
-  Search,
-  Pencil,
-  Trash2,
-  ExternalLink,
-  Share2,
-} from "lucide-solid";
-import { Link } from "@tanstack/solid-router";
+import { ShoppingBag, Heart, Plus, SlidersHorizontal, Pencil, Trash2, Share2 } from "lucide-solid";
+import { Link, useNavigate } from "@tanstack/solid-router";
 import { Segment } from "~/components/Segment";
 import { useSession } from "~/lib/services/auth";
 import { GoodsCard } from "./GoodsCard";
-import { GoodsForm } from "./GoodsForm";
 import { WishCard } from "./WishCard";
-import { WishForm } from "./WishForm";
 import { FilterBar } from "./FilterBar";
-import type {
-  GoodsItem,
-  FilterState,
-  ViewMode,
-  Rating,
-  GoodsFormData,
-  WishItem,
-  WishFormData,
-  WishFilterState,
-} from "./types";
+import type { GoodsItem, FilterState, ViewMode, Rating, WishItem } from "./types";
 import { formatPrice } from "./utils";
 
 const VIEW_OPTIONS = [
@@ -57,13 +43,17 @@ interface HaulPageProps {
   wishes: Resource<{ items: WishItem[] } | undefined>;
   onRetry: () => void;
   onWishRetry: () => void;
+  initialOpenItem?: string;
+  initialOpenWish?: string;
 }
 
 export function HaulPage(props: HaulPageProps) {
   const session = useSession();
+  const navigate = useNavigate();
   const user = () => session()?.data?.user ?? null;
 
   const items = () => props.haul()?.items;
+  const wishItems = () => props.wishes()?.items;
 
   const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
   const [filter, setFilter] = createSignal<FilterState>({
@@ -72,63 +62,23 @@ export function HaulPage(props: HaulPageProps) {
     ratings: [],
     sortBy: "newest",
   });
+  const [showFilters, setShowFilters] = createSignal(false);
+
   const [selectedItem, setSelectedItem] = createSignal<GoodsItem | null>(null);
   const [showDetail, setShowDetail] = createSignal(false);
-  const [showFilters, setShowFilters] = createSignal(false);
-  const [editingItem, setEditingItem] = createSignal<GoodsItem | null>(null);
-  const [showEditDialog, setShowEditDialog] = createSignal(false);
   const [deletingItem, setDeletingItem] = createSignal<GoodsItem | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = createSignal(false);
 
-  const wishItems = () => props.wishes()?.items;
-  const [wishFilter, setWishFilter] = createSignal<WishFilterState>({
-    search: "",
-    categories: [],
-    sortBy: "newest",
-  });
   const [selectedWish, setSelectedWish] = createSignal<WishItem | null>(null);
   const [showWishDetail, setShowWishDetail] = createSignal(false);
-  const [editingWish, setEditingWish] = createSignal<WishItem | null>(null);
-  const [showWishEdit, setShowWishEdit] = createSignal(false);
-  const [showWishAdd, setShowWishAdd] = createSignal(false);
   const [deletingWish, setDeletingWish] = createSignal<WishItem | null>(null);
   const [showWishDelete, setShowWishDelete] = createSignal(false);
-
-  const filteredWishes = createMemo(() => {
-    const data = wishItems();
-    if (!data) return [];
-    let result = [...data];
-    const f = wishFilter();
-    if (f.search) {
-      const q = f.search.toLowerCase();
-      result = result.filter(
-        (item) => item.name.toLowerCase().includes(q) || item.brand?.toLowerCase().includes(q),
-      );
-    }
-    if (f.categories.length > 0) {
-      result = result.filter((item) => f.categories.includes(item.category));
-    }
-    switch (f.sortBy) {
-      case "newest":
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        break;
-      case "price-asc":
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case "price-desc":
-        result.sort((a, b) => b.price - a.price);
-        break;
-    }
-    return result;
-  });
 
   const filteredItems = createMemo(() => {
     const data = items();
     if (!data) return [];
-
     let result = [...data];
     const f = filter();
-
     if (f.search) {
       const q = f.search.toLowerCase();
       result = result.filter(
@@ -138,22 +88,13 @@ export function HaulPage(props: HaulPageProps) {
           item.comment.toLowerCase().includes(q),
       );
     }
-
     if (f.categories.length > 0) {
       result = result.filter((item) => f.categories.includes(item.category));
     }
-
     if (f.ratings.length > 0) {
       result = result.filter((item) => f.ratings.includes(item.rating));
     }
-
-    const ratingOrder: Record<Rating, number> = {
-      worth: 1,
-      great: 2,
-      amazing: 3,
-      godtier: 4,
-    };
-
+    const ratingOrder: Record<Rating, number> = { worth: 1, great: 2, amazing: 3, godtier: 4 };
     switch (f.sortBy) {
       case "newest":
         result.sort(
@@ -170,70 +111,74 @@ export function HaulPage(props: HaulPageProps) {
         result.sort((a, b) => ratingOrder[b.rating] - ratingOrder[a.rating]);
         break;
     }
-
     return result;
   });
 
   const stats = createMemo(() => {
     const data = items();
     if (!data) return { total: 0, totalSpent: 0 };
-    const total = data.length;
-    const totalSpent = data.reduce((sum, item) => sum + item.price, 0);
-    return { total, totalSpent };
+    return { total: data.length, totalSpent: data.reduce((sum, i) => sum + i.price, 0) };
   });
 
-  const updateFilter = (partial: Partial<FilterState>) => {
+  const updateFilter = (partial: Partial<FilterState>) =>
     setFilter((prev) => ({ ...prev, ...partial }));
-  };
-
-  const resetFilter = () => {
+  const resetFilter = () =>
     setFilter({ search: "", categories: [], ratings: [], sortBy: "newest" });
+
+  const store = {
+    items,
+    viewMode,
+    filter,
+    filteredItems,
+    stats,
+    updateFilter,
+    resetFilter,
+    updateViewMode: setViewMode,
   };
 
-  const updateViewMode = (mode: ViewMode) => {
-    setViewMode(mode);
+  const shareHaulLink = () => {
+    navigator.clipboard
+      ?.writeText(`${window.location.origin}/haul`)
+      .then(() => toast.success("Link copied"));
   };
 
-  const handleCardClick = (item: GoodsItem) => {
-    setSelectedItem(item);
-    setShowDetail(true);
+  const shareWishlistLink = () => {
+    navigator.clipboard
+      ?.writeText(`${window.location.origin}/haul#wishlist`)
+      .then(() => toast.success("Link copied"));
   };
 
-  const handleEditClick = (item: GoodsItem) => {
-    setShowDetail(false);
-    setEditingItem(item);
-    setShowEditDialog(true);
+  const shareItemLink = (itemId: string) => {
+    navigator.clipboard
+      ?.writeText(`${window.location.origin}/haul?item=${itemId}`)
+      .then(() => toast.success("Link copied"));
   };
 
-  const handleDeleteClick = (item: GoodsItem) => {
-    setShowDetail(false);
-    setDeletingItem(item);
-    setShowDeleteAlert(true);
+  const shareWishLink = (wishId: string) => {
+    navigator.clipboard
+      ?.writeText(`${window.location.origin}/haul?wish=${wishId}`)
+      .then(() => toast.success("Link copied"));
   };
 
-  const handleUpdate = async (data: GoodsFormData): Promise<GoodsItem | null> => {
-    const item = editingItem();
-    if (!item) return null;
-    try {
-      const res = await fetch(`/api/haul/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const updated = (await res.json()) as GoodsItem;
-        toast.success("Item updated");
-        props.onRetry();
-        return updated;
-      }
-      toast.error("Failed to update item");
-      return null;
-    } catch (e) {
-      console.error("Failed to update haul item:", e);
-      toast.error("Failed to update item");
-      return null;
+  createEffect(() => {
+    const data = items();
+    if (!data || !props.initialOpenItem) return;
+    const target = data.find((i) => i.id === props.initialOpenItem);
+    if (target) {
+      setSelectedItem(target);
+      setShowDetail(true);
     }
-  };
+  });
+
+  createEffect(() => {
+    const data = wishItems();
+    if (!data || !props.initialOpenWish) return;
+    const target = data.find((i) => i.id === props.initialOpenWish);
+    if (target) {
+      setSelectedWish(target);
+      setShowWishDetail(true);
+    }
+  });
 
   const handleDelete = async () => {
     const item = deletingItem();
@@ -251,69 +196,6 @@ export function HaulPage(props: HaulPageProps) {
     } catch (e) {
       console.error("Failed to delete haul item:", e);
       toast.error("Failed to delete item");
-    }
-  };
-
-  const handleWishClick = (item: WishItem) => {
-    setSelectedWish(item);
-    setShowWishDetail(true);
-  };
-
-  const handleWishEditClick = (item: WishItem) => {
-    setShowWishDetail(false);
-    setEditingWish(item);
-    setShowWishEdit(true);
-  };
-
-  const handleWishDeleteClick = (item: WishItem) => {
-    setShowWishDetail(false);
-    setDeletingWish(item);
-    setShowWishDelete(true);
-  };
-
-  const handleWishAdd = async (data: WishFormData): Promise<WishItem | null> => {
-    try {
-      const res = await fetch("/api/wish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const item = (await res.json()) as WishItem;
-        toast.success("Added to wishlist");
-        props.onWishRetry();
-        return item;
-      }
-      toast.error("Failed to add item");
-      return null;
-    } catch (e) {
-      console.error("Failed to create wish item:", e);
-      toast.error("Failed to add item");
-      return null;
-    }
-  };
-
-  const handleWishUpdate = async (data: WishFormData): Promise<WishItem | null> => {
-    const item = editingWish();
-    if (!item) return null;
-    try {
-      const res = await fetch(`/api/wish/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        const updated = (await res.json()) as WishItem;
-        toast.success("Wish updated");
-        props.onWishRetry();
-        return updated;
-      }
-      toast.error("Failed to update wish");
-      return null;
-    } catch (e) {
-      console.error("Failed to update wish item:", e);
-      toast.error("Failed to update wish");
-      return null;
     }
   };
 
@@ -336,17 +218,6 @@ export function HaulPage(props: HaulPageProps) {
     }
   };
 
-  const store = {
-    items,
-    viewMode,
-    filter,
-    filteredItems,
-    stats,
-    updateFilter,
-    resetFilter,
-    updateViewMode,
-  };
-
   return (
     <div>
       <div class="mb-6 flex items-center justify-between">
@@ -354,10 +225,7 @@ export function HaulPage(props: HaulPageProps) {
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-semibold text-foreground">Haul</h2>
             <button
-              onClick={() => {
-                const url = `${window.location.origin}/haul`;
-                navigator.clipboard?.writeText(url).then(() => toast.success("Link copied"));
-              }}
+              onClick={shareHaulLink}
               class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Share haul"
             >
@@ -400,7 +268,7 @@ export function HaulPage(props: HaulPageProps) {
           >
             <SlidersHorizontal size={16} />
           </Button>
-          <Segment options={VIEW_OPTIONS} value={viewMode()} onChange={updateViewMode} />
+          <Segment options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
         </div>
       </div>
 
@@ -454,20 +322,36 @@ export function HaulPage(props: HaulPageProps) {
                     fallback={
                       <div class="space-y-2">
                         <For each={filteredItems()}>
-                          {(item) => <GoodsCard item={item} onClick={handleCardClick} compact />}
+                          {(item) => (
+                            <GoodsCard
+                              item={item}
+                              onClick={(i) => {
+                                setSelectedItem(i);
+                                setShowDetail(true);
+                              }}
+                              compact
+                            />
+                          )}
                         </For>
                       </div>
                     }
                   >
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       <For each={filteredItems()}>
-                        {(item) => <GoodsCard item={item} onClick={handleCardClick} />}
+                        {(item) => (
+                          <GoodsCard
+                            item={item}
+                            onClick={(i) => {
+                              setSelectedItem(i);
+                              setShowDetail(true);
+                            }}
+                          />
+                        )}
                       </For>
                     </div>
                   </Show>
                 </Show>
               </Show>
-
               <Show when={data().length > 0}>
                 <div class="h-12" />
               </Show>
@@ -489,12 +373,7 @@ export function HaulPage(props: HaulPageProps) {
                         variant="ghost"
                         size="icon"
                         class="size-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          const url = `${window.location.origin}/haul`;
-                          navigator.clipboard
-                            ?.writeText(url)
-                            .then(() => toast.success("Link copied"));
-                        }}
+                        onClick={() => shareItemLink(item().id)}
                         aria-label="Share item"
                       >
                         <Share2 size={14} />
@@ -503,7 +382,10 @@ export function HaulPage(props: HaulPageProps) {
                         variant="ghost"
                         size="icon"
                         class="size-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => handleEditClick(item())}
+                        onClick={() => {
+                          setShowDetail(false);
+                          navigate({ to: "/haul/add", search: { edit: item().id } });
+                        }}
                         aria-label="Edit item"
                       >
                         <Pencil size={14} />
@@ -512,14 +394,17 @@ export function HaulPage(props: HaulPageProps) {
                         variant="ghost"
                         size="icon"
                         class="size-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteClick(item())}
+                        onClick={() => {
+                          setShowDetail(false);
+                          setDeletingItem(item());
+                          setShowDeleteAlert(true);
+                        }}
                         aria-label="Delete item"
                       >
                         <Trash2 size={14} />
                       </Button>
                     </div>
                   </div>
-
                   <Show when={item().imageUrl}>
                     <div class="mb-4 rounded-lg overflow-hidden border border-border">
                       <img
@@ -529,7 +414,6 @@ export function HaulPage(props: HaulPageProps) {
                       />
                     </div>
                   </Show>
-
                   <div class="space-y-3">
                     <Show when={item().brand}>
                       <p class="text-sm text-muted-foreground">Brand: {item().brand}</p>
@@ -543,8 +427,7 @@ export function HaulPage(props: HaulPageProps) {
                     <Show when={item().purchaseLink}>
                       {(() => {
                         const link = item().purchaseLink!;
-                        const isUrl = /^https?:\/\//.test(link);
-                        return isUrl ? (
+                        return /^https?:\/\//.test(link) ? (
                           <a
                             href={link}
                             target="_blank"
@@ -562,32 +445,6 @@ export function HaulPage(props: HaulPageProps) {
                       })()}
                     </Show>
                   </div>
-                </>
-              )}
-            </Show>
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showEditDialog()} onOpenChange={setShowEditDialog}>
-        <DialogContent onClose={() => setShowEditDialog(false)}>
-          <DialogBody>
-            <Show when={editingItem()}>
-              {(item) => (
-                <>
-                  <DialogTitle class="mb-4">Edit Item</DialogTitle>
-                  <GoodsForm
-                    addItem={handleUpdate}
-                    editItem={item()}
-                    onSuccess={() => {
-                      setShowEditDialog(false);
-                      setEditingItem(null);
-                    }}
-                    onCancel={() => {
-                      setShowEditDialog(false);
-                      setEditingItem(null);
-                    }}
-                  />
                 </>
               )}
             </Show>
@@ -622,54 +479,35 @@ export function HaulPage(props: HaulPageProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <section class="mt-12">
+      <section id="wishlist" class="mt-8">
         <div class="mb-6 flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
               <h2 class="text-lg font-semibold text-foreground">Wishlist</h2>
               <button
-                onClick={() => {
-                  const url = `${window.location.origin}/haul`;
-                  navigator.clipboard?.writeText(url).then(() => toast.success("Link copied"));
-                }}
+                onClick={shareWishlistLink}
                 class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Share wishlist"
               >
                 <Share2 size={11} />
               </button>
               <Show when={user()}>
-                <button
-                  onClick={() => setShowWishAdd(true)}
+                <Link
+                  to="/wish/add"
                   class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label="Add wish"
                 >
                   <Plus size={12} />
-                </button>
+                </Link>
               </Show>
             </div>
             <Show when={wishItems()}>
               {(data) => (
                 <p class="mt-1 text-sm text-muted-foreground">
                   {data().length} item{data().length !== 1 ? "s" : ""} saved
-                  <Show when={filteredWishes().length !== data().length}>
-                    <span class="text-muted-foreground/60"> (filtered from {data().length})</span>
-                  </Show>
                 </p>
               )}
             </Show>
-          </div>
-          <div class="relative flex-1 max-w-xs ml-4">
-            <Search
-              size={14}
-              class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-            <Input
-              type="text"
-              value={wishFilter().search}
-              onInput={(e) => setWishFilter((prev) => ({ ...prev, search: e.currentTarget.value }))}
-              placeholder="Search wishlist..."
-              class="pl-8 h-8 text-xs"
-            />
           </div>
         </div>
 
@@ -701,21 +539,19 @@ export function HaulPage(props: HaulPageProps) {
                   </div>
                 }
               >
-                <Show
-                  when={filteredWishes().length > 0}
-                  fallback={
-                    <div class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                      <Search class="mb-4 h-10 w-10 opacity-30" />
-                      <p class="text-sm">No matching wishes.</p>
-                    </div>
-                  }
-                >
-                  <div class="space-y-2">
-                    <For each={filteredWishes()}>
-                      {(item) => <WishCard item={item} onClick={handleWishClick} />}
-                    </For>
-                  </div>
-                </Show>
+                <div class="space-y-2">
+                  <For each={data()}>
+                    {(item) => (
+                      <WishCard
+                        item={item}
+                        onClick={(i) => {
+                          setSelectedWish(i);
+                          setShowWishDetail(true);
+                        }}
+                      />
+                    )}
+                  </For>
+                </div>
               </Show>
             )}
           </Match>
@@ -734,12 +570,7 @@ export function HaulPage(props: HaulPageProps) {
                           variant="ghost"
                           size="icon"
                           class="size-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => {
-                            const url = `${window.location.origin}/haul`;
-                            navigator.clipboard
-                              ?.writeText(url)
-                              .then(() => toast.success("Link copied"));
-                          }}
+                          onClick={() => shareWishLink(item().id)}
                           aria-label="Share wish"
                         >
                           <Share2 size={14} />
@@ -748,7 +579,10 @@ export function HaulPage(props: HaulPageProps) {
                           variant="ghost"
                           size="icon"
                           class="size-7 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleWishEditClick(item())}
+                          onClick={() => {
+                            setShowWishDetail(false);
+                            navigate({ to: "/wish/add", search: { edit: item().id } });
+                          }}
                           aria-label="Edit wish"
                         >
                           <Pencil size={14} />
@@ -757,14 +591,17 @@ export function HaulPage(props: HaulPageProps) {
                           variant="ghost"
                           size="icon"
                           class="size-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleWishDeleteClick(item())}
+                          onClick={() => {
+                            setShowWishDetail(false);
+                            setDeletingWish(item());
+                            setShowWishDelete(true);
+                          }}
                           aria-label="Delete wish"
                         >
                           <Trash2 size={14} />
                         </Button>
                       </div>
                     </div>
-
                     <Show when={item().imageUrl}>
                       <div class="mb-4 rounded-lg overflow-hidden border border-border">
                         <img
@@ -774,74 +611,12 @@ export function HaulPage(props: HaulPageProps) {
                         />
                       </div>
                     </Show>
-
                     <div class="space-y-3">
                       <Show when={item().brand}>
                         <p class="text-sm text-muted-foreground">Brand: {item().brand}</p>
                       </Show>
                       <p class="text-lg font-bold text-primary">{formatPrice(item().price)}</p>
-                      <Show when={item().purchaseLink}>
-                        {(() => {
-                          const link = item().purchaseLink!;
-                          const isUrl = /^https?:\/\//.test(link);
-                          return isUrl ? (
-                            <a
-                              href={link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                            >
-                              <ExternalLink size={14} />
-                              Open link
-                            </a>
-                          ) : (
-                            <span class="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <span class="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
-                              No link
-                            </span>
-                          );
-                        })()}
-                      </Show>
                     </div>
-                  </>
-                )}
-              </Show>
-            </DialogBody>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showWishAdd()} onOpenChange={setShowWishAdd}>
-          <DialogContent onClose={() => setShowWishAdd(false)}>
-            <DialogBody>
-              <DialogTitle class="mb-4">Add to Wishlist</DialogTitle>
-              <WishForm
-                addItem={handleWishAdd}
-                onSuccess={() => setShowWishAdd(false)}
-                onCancel={() => setShowWishAdd(false)}
-              />
-            </DialogBody>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showWishEdit()} onOpenChange={setShowWishEdit}>
-          <DialogContent onClose={() => setShowWishEdit(false)}>
-            <DialogBody>
-              <Show when={editingWish()}>
-                {(item) => (
-                  <>
-                    <DialogTitle class="mb-4">Edit Wish</DialogTitle>
-                    <WishForm
-                      addItem={handleWishUpdate}
-                      editItem={item()}
-                      onSuccess={() => {
-                        setShowWishEdit(false);
-                        setEditingWish(null);
-                      }}
-                      onCancel={() => {
-                        setShowWishEdit(false);
-                        setEditingWish(null);
-                      }}
-                    />
                   </>
                 )}
               </Show>

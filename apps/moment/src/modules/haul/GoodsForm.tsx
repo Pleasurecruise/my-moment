@@ -5,6 +5,7 @@ import { PenLine, Star, ExternalLink, Link } from "lucide-solid";
 import {
   CATEGORY_CONFIG,
   RATING_CONFIG,
+  goodsFormSchema,
   type Category,
   type GoodsFormData,
   type GoodsItem,
@@ -90,11 +91,8 @@ export function GoodsForm(props: GoodsFormProps) {
   };
 
   const validate = (): string | null => {
-    if (!form().name.trim()) return "Item name is required";
-    if (!form().price.trim() || Number.isNaN(Number(form().price))) return "Enter a valid price";
-    if (Number(form().price) < 0) return "Price cannot be negative";
-    if (!form().comment.trim()) return "Write a short review ✨";
-    return null;
+    const r = goodsFormSchema.safeParse(form());
+    return r.success ? null : (r.error.issues[0]?.message ?? "validation failed");
   };
 
   const [isSubmitting, setIsSubmitting] = createSignal(false);

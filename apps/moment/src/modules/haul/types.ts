@@ -1,5 +1,7 @@
 export type Rating = "worth" | "great" | "amazing" | "godtier";
 
+import { z } from "zod";
+
 export const RATING_CONFIG: Record<Rating, { label: string; color: string; description: string }> =
   {
     worth: {
@@ -64,17 +66,56 @@ export interface GoodsItem {
   updatedAt: string;
 }
 
-export interface GoodsFormData {
-  name: string;
-  brand: string;
-  price: string;
-  category: Category;
-  rating: Rating;
-  purchaseDate: string;
-  comment: string;
-  imageUrl?: string;
-  purchaseLink?: string;
-}
+export const goodsFormSchema = z.object({
+  name: z.string().trim().min(1, "name is required"),
+  brand: z.string().trim(),
+  price: z
+    .string()
+    .min(1, "price is required")
+    .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "invalid price"),
+  category: z.enum([
+    "digital",
+    "audio",
+    "home",
+    "kitchen",
+    "wear",
+    "travel",
+    "health",
+    "stationery",
+    "gaming",
+    "other",
+  ]),
+  rating: z.enum(["worth", "great", "amazing", "godtier"]),
+  purchaseDate: z.string(),
+  comment: z.string().trim().min(1, "comment is required"),
+  imageUrl: z.string().optional(),
+  purchaseLink: z.string().optional(),
+});
+
+export const wishFormSchema = z.object({
+  name: z.string().trim().min(1, "name is required"),
+  brand: z.string().trim(),
+  price: z
+    .string()
+    .min(1, "price is required")
+    .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "invalid price"),
+  category: z.enum([
+    "digital",
+    "audio",
+    "home",
+    "kitchen",
+    "wear",
+    "travel",
+    "health",
+    "stationery",
+    "gaming",
+    "other",
+  ]),
+  imageUrl: z.string().optional(),
+});
+
+export type GoodsFormData = z.infer<typeof goodsFormSchema>;
+export type WishFormData = z.infer<typeof wishFormSchema>;
 
 export interface FilterState {
   search: string;
@@ -92,18 +133,8 @@ export interface WishItem {
   price: number;
   category: Category;
   imageUrl?: string;
-  purchaseLink?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface WishFormData {
-  name: string;
-  brand: string;
-  price: string;
-  category: Category;
-  imageUrl?: string;
-  purchaseLink?: string;
 }
 
 export interface WishFilterState {

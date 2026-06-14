@@ -56,7 +56,7 @@ export function GoodsCard(props: GoodsCardProps) {
         </div>
       </Show>
 
-      <div class={cn("flex-1 min-w-0", props.compact ? "py-0.5" : "p-4 pt-3")}>
+      <div class={cn("flex-1 min-w-0", props.compact ? "py-0.5" : "p-4 pt-3 flex flex-col")}>
         <div class="flex items-center gap-2 mb-1.5">
           <Badge variant="secondary" class="text-[11px]">
             {category().label}
@@ -87,7 +87,7 @@ export function GoodsCard(props: GoodsCardProps) {
         </Show>
 
         <Show when={!props.compact}>
-          <div class="mt-3 pt-3 border-t border-border flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div class="mt-auto pt-3 border-t border-border flex items-center gap-3 text-[11px] text-muted-foreground">
             <span class="font-semibold text-sm text-foreground">
               {formatPrice(props.item.price)}
             </span>

@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
 import { Badge, cn } from "@my-moment/ui";
-import { ExternalLink, Heart } from "lucide-solid";
+import { Heart } from "lucide-solid";
 import type { WishItem } from "./types";
 import { formatPrice, getCategoryConfig } from "./utils";
 
@@ -53,19 +53,6 @@ export function WishCard(props: WishCardProps) {
         </Show>
         <p class="mt-1.5 text-sm font-bold text-primary">{formatPrice(props.item.price)}</p>
       </div>
-
-      <Show when={props.item.purchaseLink}>
-        <a
-          href={props.item.purchaseLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="shrink-0 size-8 flex items-center justify-center rounded-full border border-border text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary hover:border-primary transition-all"
-          onClick={(e: Event) => e.stopPropagation()}
-          aria-label="Open purchase link"
-        >
-          <ExternalLink size={14} />
-        </a>
-      </Show>
     </div>
   );
 }

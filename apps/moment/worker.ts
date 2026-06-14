@@ -8,8 +8,21 @@ import {
   appendPhoto,
   type PhotoManifest,
 } from "~/lib/kv";
-import { listAllHaulItems, createHaulItem, deleteHaulItem } from "~/lib/server/haul/repository";
-import type { GoodsFormData } from "~/modules/haul/types";
+import {
+  getHaulItem,
+  listAllHaulItems,
+  createHaulItem,
+  updateHaulItem,
+  deleteHaulItem,
+} from "~/lib/server/haul/repository";
+import {
+  getWishlistItem,
+  listAllWishlistItems,
+  createWishlistItem,
+  updateWishlistItem,
+  deleteWishlistItem,
+} from "~/lib/server/wishlist/repository";
+import { goodsFormSchema, wishFormSchema } from "~/modules/haul/types";
 
 type Bindings = {
   DB: D1Database;
@@ -212,6 +225,13 @@ app.get("/api/haul", async (c) => {
   return c.json({ items, canManage });
 });
 
+app.get("/api/haul/:id", async (c) => {
+  const id = c.req.param("id");
+  const item = await getHaulItem(c.env.DB, id);
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
 app.post("/api/haul", async (c) => {
   const allowed = c.env.ALLOWED_EMAIL;
   if (!allowed) return c.json({ error: "Not configured" }, 500);
@@ -221,18 +241,10 @@ app.post("/api/haul", async (c) => {
   if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
   if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
 
-  let data: GoodsFormData;
-  try {
-    data = await c.req.json<GoodsFormData>();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 400);
-  }
+  const parsed = goodsFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
 
-  if (!data.name?.trim() || !data.comment?.trim()) {
-    return c.json({ error: "name and comment are required" }, 400);
-  }
-
-  const item = await createHaulItem(c.env.DB, session.user.id, data);
+  const item = await createHaulItem(c.env.DB, session.user.id, parsed.data);
   return c.json(item, 201);
 });
 
@@ -286,6 +298,24 @@ app.post("/api/haul/upload", async (c) => {
   });
 });
 
+app.put("/api/haul/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const parsed = goodsFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+
+  const id = c.req.param("id");
+  const item = await updateHaulItem(c.env.DB, session.user.id, id, parsed.data);
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
 app.delete("/api/haul/:id", async (c) => {
   const allowed = c.env.ALLOWED_EMAIL;
   if (!allowed) return c.json({ error: "Not configured" }, 500);
@@ -297,6 +327,76 @@ app.delete("/api/haul/:id", async (c) => {
 
   const id = c.req.param("id");
   const deleted = await deleteHaulItem(c.env.DB, session.user.id, id);
+  if (!deleted) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/api/wish", async (c) => {
+  const items = await listAllWishlistItems(c.env.DB);
+
+  let canManage = false;
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (allowed) {
+    const auth = getAuth(c.env);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    canManage = session?.user?.email === allowed;
+  }
+
+  return c.json({ items, canManage });
+});
+
+app.get("/api/wish/:id", async (c) => {
+  const id = c.req.param("id");
+  const item = await getWishlistItem(c.env.DB, id);
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
+app.post("/api/wish", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const parsed = wishFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+
+  const item = await createWishlistItem(c.env.DB, session.user.id, parsed.data);
+  return c.json(item, 201);
+});
+
+app.put("/api/wish/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const parsed = wishFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+
+  const id = c.req.param("id");
+  const item = await updateWishlistItem(c.env.DB, session.user.id, id, parsed.data);
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
+app.delete("/api/wish/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const id = c.req.param("id");
+  const deleted = await deleteWishlistItem(c.env.DB, session.user.id, id);
   if (!deleted) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });

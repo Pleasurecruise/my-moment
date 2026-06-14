@@ -1,8 +1,8 @@
 import { Show, createSignal, type JSX } from "solid-js";
 import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { BatchPhotoUpload } from "~/components/upload";
-import { PenLine, Link, ExternalLink } from "lucide-solid";
-import { CATEGORY_CONFIG, type Category } from "./types";
+import { PenLine } from "lucide-solid";
+import { CATEGORY_CONFIG, wishFormSchema, type Category } from "./types";
 import type { WishFormData, WishItem } from "./types";
 
 interface WishFormProps {
@@ -18,7 +18,6 @@ const INITIAL_FORM: WishFormData = {
   price: "",
   category: "digital",
   imageUrl: undefined,
-  purchaseLink: undefined,
 };
 
 function getInitialForm(editItem?: WishItem): WishFormData {
@@ -29,7 +28,6 @@ function getInitialForm(editItem?: WishItem): WishFormData {
     price: String(editItem.price),
     category: editItem.category,
     imageUrl: editItem.imageUrl,
-    purchaseLink: editItem.purchaseLink || "",
   };
 }
 
@@ -70,10 +68,8 @@ export function WishForm(props: WishFormProps) {
   };
 
   const validate = (): string | null => {
-    if (!form().name.trim()) return "Item name is required";
-    if (!form().price.trim() || Number.isNaN(Number(form().price))) return "Enter a valid price";
-    if (Number(form().price) < 0) return "Price cannot be negative";
-    return null;
+    const r = wishFormSchema.safeParse(form());
+    return r.success ? null : (r.error.issues[0]?.message ?? "validation failed");
   };
 
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -163,41 +159,6 @@ export function WishForm(props: WishFormProps) {
               );
             })}
           </div>
-        </div>
-      </div>
-
-      <div class="space-y-3">
-        <SectionLabel label="Purchase Link" icon={<Link size={14} />} optional />
-
-        <div>
-          <Label class="text-xs text-muted-foreground mb-1">
-            Link
-            <span class="ml-1.5 text-muted-foreground/60 font-normal">URL to purchase page</span>
-          </Label>
-          <div class="relative">
-            <Link
-              size={14}
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-            <Input
-              type="text"
-              value={form().purchaseLink || ""}
-              onInput={(e) => updateField("purchaseLink", e.currentTarget.value)}
-              placeholder="https://..."
-              class="pl-9"
-            />
-          </div>
-          <Show when={form().purchaseLink && /^https?:\/\//.test(form().purchaseLink!)}>
-            <a
-              href={form().purchaseLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="mt-1.5 inline-flex items-center gap-1 text-[11px] text-primary hover:underline transition-colors"
-            >
-              <ExternalLink size={10} />
-              Open Link
-            </a>
-          </Show>
         </div>
       </div>
 

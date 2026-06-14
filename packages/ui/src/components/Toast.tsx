@@ -61,7 +61,9 @@ export function ToastRoot(props: ComponentProps<typeof KobalteToast.Root>) {
         "data-[swipe=end]:animate-out data-[swipe=end]:fade-out-80 data-[swipe=end]:slide-out-to-right-full",
         local.class,
       )}
-    />
+    >
+      {local.children}
+    </KobalteToast.Root>
   );
 }
 

@@ -32,6 +32,14 @@ export async function listHaulItems(d1: D1Database, userId: string): Promise<Goo
   return rows.map(rowToItem);
 }
 
+export async function getHaulItem(d1: D1Database, id: string): Promise<GoodsItem | null> {
+  const db = drizzle(d1);
+  const [row] = await db.select().from(haulItems).where(eq(haulItems.id, id)).limit(1);
+
+  if (!row) return null;
+  return rowToItem(row);
+}
+
 export async function listAllHaulItems(d1: D1Database): Promise<GoodsItem[]> {
   const db = drizzle(d1);
   const rows = await db.select().from(haulItems).orderBy(desc(haulItems.purchaseDate));
@@ -97,4 +105,54 @@ export async function deleteHaulItem(d1: D1Database, userId: string, id: string)
 
   await db.delete(haulItems).where(eq(haulItems.id, id));
   return true;
+}
+
+export async function updateHaulItem(
+  d1: D1Database,
+  userId: string,
+  id: string,
+  data: GoodsFormData,
+): Promise<GoodsItem | null> {
+  const db = drizzle(d1);
+
+  const [existing] = await db
+    .select()
+    .from(haulItems)
+    .where(and(eq(haulItems.id, id), eq(haulItems.userId, userId)))
+    .limit(1);
+
+  if (!existing) return null;
+
+  const now = new Date().toISOString();
+  const imageKey = data.imageUrl?.replace(/^\/api\/photos\//, "") || null;
+
+  await db
+    .update(haulItems)
+    .set({
+      name: data.name.trim(),
+      brand: data.brand.trim() || null,
+      price: parseFloat(data.price) || 0,
+      category: data.category,
+      rating: data.rating,
+      purchaseDate: data.purchaseDate || null,
+      comment: data.comment.trim(),
+      imageKey,
+      purchaseLink: data.purchaseLink?.trim() || null,
+      updatedAt: now,
+    })
+    .where(and(eq(haulItems.id, id), eq(haulItems.userId, userId)));
+
+  return rowToItem({
+    ...existing,
+    name: data.name.trim(),
+    brand: data.brand.trim() || null,
+    price: parseFloat(data.price) || 0,
+    category: data.category,
+    rating: data.rating,
+    purchaseDate: data.purchaseDate || null,
+    comment: data.comment.trim(),
+    imageKey,
+    purchaseLink: data.purchaseLink?.trim() || null,
+    updatedAt: now,
+  });
 }
