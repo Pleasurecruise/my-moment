@@ -23,14 +23,14 @@ export function GoodsCard(props: GoodsCardProps) {
       onClick={() => props.onClick?.(props.item)}
     >
       <Show when={!props.compact && props.item.imageUrl}>
-        <div class="relative aspect-[4/3] overflow-hidden bg-muted rounded-t-lg">
+        <div class="relative aspect-4/3 overflow-hidden bg-muted rounded-t-lg">
           <img
             src={props.item.imageUrl}
             alt={props.item.name}
             class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
-          <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent" />
+          <div class="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/20 to-transparent" />
           <div class="absolute top-3 right-3">
             <span class="px-2.5 py-1 text-sm font-bold text-white bg-black/40 backdrop-blur-md rounded-full">
               {formatPrice(props.item.price)}
@@ -88,11 +88,9 @@ export function GoodsCard(props: GoodsCardProps) {
 
         <Show when={!props.compact}>
           <div class="mt-3 pt-3 border-t border-border flex items-center gap-3 text-[11px] text-muted-foreground">
-            <Show when={!props.item.imageUrl}>
-              <span class="font-semibold text-sm text-foreground">
-                {formatPrice(props.item.price)}
-              </span>
-            </Show>
+            <span class="font-semibold text-sm text-foreground">
+              {formatPrice(props.item.price)}
+            </span>
             <span class="inline-flex items-center gap-1">
               <Calendar size={11} />
               {formatDate(props.item.purchaseDate)}

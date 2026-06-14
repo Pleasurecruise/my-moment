@@ -84,3 +84,30 @@ export interface FilterState {
 }
 
 export type ViewMode = "grid" | "list";
+
+export interface WishItem {
+  id: string;
+  name: string;
+  brand?: string;
+  price: number;
+  category: Category;
+  imageUrl?: string;
+  purchaseLink?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WishFormData {
+  name: string;
+  brand: string;
+  price: string;
+  category: Category;
+  imageUrl?: string;
+  purchaseLink?: string;
+}
+
+export interface WishFilterState {
+  search: string;
+  categories: Category[];
+  sortBy: "newest" | "price-asc" | "price-desc";
+}

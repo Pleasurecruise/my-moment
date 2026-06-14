@@ -1,5 +1,5 @@
 import { For, Show, createMemo } from "solid-js";
-import { Badge, Button } from "@my-moment/ui";
+import { Badge, Button, Tag } from "@my-moment/ui";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
 import type { TagFilterMode, SortOrder } from "~/types/gallery";
 import { getAllTags } from "~/types/gallery";
@@ -119,12 +119,9 @@ export function ActiveFilterChips() {
       <div class="flex flex-wrap items-center gap-2">
         <For each={settings().selectedTags}>
           {(tag) => (
-            <Badge variant="secondary" class="gap-1 text-xs">
+            <Tag variant="secondary" removable onRemove={() => removeTag(tag)}>
               {tag}
-              <button onClick={() => removeTag(tag)} class="ml-1 hover:text-destructive">
-                ×
-              </button>
-            </Badge>
+            </Tag>
           )}
         </For>
       </div>

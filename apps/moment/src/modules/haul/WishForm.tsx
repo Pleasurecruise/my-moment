@@ -1,63 +1,43 @@
 import { Show, createSignal, type JSX } from "solid-js";
-import { Button, Input, Textarea, Label, toast, cn } from "@my-moment/ui";
+import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { BatchPhotoUpload } from "~/components/upload";
-import { PenLine, Star, ExternalLink, Link } from "lucide-solid";
-import {
-  CATEGORY_CONFIG,
-  RATING_CONFIG,
-  type Category,
-  type GoodsFormData,
-  type GoodsItem,
-  type Rating,
-} from "./types";
+import { PenLine, Link, ExternalLink } from "lucide-solid";
+import { CATEGORY_CONFIG, type Category } from "./types";
+import type { WishFormData, WishItem } from "./types";
 
-interface GoodsFormProps {
-  addItem: (data: GoodsFormData) => Promise<GoodsItem | null>;
-  editItem?: GoodsItem;
+interface WishFormProps {
+  addItem: (data: WishFormData) => Promise<WishItem | null>;
+  editItem?: WishItem;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-function getLocalDate(): string {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-const INITIAL_FORM: GoodsFormData = {
+const INITIAL_FORM: WishFormData = {
   name: "",
   brand: "",
   price: "",
   category: "digital",
-  rating: "great",
-  purchaseDate: getLocalDate(),
-  comment: "",
   imageUrl: undefined,
   purchaseLink: undefined,
 };
 
-function getInitialForm(editItem?: GoodsItem): GoodsFormData {
+function getInitialForm(editItem?: WishItem): WishFormData {
   if (!editItem) return { ...INITIAL_FORM };
   return {
     name: editItem.name,
     brand: editItem.brand || "",
     price: String(editItem.price),
     category: editItem.category,
-    rating: editItem.rating,
-    purchaseDate: editItem.purchaseDate,
-    comment: editItem.comment,
     imageUrl: editItem.imageUrl,
     purchaseLink: editItem.purchaseLink || "",
   };
 }
 
-export function GoodsForm(props: GoodsFormProps) {
+export function WishForm(props: WishFormProps) {
   const isEditing = () => !!props.editItem;
-  const [form, setForm] = createSignal<GoodsFormData>(getInitialForm(props.editItem));
+  const [form, setForm] = createSignal<WishFormData>(getInitialForm(props.editItem));
 
-  const updateField = <K extends keyof GoodsFormData>(key: K, value: GoodsFormData[K]) => {
+  const updateField = <K extends keyof WishFormData>(key: K, value: WishFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -93,7 +73,6 @@ export function GoodsForm(props: GoodsFormProps) {
     if (!form().name.trim()) return "Item name is required";
     if (!form().price.trim() || Number.isNaN(Number(form().price))) return "Enter a valid price";
     if (Number(form().price) < 0) return "Price cannot be negative";
-    if (!form().comment.trim()) return "Write a short review ✨";
     return null;
   };
 
@@ -132,7 +111,7 @@ export function GoodsForm(props: GoodsFormProps) {
             type="text"
             value={form().name}
             onInput={(e) => updateField("name", e.currentTarget.value)}
-            placeholder="e.g. AirPods Pro 2"
+            placeholder="e.g. Sony WH-1000XM5"
             maxLength={100}
           />
         </div>
@@ -144,7 +123,7 @@ export function GoodsForm(props: GoodsFormProps) {
               type="text"
               value={form().brand}
               onInput={(e) => updateField("brand", e.currentTarget.value)}
-              placeholder="Apple"
+              placeholder="Sony"
               maxLength={50}
             />
           </div>
@@ -156,7 +135,7 @@ export function GoodsForm(props: GoodsFormProps) {
               type="number"
               value={form().price}
               onInput={(e) => updateField("price", e.currentTarget.value)}
-              placeholder="1899"
+              placeholder="2499"
               min={0}
               step="0.01"
             />
@@ -188,53 +167,12 @@ export function GoodsForm(props: GoodsFormProps) {
       </div>
 
       <div class="space-y-3">
-        <SectionLabel label="Your Review" icon={<Star size={14} />} />
-
-        <div>
-          <p class="block text-xs font-medium text-muted-foreground mb-1.5">Rating</p>
-          <div class="flex gap-2">
-            {(Object.keys(RATING_CONFIG) as Rating[]).map((r) => {
-              const config = RATING_CONFIG[r];
-              const isActive = () => form().rating === r;
-              return (
-                <button
-                  type="button"
-                  onClick={() => updateField("rating", r)}
-                  class={cn(
-                    "flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-lg border-2 transition-all duration-200 cursor-pointer select-none",
-                    isActive()
-                      ? "border-current shadow-sm scale-[1.02]"
-                      : "border-border hover:border-foreground/20 opacity-60 hover:opacity-80",
-                  )}
-                  style={
-                    isActive() ? { "border-color": config.color, color: config.color } : undefined
-                  }
-                >
-                  <span class="text-lg">
-                    {r === "worth" ? "👍" : r === "great" ? "🔥" : r === "amazing" ? "❤️" : "👑"}
-                  </span>
-                  <span class="text-xs font-semibold">{config.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div>
-          <Label class="text-xs text-muted-foreground mb-1">Purchase Date</Label>
-          <Input
-            type="date"
-            value={form().purchaseDate}
-            onInput={(e) => updateField("purchaseDate", e.currentTarget.value)}
-          />
-        </div>
+        <SectionLabel label="Purchase Link" icon={<Link size={14} />} optional />
 
         <div>
           <Label class="text-xs text-muted-foreground mb-1">
-            Purchase Link
-            <span class="ml-1.5 text-muted-foreground/60 font-normal">
-              Optional, URL or status (e.g. delisted)
-            </span>
+            Link
+            <span class="ml-1.5 text-muted-foreground/60 font-normal">URL to purchase page</span>
           </Label>
           <div class="relative">
             <Link
@@ -245,47 +183,21 @@ export function GoodsForm(props: GoodsFormProps) {
               type="text"
               value={form().purchaseLink || ""}
               onInput={(e) => updateField("purchaseLink", e.currentTarget.value)}
-              placeholder="https://... or delisted"
+              placeholder="https://..."
               class="pl-9"
             />
           </div>
-          <Show when={form().purchaseLink}>
-            {(() => {
-              const link = form().purchaseLink!;
-              return /^https?:\/\//.test(link) ? (
-                <a
-                  href={link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="mt-1.5 inline-flex items-center gap-1 text-[11px] text-primary hover:underline transition-colors"
-                >
-                  <ExternalLink size={10} />
-                  Preview Link
-                </a>
-              ) : (
-                <span class="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                  Delisted
-                </span>
-              );
-            })()}
+          <Show when={form().purchaseLink && /^https?:\/\//.test(form().purchaseLink!)}>
+            <a
+              href={form().purchaseLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-1.5 inline-flex items-center gap-1 text-[11px] text-primary hover:underline transition-colors"
+            >
+              <ExternalLink size={10} />
+              Open Link
+            </a>
           </Show>
-        </div>
-
-        <div>
-          <Label class="text-xs text-muted-foreground mb-1" required>
-            Short Review
-          </Label>
-          <Textarea
-            value={form().comment}
-            onInput={(e) => updateField("comment", e.currentTarget.value)}
-            placeholder='e.g. "Noise canceling is amazing, finally quiet on the subway"'
-            rows={2}
-            maxLength={200}
-            class="resize-none"
-          />
-          <p class="mt-0.5 text-[11px] text-muted-foreground text-right">
-            {form().comment.length}/200
-          </p>
         </div>
       </div>
 
@@ -328,8 +240,7 @@ export function GoodsForm(props: GoodsFormProps) {
           </Button>
         </Show>
         <Button type="submit" class="flex-1" disabled={isSubmitting()}>
-          <Star size={16} />
-          {isSubmitting() ? "Submitting..." : isEditing() ? "Update Item" : "Add Item"}
+          {isSubmitting() ? "Submitting..." : isEditing() ? "Update" : "Add to Wishlist"}
         </Button>
       </div>
     </form>

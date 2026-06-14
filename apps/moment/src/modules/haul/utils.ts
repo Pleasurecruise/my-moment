@@ -2,7 +2,7 @@ import type { Category, Rating } from "./types";
 import { CATEGORY_CONFIG, RATING_CONFIG } from "./types";
 
 /**
- * formatPrice — 将数字价格格式化为中文习惯的显示格式
+ * Format price for display (e.g. ¥1899, ¥1.2w)
  */
 export function formatPrice(price: number): string {
   if (price >= 10000) {
@@ -13,7 +13,7 @@ export function formatPrice(price: number): string {
 }
 
 /**
- * formatDate — 将 ISO 日期字符串格式化为 "yyyy.MM.dd" 显示格式
+ * Format ISO date string to "yyyy.MM.dd"
  */
 export function formatDate(dateStr: string): string {
   try {
@@ -28,7 +28,7 @@ export function formatDate(dateStr: string): string {
 }
 
 /**
- * timeAgo — 将时间戳转为相对时间描述，如 "3 天前"
+ * Convert timestamp to relative time (e.g. "3 days ago")
  */
 export function timeAgo(dateStr: string): string {
   try {
@@ -44,13 +44,13 @@ export function timeAgo(dateStr: string): string {
     if (days > 30) {
       return formatDate(dateStr);
     } else if (days > 0) {
-      return `${days} 天前`;
+      return `${days} days ago`;
     } else if (hours > 0) {
-      return `${hours} 小时前`;
+      return `${hours} hours ago`;
     } else if (minutes > 0) {
-      return `${minutes} 分钟前`;
+      return `${minutes} minutes ago`;
     } else {
-      return "刚刚";
+      return "just now";
     }
   } catch {
     return "";
@@ -58,21 +58,21 @@ export function timeAgo(dateStr: string): string {
 }
 
 /**
- * getRatingConfig — 获取评级的展示配置
+ * Get rating display config
  */
 export function getRatingConfig(rating: Rating) {
   return RATING_CONFIG[rating];
 }
 
 /**
- * getCategoryConfig — 获取分类的展示配置
+ * Get category display config
  */
 export function getCategoryConfig(category: Category) {
   return CATEGORY_CONFIG[category];
 }
 
 /**
- * compressImage — 将用户上传的图片压缩并转为 base64 WebP
+ * Compress uploaded image to base64 WebP
  */
 export function compressImage(file: File, maxWidth = 800, quality = 0.8): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -91,15 +91,15 @@ export function compressImage(file: File, maxWidth = 800, quality = 0.8): Promis
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas 不可用"));
+        if (!ctx) return reject(new Error("Canvas unavailable"));
 
         ctx.drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL("image/webp", quality));
       };
-      img.onerror = () => reject(new Error("图片加载失败"));
+      img.onerror = () => reject(new Error("Image load failed"));
       img.src = e.target?.result as string;
     };
-    reader.onerror = () => reject(new Error("文件读取失败"));
+    reader.onerror = () => reject(new Error("File read failed"));
     reader.readAsDataURL(file);
   });
 }

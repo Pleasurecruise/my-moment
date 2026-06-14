@@ -35,7 +35,7 @@ export function PhotoViewer(props: PhotoViewerProps) {
   });
 
   createEffect(() => {
-    void props.index; // 触发依赖追踪
+    void props.index; // Trigger dependency tracking
     setHighResLoaded(false);
   });
 

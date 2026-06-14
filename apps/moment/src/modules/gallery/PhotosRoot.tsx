@@ -2,6 +2,7 @@ import { createSignal, createMemo, Show } from "solid-js";
 import { Link } from "@tanstack/solid-router";
 import { Upload, SlidersHorizontal } from "lucide-solid";
 import { Segment } from "~/components/Segment";
+import { Button } from "@my-moment/ui";
 import { MasonryView } from "./MasonryView";
 import { ListView } from "./ListView";
 import { FilterPanel, ActiveFilterChips } from "./FilterPanel";
@@ -59,17 +60,15 @@ export function PhotosRoot(props: PhotosRootProps) {
           </p>
         </div>
         <div class="flex items-center gap-2">
-          <button
+          <Button
+            variant={showFilters() ? "default" : "ghost"}
+            size="icon"
+            class="size-8"
             onClick={() => setShowFilters(!showFilters())}
-            class={`flex size-8 items-center justify-center rounded-md transition-colors ${
-              showFilters()
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
             aria-label="Toggle filters"
           >
             <SlidersHorizontal size={16} />
-          </button>
+          </Button>
           <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
         </div>
       </div>

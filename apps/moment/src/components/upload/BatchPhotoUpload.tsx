@@ -7,6 +7,7 @@ import {
   type ComponentProps,
   type JSX,
 } from "solid-js";
+import { Button } from "@my-moment/ui";
 import { Upload } from "lucide-solid";
 import { cn } from "@my-moment/ui";
 import { FileUploadList } from "./FileUploadList";
@@ -413,49 +414,34 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
       <Show when={entries().length > 0}>
         <div class="flex items-center gap-2">
           <Show when={phase() === "review"}>
-            <button
-              type="button"
-              class="rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              onClick={resetAll}
-            >
+            <Button variant="outline" size="sm" class="text-xs" onClick={resetAll}>
               Clear all
-            </button>
-            <button
-              type="button"
-              class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              class="text-xs"
               onClick={uploadPending}
               disabled={!entries().some((e) => e.status === "pending")}
             >
               Upload
-            </button>
+            </Button>
           </Show>
 
           <Show when={phase() === "uploading"}>
-            <button
-              type="button"
-              class="rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              onClick={cancelAll}
-            >
+            <Button variant="outline" size="sm" class="text-xs" onClick={cancelAll}>
               Cancel
-            </button>
+            </Button>
           </Show>
 
           <Show when={phase() === "completed" || phase() === "error"}>
-            <button
-              type="button"
-              class="rounded-md border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
-              onClick={resetAll}
-            >
+            <Button variant="outline" size="sm" class="text-xs" onClick={resetAll}>
               Clear all
-            </button>
+            </Button>
             <Show when={entries().some((e) => e.status === "error")}>
-              <button
-                type="button"
-                class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                onClick={retryAllFailed}
-              >
+              <Button variant="default" size="sm" class="text-xs" onClick={retryAllFailed}>
                 Retry failed
-              </button>
+              </Button>
             </Show>
           </Show>
 
