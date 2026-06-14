@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 
 import { Upload, ArrowLeft } from "lucide-solid";
 import { Button, toast } from "@my-moment/ui";
-import { BatchPhotoUpload } from "~/components/BatchPhotoUpload";
-import type { BatchUploadHandler } from "~/components/BatchPhotoUpload";
+import { BatchPhotoUpload } from "~/components/upload";
+import type { BatchUploadHandler } from "~/components/upload";
 import { processImage } from "~/lib/image-processor";
 
 export const Route = createFileRoute("/upload")({

@@ -70,7 +70,9 @@ export function HaulPage(props: HaulPageProps) {
 
     switch (f.sortBy) {
       case "newest":
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        result.sort(
+          (a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime(),
+        );
         break;
       case "price-asc":
         result.sort((a, b) => a.price - b.price);
@@ -274,14 +276,25 @@ export function HaulPage(props: HaulPageProps) {
                       </blockquote>
                     </Show>
                     <Show when={item().purchaseLink}>
-                      <a
-                        href={item().purchaseLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                      >
-                        Buy again →
-                      </a>
+                      {(() => {
+                        const link = item().purchaseLink!;
+                        const isUrl = /^https?:\/\//.test(link);
+                        return isUrl ? (
+                          <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                          >
+                            Buy again →
+                          </a>
+                        ) : (
+                          <span class="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                            Delisted
+                          </span>
+                        );
+                      })()}
                     </Show>
                   </div>
                 </>

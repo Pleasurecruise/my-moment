@@ -10,6 +10,7 @@ interface MasonryViewProps {
 export function MasonryView(props: MasonryViewProps) {
   const [columnCount, setColumnCount] = createSignal(3);
   const [isMobile, setIsMobile] = createSignal(false);
+  const [containerWidth, setContainerWidth] = createSignal(0);
 
   const photos = () => props.photos;
 
@@ -21,17 +22,29 @@ export function MasonryView(props: MasonryViewProps) {
     else setColumnCount(3);
   };
 
+  let containerRef: HTMLDivElement | undefined;
+
+  const updateContainerWidth = () => {
+    if (containerRef) {
+      setContainerWidth(containerRef.clientWidth);
+    }
+  };
+
   onMount(() => {
     updateColumnCount();
-    window.addEventListener("resize", updateColumnCount);
-    onCleanup(() => window.removeEventListener("resize", updateColumnCount));
+    updateContainerWidth();
+    const handleResize = () => {
+      updateColumnCount();
+      updateContainerWidth();
+    };
+    window.addEventListener("resize", handleResize);
+    onCleanup(() => window.removeEventListener("resize", handleResize));
   });
 
   const columnWidth = createMemo(() => {
     const gutter = isMobile() ? 4 : 8;
-    const padding = isMobile() ? 8 : 32;
-    const availableWidth = window.innerWidth - padding;
-    return (availableWidth - (columnCount() - 1) * gutter) / columnCount();
+    const width = containerWidth() || window.innerWidth - (isMobile() ? 32 : 64);
+    return (width - (columnCount() - 1) * gutter) / columnCount();
   });
 
   const masonryItems = createMemo(() => {
@@ -61,7 +74,12 @@ export function MasonryView(props: MasonryViewProps) {
 
   return (
     <Show when={photos().length > 0} fallback={<EmptyState />}>
-      <div class="flex gap-1 sm:gap-2">
+      <div
+        ref={(el) => {
+          containerRef = el;
+        }}
+        class="flex gap-1 sm:gap-2 w-full overflow-hidden"
+      >
         <For each={masonryItems()}>
           {(colPhotos) => (
             <div class="flex flex-1 flex-col gap-1 sm:gap-2">

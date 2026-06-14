@@ -27,14 +27,14 @@ export async function listHaulItems(d1: D1Database, userId: string): Promise<Goo
     .select()
     .from(haulItems)
     .where(eq(haulItems.userId, userId))
-    .orderBy(desc(haulItems.createdAt));
+    .orderBy(desc(haulItems.purchaseDate));
 
   return rows.map(rowToItem);
 }
 
 export async function listAllHaulItems(d1: D1Database): Promise<GoodsItem[]> {
   const db = drizzle(d1);
-  const rows = await db.select().from(haulItems).orderBy(desc(haulItems.createdAt));
+  const rows = await db.select().from(haulItems).orderBy(desc(haulItems.purchaseDate));
 
   return rows.map(rowToItem);
 }

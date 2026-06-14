@@ -1,6 +1,6 @@
 import { Show, createSignal, type JSX } from "solid-js";
 import { Button, Input, toast, cn } from "@my-moment/ui";
-import { FileUpload } from "~/components/FileUpload";
+import { BatchPhotoUpload } from "~/components/upload";
 import { PenLine, Star, ExternalLink, Link } from "lucide-solid";
 import {
   CATEGORY_CONFIG,
@@ -40,11 +40,15 @@ const INITIAL_FORM: GoodsFormData = {
 export function GoodsForm(props: GoodsFormProps) {
   const [form, setForm] = createSignal<GoodsFormData>({ ...INITIAL_FORM });
 
-  const update = <K extends keyof GoodsFormData>(key: K, value: GoodsFormData[K]) => {
+  const updateField = <K extends keyof GoodsFormData>(key: K, value: GoodsFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (
+    file: File,
+    reportProgress: (loaded: number, total: number) => void,
+    signal: AbortSignal,
+  ) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -52,16 +56,19 @@ export function GoodsForm(props: GoodsFormProps) {
       const res = await fetch("/api/haul/upload", {
         method: "POST",
         body: formData,
+        signal,
       });
 
       if (res.ok) {
         const data = await res.json();
-        update("imageUrl", data.url);
+        updateField("imageUrl", data.url);
+        reportProgress(file.size, file.size);
       } else {
-        toast.error("Upload failed");
+        throw new Error("Upload failed");
       }
-    } catch {
-      toast.error("Upload failed, check your network");
+    } catch (err) {
+      if ((err as DOMException)?.name === "AbortError") return;
+      throw err;
     }
   };
 
@@ -73,7 +80,7 @@ export function GoodsForm(props: GoodsFormProps) {
     return null;
   };
 
-  const [submitting, setSubmitting] = createSignal(false);
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -84,20 +91,19 @@ export function GoodsForm(props: GoodsFormProps) {
       return;
     }
 
-    setSubmitting(true);
+    setIsSubmitting(true);
     try {
       const result = await props.addItem(form());
       if (result) {
         props.onSuccess?.();
       }
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} class="space-y-5">
-      {/* 基本信息 */}
       <div class="space-y-3">
         <SectionLabel label="Basic Info" icon={<PenLine size={14} />} />
 
@@ -108,7 +114,7 @@ export function GoodsForm(props: GoodsFormProps) {
           <Input
             type="text"
             value={form().name}
-            onInput={(e) => update("name", e.currentTarget.value)}
+            onInput={(e) => updateField("name", e.currentTarget.value)}
             placeholder="e.g. AirPods Pro 2"
             maxLength={100}
           />
@@ -120,7 +126,7 @@ export function GoodsForm(props: GoodsFormProps) {
             <Input
               type="text"
               value={form().brand}
-              onInput={(e) => update("brand", e.currentTarget.value)}
+              onInput={(e) => updateField("brand", e.currentTarget.value)}
               placeholder="Apple"
               maxLength={50}
             />
@@ -132,7 +138,7 @@ export function GoodsForm(props: GoodsFormProps) {
             <Input
               type="number"
               value={form().price}
-              onInput={(e) => update("price", e.currentTarget.value)}
+              onInput={(e) => updateField("price", e.currentTarget.value)}
               placeholder="1899"
               min={0}
               step="0.01"
@@ -148,7 +154,7 @@ export function GoodsForm(props: GoodsFormProps) {
               return (
                 <button
                   type="button"
-                  onClick={() => update("category", cat)}
+                  onClick={() => updateField("category", cat)}
                   class={cn(
                     "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer select-none",
                     isActive()
@@ -164,7 +170,6 @@ export function GoodsForm(props: GoodsFormProps) {
         </div>
       </div>
 
-      {/* 评价 */}
       <div class="space-y-3">
         <SectionLabel label="Your Review" icon={<Star size={14} />} />
 
@@ -177,7 +182,7 @@ export function GoodsForm(props: GoodsFormProps) {
               return (
                 <button
                   type="button"
-                  onClick={() => update("rating", r)}
+                  onClick={() => updateField("rating", r)}
                   class={cn(
                     "flex-1 flex flex-col items-center gap-1 py-3 px-2 rounded-lg border-2 transition-all duration-200 cursor-pointer select-none",
                     isActive()
@@ -203,7 +208,7 @@ export function GoodsForm(props: GoodsFormProps) {
           <Input
             type="date"
             value={form().purchaseDate}
-            onInput={(e) => update("purchaseDate", e.currentTarget.value)}
+            onInput={(e) => updateField("purchaseDate", e.currentTarget.value)}
           />
         </div>
 
@@ -211,7 +216,7 @@ export function GoodsForm(props: GoodsFormProps) {
           <label class="block text-xs font-medium text-muted-foreground mb-1">
             Purchase Link
             <span class="ml-1.5 text-muted-foreground/60 font-normal">
-              Optional, for easy repurchase
+              Optional, URL or status (e.g. delisted)
             </span>
           </label>
           <div class="relative">
@@ -220,14 +225,14 @@ export function GoodsForm(props: GoodsFormProps) {
               class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
             />
             <Input
-              type="url"
+              type="text"
               value={form().purchaseLink || ""}
-              onInput={(e) => update("purchaseLink", e.currentTarget.value)}
-              placeholder="https://..."
+              onInput={(e) => updateField("purchaseLink", e.currentTarget.value)}
+              placeholder="https://... or delisted"
               class="pl-9"
             />
           </div>
-          <Show when={form().purchaseLink}>
+          <Show when={form().purchaseLink && /^https?:\/\//.test(form().purchaseLink)}>
             <a
               href={form().purchaseLink}
               target="_blank"
@@ -246,7 +251,7 @@ export function GoodsForm(props: GoodsFormProps) {
           </label>
           <textarea
             value={form().comment}
-            onInput={(e) => update("comment", e.currentTarget.value)}
+            onInput={(e) => updateField("comment", e.currentTarget.value)}
             placeholder='e.g. "Noise canceling is amazing, finally quiet on the subway"'
             rows={2}
             maxLength={200}
@@ -258,20 +263,20 @@ export function GoodsForm(props: GoodsFormProps) {
         </div>
       </div>
 
-      {/* 照片 */}
       <div class="space-y-2">
         <SectionLabel label="Photo" icon={<span>📷</span>} optional />
 
         <Show
           when={form().imageUrl}
           fallback={
-            <FileUpload
+            <BatchPhotoUpload
               accept="image/*"
               maxSize={10 * 1024 * 1024}
+              maxFiles={1}
               onUpload={handleImageUpload}
               label="Click or drag to upload"
               hint="JPG/PNG/WebP, max 10MB"
-              showPreview={true}
+              clearOnComplete={false}
             />
           }
         >
@@ -280,7 +285,7 @@ export function GoodsForm(props: GoodsFormProps) {
             <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
               <button
                 type="button"
-                onClick={() => update("imageUrl", undefined)}
+                onClick={() => updateField("imageUrl", undefined)}
                 class="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white/90 rounded-md text-sm text-red-500 hover:bg-white cursor-pointer shadow-lg"
               >
                 Remove
@@ -290,16 +295,15 @@ export function GoodsForm(props: GoodsFormProps) {
         </Show>
       </div>
 
-      {/* 提交按钮 */}
       <div class="flex gap-3 pt-2">
         <Show when={props.onCancel}>
           <Button type="button" variant="outline" class="flex-1" onClick={props.onCancel}>
             Cancel
           </Button>
         </Show>
-        <Button type="submit" class="flex-1" disabled={submitting()}>
+        <Button type="submit" class="flex-1" disabled={isSubmitting()}>
           <Star size={16} />
-          {submitting() ? "Submitting..." : "Add Item"}
+          {isSubmitting() ? "Submitting..." : "Add Item"}
         </Button>
       </div>
     </form>

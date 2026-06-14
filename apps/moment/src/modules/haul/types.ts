@@ -4,22 +4,22 @@ export const RATING_CONFIG: Record<Rating, { label: string; color: string; descr
   {
     worth: {
       label: "Worth",
-      color: "#10b981",
+      color: "var(--color-success)",
       description: "Good value for daily use",
     },
     great: {
       label: "Great",
-      color: "#f59e0b",
+      color: "var(--color-primary)",
       description: "Exceeded expectations, would repurchase",
     },
     amazing: {
       label: "Amazing",
-      color: "#ef4444",
+      color: "var(--color-warning)",
       description: "Can't go back after using it",
     },
     godtier: {
       label: "God Tier",
-      color: "#8b5cf6",
+      color: "var(--color-info)",
       description: "Best in class, no-brainer recommendation",
     },
   };
