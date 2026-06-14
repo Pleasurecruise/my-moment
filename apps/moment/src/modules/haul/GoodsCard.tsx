@@ -57,37 +57,39 @@ export function GoodsCard(props: GoodsCardProps) {
       </Show>
 
       <div class={cn("flex-1 min-w-0", props.compact ? "py-0.5" : "p-4 pt-3 flex flex-col")}>
-        <div class="flex items-center gap-2 mb-1.5">
-          <Badge variant="secondary" class="text-[11px]">
-            {category().label}
-          </Badge>
-          <Badge
-            variant="outline"
-            class="text-[11px]"
-            style={{
-              "border-color": ratingConfig().color,
-              color: ratingConfig().color,
-            }}
-          >
-            {ratingConfig().label}
-          </Badge>
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1.5">
+            <Badge variant="secondary" class="text-[11px]">
+              {category().label}
+            </Badge>
+            <Badge
+              variant="outline"
+              class="text-[11px]"
+              style={{
+                "border-color": ratingConfig().color,
+                color: ratingConfig().color,
+              }}
+            >
+              {ratingConfig().label}
+            </Badge>
+          </div>
+
+          <h3 class="text-[15px] font-semibold leading-snug truncate group-hover:text-primary transition-colors">
+            {props.item.name}
+          </h3>
+          <Show when={props.item.brand}>
+            <p class="text-xs text-muted-foreground mt-0.5 truncate">{props.item.brand}</p>
+          </Show>
+
+          <Show when={!props.compact && props.item.comment}>
+            <p class="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2">
+              "{props.item.comment}"
+            </p>
+          </Show>
         </div>
 
-        <h3 class="text-[15px] font-semibold leading-snug truncate group-hover:text-primary transition-colors">
-          {props.item.name}
-        </h3>
-        <Show when={props.item.brand}>
-          <p class="text-xs text-muted-foreground mt-0.5 truncate">{props.item.brand}</p>
-        </Show>
-
-        <Show when={!props.compact && props.item.comment}>
-          <p class="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-            "{props.item.comment}"
-          </p>
-        </Show>
-
         <Show when={!props.compact}>
-          <div class="mt-auto pt-3 border-t border-border flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div class="mt-3 pt-3 border-t border-border flex items-center gap-3 text-[11px] text-muted-foreground">
             <span class="font-semibold text-sm text-foreground">
               {formatPrice(props.item.price)}
             </span>

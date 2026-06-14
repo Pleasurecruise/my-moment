@@ -1,6 +1,7 @@
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { Card, Badge } from "@my-moment/ui";
+import { useGallerySettings } from "~/providers/gallery-settings-provider";
 import type { PhotoItem } from "~/types/photo";
 
 interface ListViewProps {
@@ -65,6 +66,15 @@ export function ListView(props: ListViewProps) {
 function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
   const photo = () => props.photo;
   const [imageError, setImageError] = createSignal(false);
+  const { settings, updateSettings } = useGallerySettings();
+
+  const toggleTag = (tag: string) => {
+    const currentTags = settings().selectedTags;
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter((t) => t !== tag)
+      : [...currentTags, tag];
+    updateSettings({ selectedTags: newTags });
+  };
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
@@ -109,12 +119,21 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
           <div class="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap gap-1 p-2">
             <For each={photo().tags.slice(0, 5)}>
               {(tag) => (
-                <Badge
-                  variant="secondary"
-                  class="bg-black/40 text-white/90 backdrop-blur-sm text-[10px] px-1.5 py-0.5"
+                <button
+                  type="button"
+                  class="pointer-events-auto"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleTag(tag);
+                  }}
                 >
-                  {tag}
-                </Badge>
+                  <Badge
+                    variant="secondary"
+                    class="bg-black/40 text-white/90 backdrop-blur-sm text-[10px] px-1.5 py-0.5 cursor-pointer hover:bg-black/60"
+                  >
+                    {tag}
+                  </Badge>
+                </button>
               )}
             </For>
           </div>

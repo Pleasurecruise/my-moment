@@ -8,8 +8,11 @@ import {
   PanelRightOpen,
   PanelRightClose,
   Share2,
+  Pencil,
+  Check,
+  Edit3,
 } from "lucide-solid";
-import { Card, Badge, Button, Input, Skeleton } from "@my-moment/ui";
+import { Card, Badge, Button, Input, Skeleton, TagInput } from "@my-moment/ui";
 import type { PhotoItem } from "~/types/photo";
 
 interface PhotoViewerProps {
@@ -17,12 +20,38 @@ interface PhotoViewerProps {
   index: number;
   onClose: () => void;
   onIndexChange: (i: number) => void;
+  onEdit?: (photo: PhotoItem) => void;
 }
 
 export function PhotoViewer(props: PhotoViewerProps) {
   const photo = () => props.photos[props.index];
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
   const [highResLoaded, setHighResLoaded] = createSignal(false);
+  const [editingTags, setEditingTags] = createSignal(false);
+  const [editTags, setEditTags] = createSignal<string[]>([]);
+
+  const startEditTags = () => {
+    setEditTags([...photo().tags]);
+    setEditingTags(true);
+  };
+
+  const saveTags = async () => {
+    try {
+      const res = await fetch(`/api/photos/${photo().id}/tags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: editTags() }),
+      });
+      if (res.ok) {
+        // Update local state
+        const updated = await res.json();
+        photo().tags = updated.tags;
+        setEditingTags(false);
+      }
+    } catch (e) {
+      console.error("Failed to save tags:", e);
+    }
+  };
 
   createEffect(() => {
     const idx = props.index;
@@ -90,6 +119,14 @@ export function PhotoViewer(props: PhotoViewerProps) {
                 onClick={() => navigator.share?.({ url: photo().url, title: photo().title })}
               >
                 <Share2 size={15} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => props.onEdit?.(photo())}
+              >
+                <Edit3 size={15} />
               </Button>
               <Show when={!sidebarOpen()}>
                 <Button
@@ -203,9 +240,66 @@ export function PhotoViewer(props: PhotoViewerProps) {
                   </Card>
                 </Show>
 
-                <Show when={photo().tags.length > 0}>
-                  <div class="flex flex-wrap gap-1.5">
-                    <For each={photo().tags}>{(tag) => <Badge variant="outline">{tag}</Badge>}</For>
+                <Show when={photo().tags.length > 0 || editingTags()}>
+                  <div>
+                    <div class="mb-2 flex items-center justify-between">
+                      <span class="text-xs text-muted-foreground/70">Tags</span>
+                      <Show when={!editingTags()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-5 text-muted-foreground hover:text-foreground"
+                          onClick={startEditTags}
+                        >
+                          <Pencil size={12} />
+                        </Button>
+                      </Show>
+                      <Show when={editingTags()}>
+                        <div class="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            class="size-5 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditingTags(false)}
+                          >
+                            <X size={12} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            class="size-5 text-primary"
+                            onClick={saveTags}
+                          >
+                            <Check size={12} />
+                          </Button>
+                        </div>
+                      </Show>
+                    </div>
+                    <Show
+                      when={editingTags()}
+                      fallback={
+                        <div class="flex flex-wrap gap-1.5">
+                          <For each={photo().tags}>
+                            {(tag) => (
+                              <Badge
+                                variant="outline"
+                                class="cursor-pointer hover:bg-accent"
+                                onClick={startEditTags}
+                              >
+                                {tag}
+                              </Badge>
+                            )}
+                          </For>
+                        </div>
+                      }
+                    >
+                      <TagInput
+                        value={editTags()}
+                        onChange={setEditTags}
+                        placeholder="Add tags..."
+                        maxTags={10}
+                      />
+                    </Show>
                   </div>
                 </Show>
 

@@ -1,7 +1,8 @@
 import { Show } from "solid-js";
 import { Badge } from "@my-moment/ui";
 import { LazyImage } from "~/components/LazyImage";
-import type { PhotoItem } from "~/types/photo";
+import { useGallerySettings } from "~/providers/gallery-settings-provider";
+import type { PhotoItem } from "~//types/photo";
 
 interface MasonryPhotoItemProps {
   photo: PhotoItem;
@@ -11,6 +12,15 @@ interface MasonryPhotoItemProps {
 
 export function MasonryPhotoItem(props: MasonryPhotoItemProps) {
   const photo = () => props.photo;
+  const { settings, updateSettings } = useGallerySettings();
+
+  const toggleTag = (tag: string) => {
+    const currentTags = settings().selectedTags;
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter((t) => t !== tag)
+      : [...currentTags, tag];
+    updateSettings({ selectedTags: newTags });
+  };
 
   const ratio = () => {
     const ar =
@@ -60,12 +70,20 @@ export function MasonryPhotoItem(props: MasonryPhotoItemProps) {
           <Show when={photo().tags.length > 0}>
             <div class="mt-2 flex flex-wrap gap-1 opacity-0 group-hover:opacity-100">
               {photo().tags.map((tag) => (
-                <Badge
-                  variant="secondary"
-                  class="bg-white/20 text-white/90 backdrop-blur-sm text-[10px] px-2 py-0.5"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleTag(tag);
+                  }}
                 >
-                  {tag}
-                </Badge>
+                  <Badge
+                    variant="secondary"
+                    class="bg-white/20 text-white/90 backdrop-blur-sm text-[10px] px-2 py-0.5 cursor-pointer hover:bg-white/30"
+                  >
+                    {tag}
+                  </Badge>
+                </button>
               ))}
             </div>
           </Show>

@@ -1,5 +1,5 @@
 import { createSignal, createMemo, Show } from "solid-js";
-import { Link } from "@tanstack/solid-router";
+import { Link, useNavigate } from "@tanstack/solid-router";
 import { Upload, SlidersHorizontal } from "lucide-solid";
 import { Segment } from "~/components/Segment";
 import { Button } from "@my-moment/ui";
@@ -25,6 +25,7 @@ interface PhotosRootProps {
 
 export function PhotosRoot(props: PhotosRootProps) {
   const { settings } = useGallerySettings();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
   const [viewerIndex, setViewerIndex] = createSignal<number | null>(null);
   const [showFilters, setShowFilters] = createSignal(false);
@@ -99,6 +100,10 @@ export function PhotosRoot(props: PhotosRootProps) {
           index={viewerIndex()!}
           onClose={() => setViewerIndex(null)}
           onIndexChange={(i) => setViewerIndex(i)}
+          onEdit={(photo) => {
+            setViewerIndex(null);
+            navigate({ to: `/photos/${photo.id}/edit` });
+          }}
         />
       </Show>
     </div>
