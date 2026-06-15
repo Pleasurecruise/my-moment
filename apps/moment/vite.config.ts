@@ -23,7 +23,14 @@ export default defineConfig({
     devServer({
       entry: "worker.ts",
       exclude: [/^(?!\/api(?:\/|$)).*/],
-      adapter: cloudflareAdapter,
+      adapter: () =>
+        cloudflareAdapter({
+          proxy: {
+            persist: {
+              path: resolve(import.meta.dirname, "../../.wrangler/state/v3"),
+            },
+          },
+        }),
     }),
   ],
   server: {

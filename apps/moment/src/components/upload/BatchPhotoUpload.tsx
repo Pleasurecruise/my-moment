@@ -1,6 +1,8 @@
 import {
   createSignal,
   createMemo,
+  createEffect,
+  on,
   onCleanup,
   Show,
   splitProps,
@@ -57,11 +59,14 @@ export interface BatchPhotoUploadProps extends Omit<ComponentProps<"div">, "onPr
   onComplete?: (results: Array<{ file: File; status: FileItemStatus }>) => void;
   onError?: (error: BatchUploadError) => void;
   onCancel?: () => void;
+  onFilesChange?: (files: File[]) => void;
   label?: string;
   hint?: string;
   icon?: JSX.Element;
   disabled?: boolean;
   clearOnComplete?: boolean;
+  triggerUpload?: () => boolean;
+  onUploadTriggered?: () => void;
 }
 
 const DEFAULT_ACCEPT = "image/*";
@@ -95,11 +100,14 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
     "onComplete",
     "onError",
     "onCancel",
+    "onFilesChange",
     "label",
     "hint",
     "icon",
     "disabled",
     "clearOnComplete",
+    "triggerUpload",
+    "onUploadTriggered",
     "class",
   ]);
 
@@ -120,6 +128,19 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
     revokePreviewUrls(previewCache);
   });
 
+  // Watch for external upload trigger
+  createEffect(
+    on(
+      () => local.triggerUpload?.(),
+      (triggered) => {
+        if (triggered && phase() === "review" && entries().some((e) => e.status === "pending")) {
+          uploadPending();
+          local.onUploadTriggered?.();
+        }
+      },
+    ),
+  );
+
   const accept = () => local.accept ?? DEFAULT_ACCEPT;
   const maxFiles = () => local.maxFiles ?? DEFAULT_MAX_FILES;
   const canInteract = () => !local.disabled && phase() === "review";
@@ -137,6 +158,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
     abortControllers.clear();
     revokePreviewUrls(previewCache);
     setFiles([]);
+    local.onFilesChange?.([]);
     setEntries([]);
     setZoneStatus("idle");
     setPhase("review");
@@ -160,6 +182,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
     }
 
     setFiles(nextFiles);
+    local.onFilesChange?.(nextFiles);
     setEntries(createFileEntries(nextFiles, previewCache));
 
     if (nextFiles.length === 0) {
@@ -213,6 +236,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
 
     const nextFiles = [...currentFiles, ...toAdd];
     setFiles(nextFiles);
+    local.onFilesChange?.(nextFiles);
     primePreviewCache(toAdd, previewCache);
     const newEntries = createFileEntries(nextFiles, previewCache);
 
@@ -417,15 +441,17 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
             <Button variant="outline" size="sm" class="text-xs" onClick={resetAll}>
               Clear all
             </Button>
-            <Button
-              variant="default"
-              size="sm"
-              class="text-xs"
-              onClick={uploadPending}
-              disabled={!entries().some((e) => e.status === "pending")}
-            >
-              Upload
-            </Button>
+            <Show when={!local.triggerUpload}>
+              <Button
+                variant="default"
+                size="sm"
+                class="text-xs"
+                onClick={uploadPending}
+                disabled={!entries().some((e) => e.status === "pending")}
+              >
+                Upload
+              </Button>
+            </Show>
           </Show>
 
           <Show when={phase() === "uploading"}>

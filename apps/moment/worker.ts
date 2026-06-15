@@ -1,13 +1,15 @@
 import { Hono } from "hono";
 import type { D1Database, R2Bucket, KVNamespace } from "@cloudflare/workers-types";
 import { getAuth } from "~/lib/auth";
+import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
-  readManifest,
-  writeManifest,
-  deleteManifest,
-  appendPhoto,
-  type PhotoManifest,
-} from "~/lib/kv";
+  listPhotos,
+  getPhoto,
+  createPhoto,
+  updatePhoto,
+  deletePhoto,
+  getAllTags,
+} from "~/lib/server/photos/repository";
 import {
   getHaulItem,
   listAllHaulItems,
@@ -58,8 +60,6 @@ app.get("/api/health", (c) =>
 );
 
 app.get("/api/gallery", async (c) => {
-  const photos = await readManifest(c.env.MOMENT_CACHE);
-
   let canUpload = false;
   const allowed = c.env.ALLOWED_EMAIL;
   if (allowed) {
@@ -68,40 +68,9 @@ app.get("/api/gallery", async (c) => {
     canUpload = session?.user?.email === allowed;
   }
 
+  const photos = await listPhotos(c.env.DB);
+
   return c.json({ photos, canUpload });
-});
-
-app.get("/api/photos/*", async (c) => {
-  const filename = c.req.path.replace(/^\/api\/photos\//, "");
-  if (!filename) return c.notFound();
-
-  const key =
-    filename.startsWith("thumbnails/") || filename.startsWith("img/")
-      ? filename
-      : `img/${filename}`;
-  const obj = await c.env.MOMENT_BUCKET.get(key);
-  if (!obj) return c.notFound();
-
-  const mimeMap: Record<string, string> = {
-    webp: "image/webp",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    avif: "image/avif",
-  };
-  const parts = filename.split(".");
-  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "bin";
-  const mime = mimeMap[ext] ?? "application/octet-stream";
-
-  if (!obj.body) return c.notFound();
-  // @ts-expect-error
-  return new Response(obj.body, {
-    headers: {
-      "content-type": mime,
-      "cache-control": "public, max-age=31536000, immutable",
-    },
-  });
 });
 
 app.post("/api/photos/upload", async (c) => {
@@ -131,7 +100,7 @@ app.post("/api/photos/upload", async (c) => {
 
   const num = maxNum + 1;
   const imageKey = `img/image${num}.png`;
-  const thumbKey = `thumbnails/image${num}.jpg`;
+  const thumbKey = `img/thumbnails/image${num}.jpg`;
 
   const [imageBuffer, thumbBuffer] = await Promise.all([
     file.arrayBuffer(),
@@ -154,27 +123,146 @@ app.post("/api/photos/upload", async (c) => {
 
   const exifDate = str("exifDate");
   const exifGeo = str("exifGeo");
+  const tagsRaw = str("tags");
+  let parsedTags: string[] = [];
+  if (tagsRaw) {
+    const parsed = JSON.parse(tagsRaw);
+    if (Array.isArray(parsed)) {
+      parsedTags = parsed
+        .filter((t): t is string => typeof t === "string")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+    }
+  }
 
-  const photo: PhotoManifest = {
-    id: `image${num}`,
+  const photo = await createPhoto(c.env.DB, session.user.id, {
     url: `/api/photos/image${num}.png`,
     thumbnailUrl: `/api/photos/${thumbKey}`,
+    thumbHash: str("thumbHash"),
     title: file.name,
     width: Number(form.get("width")) || 0,
     height: Number(form.get("height")) || 0,
-    aspectRatio: Number(form.get("aspectRatio")) || 0,
-    tags: [],
-    date: exifDate ?? new Date().toISOString(),
-    description: "",
+    aspectRatio: Number(form.get("aspectRatio")) || undefined,
     size: file.size,
     format: file.name.split(".").pop()?.toUpperCase() || "PNG",
-    thumbHash: str("thumbHash"),
+    date: exifDate ?? new Date().toISOString(),
+    description: "",
     geo: exifGeo ? JSON.parse(exifGeo) : undefined,
-  };
-
-  await appendPhoto(c.env.MOMENT_CACHE, photo);
+    tags: parsedTags,
+  });
 
   return c.json(photo);
+});
+
+app.get("/api/photos/:id", async (c) => {
+  const id = c.req.param("id");
+  const photo = await getPhoto(c.env.DB, id);
+  if (!photo) return c.json({ error: "Photo not found" }, 404);
+  return c.json(photo);
+});
+
+app.put("/api/photos/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  let body: { title?: string; description?: string; tags?: string[] };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+
+  const id = c.req.param("id");
+  const photo = await updatePhoto(c.env.DB, id, body);
+  if (!photo) return c.json({ error: "Photo not found" }, 404);
+  return c.json(photo);
+});
+
+app.delete("/api/photos/:id", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const id = c.req.param("id");
+  const deleted = await deletePhoto(c.env.DB, id);
+  if (!deleted) return c.json({ error: "Photo not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.patch("/api/photos/:id/tags", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  let body: { tags?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON" }, 400);
+  }
+
+  if (!Array.isArray(body.tags)) {
+    return c.json({ error: "tags must be an array" }, 400);
+  }
+
+  const id = c.req.param("id");
+  const photo = await updatePhoto(c.env.DB, id, {
+    tags: body.tags.filter((t): t is string => typeof t === "string"),
+  });
+
+  if (!photo) return c.json({ error: "Photo not found" }, 404);
+  return c.json(photo);
+});
+
+app.get("/api/photos/*", async (c) => {
+  const filename = c.req.path.replace(/^\/api\/photos\//, "");
+  if (!filename) return c.notFound();
+
+  const key =
+    filename.startsWith("img/thumbnails/") || filename.startsWith("img/")
+      ? filename
+      : `img/${filename}`;
+  const obj = await c.env.MOMENT_BUCKET.get(key);
+  if (!obj) return c.notFound();
+
+  const mimeMap: Record<string, string> = {
+    webp: "image/webp",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    avif: "image/avif",
+  };
+  const parts = filename.split(".");
+  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "bin";
+  const mime = mimeMap[ext] ?? "application/octet-stream";
+
+  if (!obj.body) return c.notFound();
+  // @ts-expect-error
+  return new Response(obj.body, {
+    headers: {
+      "content-type": mime,
+      "cache-control": "public, max-age=31536000, immutable",
+    },
+  });
+});
+
+app.get("/api/tags", async (c) => {
+  const allTags = await getAllTags(c.env.DB);
+  return c.json({ tags: allTags });
 });
 
 app.post("/api/migrate", async (c) => {
@@ -207,7 +295,7 @@ app.post("/api/migrate", async (c) => {
 });
 
 app.get("/api/debug/photos", async (c) => {
-  const photos = await readManifest(c.env.MOMENT_CACHE);
+  const photos = await listPhotos(c.env.DB);
   return c.json(photos);
 });
 

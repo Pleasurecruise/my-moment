@@ -353,7 +353,7 @@ export function HaulPage(props: HaulPageProps) {
                 </Show>
               </Show>
               <Show when={data().length > 0}>
-                <div class="h-12" />
+                <div class="h-4" />
               </Show>
             </>
           )}
@@ -372,7 +372,7 @@ export function HaulPage(props: HaulPageProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        class="size-7 text-muted-foreground hover:text-foreground"
+                        class="size-7 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                         onClick={() => shareItemLink(item().id)}
                         aria-label="Share item"
                       >
@@ -479,7 +479,7 @@ export function HaulPage(props: HaulPageProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <section id="wishlist" class="mt-8">
+      <section id="wishlist" class="mt-4">
         <div class="mb-6 flex items-center justify-between">
           <div>
             <div class="flex items-center gap-2">
@@ -569,7 +569,7 @@ export function HaulPage(props: HaulPageProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          class="size-7 text-muted-foreground hover:text-foreground"
+                          class="size-7 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                           onClick={() => shareWishLink(item().id)}
                           aria-label="Share wish"
                         >
