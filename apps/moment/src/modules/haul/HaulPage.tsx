@@ -21,6 +21,7 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
+  Spinner,
   toast,
 } from "@my-moment/ui";
 import { ShoppingBag, Heart, Plus, SlidersHorizontal, Pencil, Trash2, Share2 } from "lucide-solid";
@@ -288,7 +289,8 @@ export function HaulPage(props: HaulPageProps) {
           </div>
         </Match>
         <Match when={props.haul.loading}>
-          <div class="flex items-center justify-center py-20 text-muted-foreground">
+          <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+            <Spinner size="sm" />
             <p class="text-sm">Loading...</p>
           </div>
         </Match>
@@ -521,7 +523,8 @@ export function HaulPage(props: HaulPageProps) {
             </div>
           </Match>
           <Match when={props.wishes.loading}>
-            <div class="flex items-center justify-center py-16 text-muted-foreground">
+            <div class="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+              <Spinner size="sm" />
               <p class="text-sm">Loading...</p>
             </div>
           </Match>

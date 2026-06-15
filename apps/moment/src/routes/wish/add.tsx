@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router"
 import { createResource, Show } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, Heart } from "lucide-solid";
-import { Button, toast } from "@my-moment/ui";
+import { Button, Spinner, toast } from "@my-moment/ui";
 import { WishForm } from "~/modules/haul/WishForm";
 import type { WishFormData, WishItem } from "~/modules/haul/types";
 
@@ -71,7 +71,12 @@ function WishAddPage() {
 
       <Show
         when={!isEditing() || editItem()}
-        fallback={<p class="text-sm text-muted-foreground">Loading...</p>}
+        fallback={
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <Spinner size="sm" />
+            <p class="text-sm">Loading...</p>
+          </div>
+        }
       >
         <WishForm
           addItem={handleSubmit}

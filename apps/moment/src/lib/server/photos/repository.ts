@@ -2,23 +2,9 @@ import type { D1Database } from "@cloudflare/workers-types";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, inArray } from "drizzle-orm";
 import { photos, tags, photoTags, type PhotoRow } from "../db/schema";
+import type { PhotoItem } from "~/types/photo";
 
-export interface PhotoItem {
-  id: string;
-  url: string;
-  thumbnailUrl: string;
-  thumbHash?: string;
-  title: string;
-  width: number;
-  height: number;
-  aspectRatio?: number;
-  tags: string[];
-  date?: string;
-  description?: string;
-  size?: number;
-  format?: string;
-  geo?: { lat: number; lng: number };
-}
+export type { PhotoItem };
 
 function rowToItem(row: PhotoRow, tagNames: string[]): PhotoItem {
   return {
@@ -158,6 +144,8 @@ export async function updatePhoto(
     title?: string;
     description?: string;
     tags?: string[];
+    date?: string | null;
+    geo?: { lat: number; lng: number } | null;
   },
 ): Promise<PhotoItem | null> {
   const db = drizzle(d1);
@@ -170,6 +158,11 @@ export async function updatePhoto(
 
   if (data.title !== undefined) updates.title = data.title;
   if (data.description !== undefined) updates.description = data.description;
+  if (data.date !== undefined) updates.date = data.date ?? null;
+  if (data.geo !== undefined) {
+    updates.geoLat = data.geo ? data.geo.lat : null;
+    updates.geoLng = data.geo ? data.geo.lng : null;
+  }
 
   await db.update(photos).set(updates).where(eq(photos.id, id));
 

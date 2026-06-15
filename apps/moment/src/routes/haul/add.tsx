@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router"
 import { createResource, Show } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, ShoppingBag } from "lucide-solid";
-import { Button, toast } from "@my-moment/ui";
+import { Button, Spinner, toast } from "@my-moment/ui";
 import { GoodsForm } from "~/modules/haul/GoodsForm";
 import type { GoodsFormData, GoodsItem } from "~/modules/haul/types";
 
@@ -71,7 +71,12 @@ function HaulAddPage() {
 
       <Show
         when={!isEditing() || editItem()}
-        fallback={<p class="text-sm text-muted-foreground">Loading...</p>}
+        fallback={
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <Spinner size="sm" />
+            <p class="text-sm">Loading...</p>
+          </div>
+        }
       >
         <GoodsForm
           addItem={handleSubmit}

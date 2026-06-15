@@ -272,9 +272,9 @@ export function FilterBar(props: FilterBarProps) {
             )}
           </For>
           <Show when={props.store.filter().sortBy !== "newest"}>
-            <span class="inline-flex items-center px-2 py-0.5 text-[11px] font-medium text-muted-foreground bg-muted border border-border rounded-full">
+            <Badge variant="outline" class="text-[11px] px-1.5 py-0">
               {SORT_OPTIONS.find((o) => o.value === props.store.filter().sortBy)?.label}
-            </span>
+            </Badge>
           </Show>
           <Button
             variant="ghost"

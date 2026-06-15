@@ -48,7 +48,7 @@ export function WishForm(props: WishFormProps) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/haul/upload", {
+      const res = await fetch("/api/wish/upload", {
         method: "POST",
         body: formData,
         signal,

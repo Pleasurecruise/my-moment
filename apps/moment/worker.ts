@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { D1Database, R2Bucket, KVNamespace } from "@cloudflare/workers-types";
 import { getAuth } from "~/lib/auth";
 import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
@@ -9,6 +10,8 @@ import {
   updatePhoto,
   deletePhoto,
   getAllTags,
+  renameTag,
+  deleteTag,
 } from "~/lib/server/photos/repository";
 import {
   getHaulItem,
@@ -25,6 +28,7 @@ import {
   deleteWishlistItem,
 } from "~/lib/server/wishlist/repository";
 import { goodsFormSchema, wishFormSchema } from "~/modules/haul/types";
+import { photoUploadSchema, photoUpdateSchema } from "~/types/photo";
 
 type Bindings = {
   DB: D1Database;
@@ -121,34 +125,36 @@ app.post("/api/photos/upload", async (c) => {
     return typeof v === "string" ? v : undefined;
   };
 
-  const exifDate = str("exifDate");
-  const exifGeo = str("exifGeo");
-  const tagsRaw = str("tags");
-  let parsedTags: string[] = [];
-  if (tagsRaw) {
-    const parsed = JSON.parse(tagsRaw);
-    if (Array.isArray(parsed)) {
-      parsedTags = parsed
-        .filter((t): t is string => typeof t === "string")
-        .map((t) => t.trim().toLowerCase())
-        .filter(Boolean);
-    }
+  const parsed = photoUploadSchema.safeParse({
+    title: str("title"),
+    description: str("description"),
+    date: str("date"),
+    geo: str("geo") ? JSON.parse(str("geo")!) : undefined,
+    tags: str("tags") ? JSON.parse(str("tags")!) : [],
+    thumbHash: str("thumbHash"),
+    width: str("width"),
+    height: str("height"),
+    aspectRatio: str("aspectRatio"),
+  });
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message }, 400);
   }
+  const input = parsed.data;
 
   const photo = await createPhoto(c.env.DB, session.user.id, {
     url: `/api/photos/image${num}.png`,
     thumbnailUrl: `/api/photos/${thumbKey}`,
-    thumbHash: str("thumbHash"),
-    title: file.name,
-    width: Number(form.get("width")) || 0,
-    height: Number(form.get("height")) || 0,
-    aspectRatio: Number(form.get("aspectRatio")) || undefined,
+    thumbHash: input.thumbHash,
+    title: input.title || file.name,
+    width: input.width,
+    height: input.height,
+    aspectRatio: input.aspectRatio,
     size: file.size,
     format: file.name.split(".").pop()?.toUpperCase() || "PNG",
-    date: exifDate ?? new Date().toISOString(),
-    description: "",
-    geo: exifGeo ? JSON.parse(exifGeo) : undefined,
-    tags: parsedTags,
+    date: input.date || new Date().toISOString(),
+    description: input.description || "",
+    geo: input.geo,
+    tags: input.tags,
   });
 
   return c.json(photo);
@@ -170,15 +176,13 @@ app.put("/api/photos/:id", async (c) => {
   if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
   if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
 
-  let body: { title?: string; description?: string; tags?: string[] };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 400);
+  const parsed = photoUpdateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message }, 400);
   }
 
   const id = c.req.param("id");
-  const photo = await updatePhoto(c.env.DB, id, body);
+  const photo = await updatePhoto(c.env.DB, id, parsed.data);
   if (!photo) return c.json({ error: "Photo not found" }, 404);
   return c.json(photo);
 });
@@ -207,21 +211,15 @@ app.patch("/api/photos/:id/tags", async (c) => {
   if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
   if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
 
-  let body: { tags?: unknown };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ error: "Invalid JSON" }, 400);
-  }
-
-  if (!Array.isArray(body.tags)) {
-    return c.json({ error: "tags must be an array" }, 400);
+  const parsed = photoUpdateSchema
+    .pick({ tags: true })
+    .safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message }, 400);
   }
 
   const id = c.req.param("id");
-  const photo = await updatePhoto(c.env.DB, id, {
-    tags: body.tags.filter((t): t is string => typeof t === "string"),
-  });
+  const photo = await updatePhoto(c.env.DB, id, { tags: parsed.data.tags });
 
   if (!photo) return c.json({ error: "Photo not found" }, 404);
   return c.json(photo);
@@ -263,6 +261,43 @@ app.get("/api/photos/*", async (c) => {
 app.get("/api/tags", async (c) => {
   const allTags = await getAllTags(c.env.DB);
   return c.json({ tags: allTags });
+});
+
+app.put("/api/tags/:name", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const oldName = decodeURIComponent(c.req.param("name"));
+  const parsed = z
+    .object({ name: z.string().trim().min(1, "name is required") })
+    .safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message }, 400);
+  }
+
+  const ok = await renameTag(c.env.DB, oldName, parsed.data.name);
+  if (!ok) return c.json({ error: "Tag not found or name already exists" }, 404);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/tags/:name", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const name = decodeURIComponent(c.req.param("name"));
+  const ok = await deleteTag(c.env.DB, name);
+  if (!ok) return c.json({ error: "Tag not found" }, 404);
+  return c.json({ ok: true });
 });
 
 app.post("/api/migrate", async (c) => {
@@ -438,6 +473,56 @@ app.get("/api/wish/:id", async (c) => {
   const item = await getWishlistItem(c.env.DB, id);
   if (!item) return c.json({ error: "Not found" }, 404);
   return c.json(item);
+});
+
+app.post("/api/wish/upload", async (c) => {
+  const allowed = c.env.ALLOWED_EMAIL;
+  if (!allowed) return c.json({ error: "Not configured" }, 500);
+
+  const auth = getAuth(c.env);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
+  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
+
+  const form = await c.req.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
+  if (!allowedTypes.includes(file.type)) {
+    return c.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, AVIF" }, 400);
+  }
+
+  let maxNum = 0;
+  let cursor: string | undefined;
+  do {
+    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/wishlist/image", cursor });
+    for (const obj of listed.objects) {
+      const match = obj.key.match(/^img\/wishlist\/image(\d+)\./);
+      if (match) maxNum = Math.max(maxNum, Number(match[1]));
+    }
+    cursor = listed.truncated ? listed.cursor : undefined;
+  } while (cursor);
+
+  const num = maxNum + 1;
+  const extMap: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/avif": "avif",
+  };
+  const ext = extMap[file.type] ?? "png";
+  const imageKey = `img/wishlist/image${String(num).padStart(2, "0")}.${ext}`;
+
+  await c.env.MOMENT_BUCKET.put(imageKey, await file.arrayBuffer(), {
+    httpMetadata: { contentType: file.type },
+  });
+
+  return c.json({
+    key: imageKey,
+    url: `/api/photos/wishlist/image${String(num).padStart(2, "0")}.${ext}`,
+  });
 });
 
 app.post("/api/wish", async (c) => {
