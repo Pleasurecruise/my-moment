@@ -1,6 +1,7 @@
 import { Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Upload, X } from "lucide-solid";
+import { processImage } from "~/lib/image-processor";
 import { CATEGORY_CONFIG, wishFormSchema, type Category } from "./types";
 import type { WishFormData, WishItem } from "./types";
 
@@ -83,9 +84,10 @@ export function WishForm(props: WishFormProps) {
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const formData = new FormData();
-    formData.append("file", file);
     try {
+      const { image } = await processImage(file);
+      const formData = new FormData();
+      formData.append("file", image, "image.png");
       const res = await fetch("/api/wish/upload", { method: "POST", body: formData });
       if (!res.ok) throw new Error("Upload failed");
       const data = (await res.json()) as { url: string };

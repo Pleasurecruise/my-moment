@@ -12,6 +12,13 @@ export function Textarea(props: TextareaProps) {
   return (
     <textarea
       {...rest}
+      ref={(el) => {
+        if (!local.autoresize) return;
+        el.addEventListener("input", () => {
+          el.style.height = "auto";
+          el.style.height = `${el.scrollHeight}px`;
+        });
+      }}
       class={cn(
         "flex min-h-20 w-full rounded-md border bg-background px-3 py-2",
         "font-sans text-sm text-foreground placeholder:text-muted-foreground",
@@ -24,14 +31,6 @@ export function Textarea(props: TextareaProps) {
           : "border-border focus-visible:ring-ring",
         local.class,
       )}
-      oninput={(e) => {
-        if (local.autoresize) {
-          const el = e.currentTarget;
-          el.style.height = "auto";
-          el.style.height = el.scrollHeight + "px";
-        }
-        rest.oninput?.(e);
-      }}
     />
   );
 }
