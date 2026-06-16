@@ -6,14 +6,19 @@ const W = 1200;
 const H = 630;
 
 const light = {
-  paper: "#faf7eb",
-  cloud: "#f5f2ec",
-  oat: "#e8e0d0",
-  fog: "#726e69",
-  ink: "#1a1a1a",
+  paper: "#faf7ee",
+  card: "#fffdf7",
+  oat: "#e6dfd1",
+  fog: "#756f66",
+  ink: "#2c2823",
 } as const;
 
-const brand = "#6366f1"; // Indigo accent
+const gold = {
+  deep: "#b7872c",
+  mid: "#cf9e34",
+  bright: "#e7c46a",
+  tint: "#f4e8c8",
+} as const;
 
 const font = {
   sans: '"Geist", "Inter", system-ui, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
@@ -134,22 +139,15 @@ function txt(
 
 function bg(): string {
   return `
-    <rect width="${W}" height="${H}" fill="${light.paper}" />
     <defs>
-      <radialGradient id="glow" cx="85%" cy="15%" r="55%">
-        <stop offset="0%" stop-color="${brand}" stop-opacity="0.06" />
+      <radialGradient id="wash" cx="78%" cy="12%" r="70%">
+        <stop offset="0%" stop-color="${gold.bright}" stop-opacity="0.14" />
+        <stop offset="60%" stop-color="${gold.tint}" stop-opacity="0.05" />
         <stop offset="100%" stop-color="${light.paper}" stop-opacity="0" />
       </radialGradient>
-      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="${light.oat}" stroke-width="0.5" stroke-opacity="0.35" />
-      </pattern>
     </defs>
-    <rect width="${W}" height="${H}" fill="url(#glow)" />
-    <rect width="${W}" height="${H}" fill="url(#grid)" />
-    <circle cx="1120" cy="560" r="3" fill="${brand}" opacity="0.15" />
-    <circle cx="1136" cy="548" r="2" fill="${brand}" opacity="0.10" />
-    <circle cx="1148" cy="564" r="2.5" fill="${brand}" opacity="0.12" />
-    <rect x="0" y="0" width="180" height="3" fill="${brand}" />
+    <rect width="${W}" height="${H}" fill="${light.paper}" />
+    <rect width="${W}" height="${H}" fill="url(#wash)" />
   `;
 }
 
@@ -162,6 +160,13 @@ export interface OgImageOptions {
   type?: "photo" | "haul" | "wish" | "default";
 }
 
+const typeMeta: Record<string, { emoji: string; kicker: string }> = {
+  photo: { emoji: "📷", kicker: "Captured Moments" },
+  haul: { emoji: "🛍️", kicker: "Things I Bought" },
+  wish: { emoji: "💝", kicker: "Saved For Later" },
+  default: { emoji: "✨", kicker: "Collection" },
+};
+
 export function renderOgImage(options: OgImageOptions): string {
   const {
     title,
@@ -172,115 +177,139 @@ export function renderOgImage(options: OgImageOptions): string {
     type = "default",
   } = options;
 
-  const contentLines = wrapText(title, 890, 36, 28, 4);
-  const hasSubtitle = !!subtitle;
+  const meta = typeMeta[type] || typeMeta.default;
 
-  const CARD_L = 120;
-  const CARD_R = 1080;
-  const CARD_T = 70;
-  const CARD_B = 560;
-  const ID_Y = 120;
-  const FOOT_Y = 542;
-  const FOOT_SEP_Y = 526;
+  const FRAME = { x: 44, y: 44, w: W - 88, h: H - 88, rx: 28 };
+  const X = 100;
+  const R = W - 100;
 
-  const CLH = 46;
-  const CHF = 48;
-  const CH = CLH * (contentLines.length - 1) + CHF;
-  const SUBTITLE_H = hasSubtitle ? 32 : 0;
-  const blockH = CH + SUBTITLE_H;
+  const len = Array.from(title).length;
+  const titleSize = len <= 8 ? 112 : len <= 16 ? 82 : len <= 28 ? 60 : 46;
+  const lines = wrapText(title, R - X, titleSize, titleSize, 3);
+  const lineH = titleSize * 1.06;
 
-  const availTop = ID_Y + 44;
-  const availBtm = FOOT_SEP_Y - 16;
-  const availH = availBtm - availTop;
-  const blockY0 = availTop + Math.max(0, (availH - blockH) / 2);
-
-  const barTop = ID_Y - 28;
-  const barH = FOOT_SEP_Y - barTop;
-
-  const cardH = CARD_B - CARD_T;
-
-  const typeEmoji: Record<string, string> = {
-    photo: "📷",
-    haul: "🛍️",
-    wish: "💝",
-    default: "✨",
-  };
+  const countMatch = subtitle?.match(/^\s*([\d.,]+)\s+(.+)$/);
 
   const parts: string[] = [];
 
-  parts.push(
-    `<rect x="${CARD_L}" y="${CARD_T}" width="${CARD_R - CARD_L}" height="${cardH}" rx="10" fill="${light.cloud}" stroke="${light.oat}" stroke-width="1" />`,
-  );
   parts.push(`
     <defs>
-      <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${brand}" />
-        <stop offset="100%" stop-color="${brand}" stop-opacity="0.12" />
+      <linearGradient id="frameEdge" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${gold.mid}" stop-opacity="0.5" />
+        <stop offset="100%" stop-color="${light.oat}" stop-opacity="0.9" />
       </linearGradient>
     </defs>
-    <rect x="${CARD_L + 16}" y="${barTop}" width="3" height="${barH}" rx="1.5" fill="url(#bar)" />
+    <rect x="${FRAME.x}" y="${FRAME.y}" width="${FRAME.w}" height="${FRAME.h}" rx="${FRAME.rx}"
+      fill="${light.card}" stroke="url(#frameEdge)" stroke-width="1.5" />
   `);
 
-  parts.push(`
-    ${txt(typeEmoji[type] || "✨", { x: CARD_L + 16 + 12, y: ID_Y, ff: font.sans, fs: 24, fw: 400, fill: light.ink })}
-    ${txt(siteName, { x: CARD_L + 16 + 46, y: ID_Y, ff: font.sans, fs: 22, fw: 600, fill: light.ink })}
-  `);
+  const brandY = 120;
+  parts.push(
+    `<rect x="${X}" y="${brandY - 12}" width="30" height="5" rx="2.5" fill="${gold.mid}" />`,
+  );
+  parts.push(
+    txt(siteName.toUpperCase(), {
+      x: X + 46,
+      y: brandY,
+      ff: font.mono,
+      fs: 22,
+      fw: 500,
+      fill: light.ink,
+      opacity: 0.72,
+      ls: "0.22em",
+    }),
+  );
 
-  contentLines.forEach((line, i) => {
-    const y = blockY0 + (i === 0 ? 0 : CHF + (i - 1) * CLH);
+  const badge = { cx: R - 40, cy: 110, r: 40 };
+  parts.push(
+    `<circle cx="${badge.cx}" cy="${badge.cy}" r="${badge.r}" fill="${gold.tint}" stroke="${gold.mid}" stroke-width="1.5" stroke-opacity="0.55" />`,
+  );
+  parts.push(
+    txt(meta.emoji, {
+      x: badge.cx,
+      y: badge.cy + 15,
+      ff: font.sans,
+      fs: 40,
+      fw: 400,
+      fill: light.ink,
+      anchor: "middle",
+    }),
+  );
+
+  const kickerY = 258;
+  parts.push(
+    txt(meta.kicker.toUpperCase(), {
+      x: X,
+      y: kickerY,
+      ff: font.sans,
+      fs: 22,
+      fw: 600,
+      fill: gold.deep,
+      ls: "0.16em",
+    }),
+  );
+
+  const firstBaseline = 352;
+  lines.forEach((line, i) => {
     parts.push(
       txt(line, {
-        x: CARD_L + 30,
-        y,
-        ff: i === 0 ? font.serif : font.sans,
-        fs: i === 0 ? 36 : 28,
-        fw: i === 0 ? 600 : 400,
-        fill: i === 0 ? light.ink : light.fog,
+        x: X,
+        y: firstBaseline + i * lineH,
+        ff: font.serif,
+        fs: titleSize,
+        fw: 600,
+        fill: light.ink,
       }),
     );
   });
 
-  if (hasSubtitle) {
-    const subtitleY = blockY0 + CH + 8;
+  const countY = firstBaseline + (lines.length - 1) * lineH + 78;
+  if (countMatch) {
+    const [, num, label] = countMatch;
+    parts.push(txt(num, { x: X, y: countY, ff: font.serif, fs: 58, fw: 600, fill: gold.deep }));
+    const numW = Array.from(num).length * 58 * 0.56;
     parts.push(
-      txt(subtitle, {
-        x: CARD_L + 30,
-        y: subtitleY,
+      txt(label.toUpperCase(), {
+        x: X + numW + 18,
+        y: countY - 6,
         ff: font.sans,
-        fs: 18,
-        fw: 400,
+        fs: 26,
+        fw: 500,
         fill: light.fog,
-        opacity: 0.7,
+        ls: "0.12em",
       }),
     );
+  } else if (subtitle) {
+    parts.push(txt(subtitle, { x: X, y: countY, ff: font.sans, fs: 32, fw: 400, fill: light.fog }));
   }
 
+  const footY = 524;
   parts.push(
-    `<line x1="${CARD_L + 20}" y1="${FOOT_SEP_Y}" x2="${CARD_R}" y2="${FOOT_SEP_Y}" stroke="${light.oat}" stroke-width="1" />`,
+    `<line x1="${X}" y1="${footY - 26}" x2="${R}" y2="${footY - 26}" stroke="${light.oat}" stroke-width="1" />`,
   );
   parts.push(
     txt(domain, {
-      x: CARD_L + 20,
-      y: FOOT_Y,
+      x: X,
+      y: footY,
       ff: font.mono,
-      fs: 13,
+      fs: 15,
       fw: 400,
       fill: light.fog,
-      opacity: 0.6,
-      ls: "0.05em",
+      opacity: 0.75,
+      ls: "0.06em",
       tt: "uppercase",
     }),
   );
   if (date) {
     parts.push(
       txt(date, {
-        x: CARD_R,
-        y: FOOT_Y,
+        x: R,
+        y: footY,
         ff: font.mono,
-        fs: 13,
+        fs: 15,
         fw: 400,
         fill: light.fog,
-        opacity: 0.5,
+        opacity: 0.6,
         anchor: "end",
       }),
     );

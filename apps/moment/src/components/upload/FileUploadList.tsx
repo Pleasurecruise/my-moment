@@ -71,11 +71,11 @@ export function FileUploadList(props: FileUploadListProps) {
                   <div
                     class={
                       entry.status === "done"
-                        ? "bg-emerald-400 h-full rounded-full"
+                        ? "bg-success h-full rounded-full"
                         : entry.status === "error"
-                          ? "bg-red-400 h-full rounded-full"
+                          ? "bg-destructive h-full rounded-full"
                           : entry.status === "processing"
-                            ? "bg-amber-300 h-full rounded-full"
+                            ? "bg-warning h-full rounded-full"
                             : "bg-primary h-full rounded-full"
                     }
                     style={{ width: `${Math.min(100, entry.progress * 100)}%` }}
@@ -102,7 +102,7 @@ export function FileUploadList(props: FileUploadListProps) {
                 >
                   <button
                     type="button"
-                    class="text-muted-foreground hover:text-red-400 transition-colors"
+                    class="text-muted-foreground hover:text-destructive transition-colors"
                     aria-label="Remove file"
                     onClick={() => props.onRemoveEntry?.(entry)}
                   >

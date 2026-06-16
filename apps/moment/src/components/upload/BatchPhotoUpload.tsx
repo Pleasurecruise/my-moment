@@ -430,7 +430,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
       </Show>
 
       <Show when={phase() === "error" && workflowError()}>
-        <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+        <div class="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
           {workflowError()}
         </div>
       </Show>

@@ -26,8 +26,8 @@ export const FILE_STATUS_LABEL: Record<FileUploadStatus, string> = {
 export const FILE_STATUS_CLASS: Record<FileUploadStatus, string> = {
   pending: "text-muted-foreground",
   uploading: "text-primary",
-  uploaded: "text-sky-400",
-  processing: "text-amber-400",
-  done: "text-emerald-400",
-  error: "text-red-400",
+  uploaded: "text-info",
+  processing: "text-warning",
+  done: "text-success",
+  error: "text-destructive",
 };
