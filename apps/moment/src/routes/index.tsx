@@ -10,6 +10,19 @@ interface GalleryResponse {
 
 export const Route = createFileRoute("/")({
   component: HomePage,
+  head: () => ({
+    meta: [
+      { title: "My Moment — 私の瞬間" },
+      { property: "og:title", content: "My Moment — 私の瞬間" },
+      {
+        property: "og:description",
+        content: "A personal photo gallery and collection journal.",
+      },
+      { property: "og:image", content: "/api/og/gallery" },
+      { property: "og:url", content: "/" },
+      { property: "og:type", content: "website" },
+    ],
+  }),
   staleTime: 0,
 });
 

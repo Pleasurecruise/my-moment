@@ -1,12 +1,29 @@
 import { createSignal, onMount, Show } from "solid-js";
 import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router";
 import { useSession, signIn, signOut } from "~/lib/services/auth";
-import { Images, Camera, ShoppingBag, Sun, Moon, LogIn, LogOut } from "lucide-solid";
-import { Avatar, Button, Popover, PopoverTrigger, PopoverContent, Toaster } from "@my-moment/ui";
+import { Images, Camera, ShoppingBag, Heart, Sun, Moon, LogIn, LogOut } from "lucide-solid";
+import {
+  Avatar,
+  Button,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  Toaster,
+  applyTheme,
+} from "@my-moment/ui";
 import { GallerySettingsProvider } from "~/providers/gallery-settings-provider";
 
 export const Route = createRootRoute({
   component: RootLayout,
+  head: () => ({
+    meta: [
+      { property: "og:site_name", content: "My Moment" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
 });
 
 const THEME_KEY = "my-moment:theme";
@@ -15,6 +32,7 @@ const TABS = [
   { href: "/", label: "Gallery", Icon: Images },
   { href: "/snapshot", label: "Snapshot", Icon: Camera },
   { href: "/haul", label: "Haul", Icon: ShoppingBag },
+  { href: "/wish", label: "Wishlist", Icon: Heart },
 ] as const;
 
 function RootLayout() {
@@ -22,6 +40,7 @@ function RootLayout() {
   const router = useRouter();
 
   const [isDark, setIsDark] = createSignal(false);
+  const [themeBtnEl, setThemeBtnEl] = createSignal<HTMLButtonElement | null>(null);
 
   onMount(() => {
     const saved = localStorage.getItem(THEME_KEY);
@@ -32,10 +51,10 @@ function RootLayout() {
     document.documentElement.classList.toggle("dark", dark);
   });
 
-  const toggleTheme = () => {
+  const toggleTheme = (btn?: HTMLButtonElement) => {
     const next = !isDark();
     setIsDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    applyTheme(next, btn ?? themeBtnEl());
     localStorage.setItem(THEME_KEY, next ? "dark" : "light");
   };
 
@@ -145,8 +164,9 @@ function RootLayout() {
           <Button
             variant="ghost"
             size="icon"
+            ref={setThemeBtnEl}
             class="h-8 w-8 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-            onclick={toggleTheme}
+            onclick={(e) => toggleTheme(e.currentTarget)}
             aria-label={isDark() ? "Switch to light mode" : "Switch to dark mode"}
           >
             <Show when={isDark()} fallback={<Moon size={15} />}>
@@ -201,8 +221,9 @@ function RootLayout() {
               <Button
                 variant="ghost"
                 size="icon"
+                ref={setThemeBtnEl}
                 class="h-8 w-8 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
-                onclick={toggleTheme}
+                onclick={(e) => toggleTheme(e.currentTarget)}
                 aria-label={isDark() ? "Switch to light mode" : "Switch to dark mode"}
               >
                 <Show when={isDark()} fallback={<Moon size={15} />}>

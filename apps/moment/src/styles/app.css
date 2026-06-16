@@ -18,3 +18,10 @@
     display: none;
   }
 }
+
+/* Disable browser default cross-fade for view transitions — only the JS clip-path ripple runs */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

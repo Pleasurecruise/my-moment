@@ -3,21 +3,28 @@ import { createResource, onMount } from "solid-js";
 import { z } from "zod";
 import { HaulPage } from "~/modules/haul";
 import type { GoodsItem } from "~/modules/haul/types";
-import type { WishItem } from "~/modules/haul/types";
 
 interface HaulResponse {
   items: GoodsItem[];
-}
-
-interface WishResponse {
-  items: WishItem[];
 }
 
 export const Route = createFileRoute("/haul/")({
   component: HaulRoute,
   validateSearch: z.object({
     item: z.string().optional(),
-    wish: z.string().optional(),
+  }),
+  head: () => ({
+    meta: [
+      { title: "Haul — My Moment" },
+      { property: "og:title", content: "Haul — My Moment" },
+      {
+        property: "og:description",
+        content: "Things I bought and what I think of them.",
+      },
+      { property: "og:image", content: "/api/og/haul" },
+      { property: "og:url", content: "/haul" },
+      { property: "og:type", content: "website" },
+    ],
   }),
   staleTime: 0,
 });
@@ -32,27 +39,9 @@ function HaulRoute() {
     return res.json();
   });
 
-  const [wishes, { refetch: refetchWishes }] = createResource<WishResponse>(async () => {
-    const res = await fetch("/api/wish");
-    if (!res.ok) {
-      throw new Error(`Failed to fetch: ${res.status}`);
-    }
-    return res.json();
-  });
-
   onMount(() => {
     refetch();
-    refetchWishes();
   });
 
-  return (
-    <HaulPage
-      haul={haul}
-      wishes={wishes}
-      onRetry={() => refetch()}
-      onWishRetry={() => refetchWishes()}
-      initialOpenItem={search().item}
-      initialOpenWish={search().wish}
-    />
-  );
+  return <HaulPage haul={haul} onRetry={() => refetch()} initialOpenItem={search().item} />;
 }

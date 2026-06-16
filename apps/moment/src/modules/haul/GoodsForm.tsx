@@ -1,7 +1,6 @@
-import { Show, createSignal, type JSX } from "solid-js";
+import { Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { Button, Input, Textarea, Label, toast, cn } from "@my-moment/ui";
-import { BatchPhotoUpload } from "~/components/upload";
-import { PenLine, Star, ExternalLink, Link } from "lucide-solid";
+import { PenLine, Star, ExternalLink, Link, Upload, X } from "lucide-solid";
 import {
   CATEGORY_CONFIG,
   RATING_CONFIG,
@@ -39,6 +38,8 @@ const INITIAL_FORM: GoodsFormData = {
   purchaseLink: undefined,
 };
 
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+
 function getInitialForm(editItem?: GoodsItem): GoodsFormData {
   if (!editItem) return { ...INITIAL_FORM };
   return {
@@ -57,45 +58,67 @@ function getInitialForm(editItem?: GoodsItem): GoodsFormData {
 export function GoodsForm(props: GoodsFormProps) {
   const isEditing = () => !!props.editItem;
   const [form, setForm] = createSignal<GoodsFormData>(getInitialForm(props.editItem));
+  const [imageFile, setImageFile] = createSignal<File | null>(null);
+  const [previewUrl, setPreviewUrl] = createSignal<string | undefined>();
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   const updateField = <K extends keyof GoodsFormData>(key: K, value: GoodsFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleImageUpload = async (
-    file: File,
-    reportProgress: (loaded: number, total: number) => void,
-    signal: AbortSignal,
-  ) => {
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+  const displayImage = () => previewUrl() ?? form().imageUrl;
 
-      const res = await fetch("/api/haul/upload", {
-        method: "POST",
-        body: formData,
-        signal,
-      });
-
-      if (res.ok) {
-        const data: { url: string } = await res.json();
-        updateField("imageUrl", data.url);
-        reportProgress(file.size, file.size);
-      } else {
-        throw new Error("Upload failed");
-      }
-    } catch (err) {
-      if ((err as DOMException)?.name === "AbortError") return;
-      throw err;
+  const onImageInputChange = (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
     }
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error("File too large (max 10MB)");
+      return;
+    }
+    const prev = previewUrl();
+    if (prev) URL.revokeObjectURL(prev);
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
+
+  const removeImage = () => {
+    const prev = previewUrl();
+    if (prev) URL.revokeObjectURL(prev);
+    setPreviewUrl(undefined);
+    setImageFile(null);
+    updateField("imageUrl", undefined);
+  };
+
+  onCleanup(() => {
+    const prev = previewUrl();
+    if (prev) URL.revokeObjectURL(prev);
+  });
 
   const validate = (): string | null => {
     const r = goodsFormSchema.safeParse(form());
     return r.success ? null : (r.error.issues[0]?.message ?? "validation failed");
   };
 
-  const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/haul/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = (await res.json()) as { url: string };
+      return data.url;
+    } catch (err) {
+      console.error("Failed to upload haul image:", err);
+      toast.error("Failed to upload image");
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -108,10 +131,15 @@ export function GoodsForm(props: GoodsFormProps) {
 
     setIsSubmitting(true);
     try {
-      const result = await props.addItem(form());
-      if (result) {
-        props.onSuccess?.();
+      let data = form();
+      const file = imageFile();
+      if (file) {
+        const url = await uploadImage(file);
+        if (!url) return;
+        data = { ...data, imageUrl: url };
       }
+      const result = await props.addItem(data);
+      if (result) props.onSuccess?.();
     } finally {
       setIsSubmitting(false);
     }
@@ -290,31 +318,17 @@ export function GoodsForm(props: GoodsFormProps) {
       <div class="space-y-2">
         <SectionLabel label="Photo" icon={<span>📷</span>} optional />
 
-        <Show
-          when={form().imageUrl}
-          fallback={
-            <BatchPhotoUpload
-              accept="image/*"
-              maxSize={10 * 1024 * 1024}
-              maxFiles={1}
-              onUpload={handleImageUpload}
-              label="Click or drag to upload"
-              hint="JPG/PNG/WebP, max 10MB"
-              clearOnComplete={false}
-            />
-          }
-        >
-          <div class="relative group rounded-lg overflow-hidden border border-border">
-            <img src={form().imageUrl} alt="Item photo" class="w-full h-48 object-cover" />
-            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-              <button
-                type="button"
-                onClick={() => updateField("imageUrl", undefined)}
-                class="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5 bg-white/90 rounded-md text-sm text-red-500 hover:bg-white cursor-pointer shadow-lg"
-              >
-                Remove
-              </button>
-            </div>
+        <Show when={displayImage()} fallback={<ImageUploadInput onChange={onImageInputChange} />}>
+          <div class="relative rounded-lg overflow-hidden border border-border">
+            <img src={displayImage()} alt="Item photo" class="w-full h-48 object-cover" />
+            <button
+              type="button"
+              onClick={removeImage}
+              class="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+              aria-label="Remove photo"
+            >
+              <X size={14} />
+            </button>
           </div>
         </Show>
       </div>
@@ -331,6 +345,17 @@ export function GoodsForm(props: GoodsFormProps) {
         </Button>
       </div>
     </form>
+  );
+}
+
+function ImageUploadInput(props: { onChange: (event: Event) => void }) {
+  return (
+    <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-all hover:border-primary/50 hover:bg-accent/50">
+      <Upload class="size-8 text-muted-foreground" />
+      <span class="text-sm font-medium">Click or drag to upload</span>
+      <span class="text-xs text-muted-foreground">JPG/PNG/WebP, max 10MB</span>
+      <input type="file" accept="image/*" class="hidden" onChange={props.onChange} />
+    </label>
   );
 }
 

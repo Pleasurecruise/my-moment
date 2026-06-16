@@ -120,7 +120,7 @@ export function ToastProgress(props: ComponentProps<typeof KobalteToast.Progress
 export function showToast(data: ToastData) {
   const variant = data.variant ?? "default";
   toaster.show((props) => (
-    <ToastRoot toastId={props.toastId} class={variantStyles[variant]}>
+    <ToastRoot toastId={props.toastId} duration={5000} class={variantStyles[variant]}>
       {variantIcons[variant]()}
       <ToastContent>
         <Show when={data.title}>

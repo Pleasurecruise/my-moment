@@ -8,11 +8,9 @@ import {
   PanelRightOpen,
   PanelRightClose,
   Share2,
-  Pencil,
-  Check,
   Edit3,
 } from "lucide-solid";
-import { Card, Badge, Button, Input, Skeleton, TagInput } from "@my-moment/ui";
+import { Card, Badge, Button, Input, Skeleton, toast } from "@my-moment/ui";
 import type { PhotoItem } from "~/types/photo";
 
 interface PhotoViewerProps {
@@ -27,32 +25,6 @@ export function PhotoViewer(props: PhotoViewerProps) {
   const photo = () => props.photos[props.index];
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
   const [highResLoaded, setHighResLoaded] = createSignal(false);
-  const [editingTags, setEditingTags] = createSignal(false);
-  const [editTags, setEditTags] = createSignal<string[]>([]);
-  const [savedTags, setSavedTags] = createSignal<string[] | null>(null);
-  const displayTags = () => savedTags() ?? photo().tags;
-
-  const startEditTags = () => {
-    setEditTags([...displayTags()]);
-    setEditingTags(true);
-  };
-
-  const saveTags = async () => {
-    try {
-      const res = await fetch(`/api/photos/${photo().id}/tags`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags: editTags() }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setSavedTags(updated.tags);
-        setEditingTags(false);
-      }
-    } catch (e) {
-      console.error("Failed to save tags:", e);
-    }
-  };
 
   createEffect(() => {
     const idx = props.index;
@@ -67,7 +39,6 @@ export function PhotoViewer(props: PhotoViewerProps) {
   createEffect(() => {
     void props.index; // Trigger dependency tracking
     setHighResLoaded(false);
-    setSavedTags(null);
   });
 
   const goPrev = () => {
@@ -118,7 +89,15 @@ export function PhotoViewer(props: PhotoViewerProps) {
                 variant="ghost"
                 size="icon"
                 class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => navigator.share?.({ url: photo().url, title: photo().title })}
+                onClick={() => {
+                  const url = `${window.location.origin}/photos/${photo().id}`;
+                  navigator.clipboard
+                    ?.writeText(url)
+                    .then(() => toast.success("Link copied"))
+                    .catch(() => {
+                      navigator.share?.({ url, title: photo().title });
+                    });
+                }}
               >
                 <Share2 size={15} />
               </Button>
@@ -242,66 +221,16 @@ export function PhotoViewer(props: PhotoViewerProps) {
                   </Card>
                 </Show>
 
-                <Show when={displayTags().length > 0 || editingTags()}>
+                <Show when={photo().tags.length > 0}>
                   <div>
-                    <div class="mb-2 flex items-center justify-between">
+                    <div class="mb-2 flex items-center">
                       <span class="text-xs text-muted-foreground/70">Tags</span>
-                      <Show when={!editingTags()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          class="size-5 text-muted-foreground hover:text-foreground"
-                          onClick={startEditTags}
-                        >
-                          <Pencil size={12} />
-                        </Button>
-                      </Show>
-                      <Show when={editingTags()}>
-                        <div class="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            class="size-5 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEditingTags(false)}
-                          >
-                            <X size={12} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            class="size-5 text-primary"
-                            onClick={saveTags}
-                          >
-                            <Check size={12} />
-                          </Button>
-                        </div>
-                      </Show>
                     </div>
-                    <Show
-                      when={editingTags()}
-                      fallback={
-                        <div class="flex flex-wrap gap-1.5">
-                          <For each={displayTags()}>
-                            {(tag) => (
-                              <Badge
-                                variant="outline"
-                                class="cursor-pointer hover:bg-accent"
-                                onClick={startEditTags}
-                              >
-                                {tag}
-                              </Badge>
-                            )}
-                          </For>
-                        </div>
-                      }
-                    >
-                      <TagInput
-                        value={editTags()}
-                        onChange={setEditTags}
-                        placeholder="Add tags..."
-                        maxTags={10}
-                      />
-                    </Show>
+                    <div class="flex flex-wrap gap-1.5">
+                      <For each={photo().tags}>
+                        {(tag) => <Badge variant="outline">{tag}</Badge>}
+                      </For>
+                    </div>
                   </div>
                 </Show>
 

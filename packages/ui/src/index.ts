@@ -110,3 +110,4 @@ export { TagInput, type TagInputProps, type TagInputVariant } from "./components
 
 // Utilities
 export { cn } from "./lib/utils";
+export { applyTheme } from "./lib/theme";

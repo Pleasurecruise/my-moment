@@ -28,6 +28,6 @@
     "@storybook/addon-docs": "10.4.4",
     "@storybook/addon-themes": "10.4.4",
     "storybook": "10.4.4",
-    "storybook-solidjs-vite": "10.1.1"
+    "storybook-solidjs-vite": "10.3.0"
   }
 }

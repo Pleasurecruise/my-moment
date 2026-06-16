@@ -1,8 +1,8 @@
 import { createSignal, createMemo, Show } from "solid-js";
 import { Link, useNavigate } from "@tanstack/solid-router";
-import { Upload, SlidersHorizontal } from "lucide-solid";
+import { Upload, SlidersHorizontal, Share2 } from "lucide-solid";
 import { Segment } from "~/components/Segment";
-import { Button } from "@my-moment/ui";
+import { Button, toast } from "@my-moment/ui";
 import { MasonryView } from "./MasonryView";
 import { ListView } from "./ListView";
 import { FilterPanel, ActiveFilterChips } from "./FilterPanel";
@@ -32,6 +32,14 @@ export function PhotosRoot(props: PhotosRootProps) {
 
   const allPhotos = () => props.photos;
 
+  const shareGalleryLink = () => {
+    const url = `${window.location.origin}/`;
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => toast.success("Link copied"))
+      .catch(() => navigator.share?.({ url, title: "Gallery" }));
+  };
+
   const filteredPhotos = createMemo(() => {
     const { selectedTags, sortOrder, tagFilterMode } = settings();
     return filterAndSortPhotos(allPhotos(), selectedTags, sortOrder, tagFilterMode);
@@ -43,6 +51,13 @@ export function PhotosRoot(props: PhotosRootProps) {
         <div>
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-semibold text-foreground">Moments</h2>
+            <button
+              onClick={shareGalleryLink}
+              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Share gallery"
+            >
+              <Share2 size={11} />
+            </button>
             <Show when={props.canUpload}>
               <Link
                 to="/upload"

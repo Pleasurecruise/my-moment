@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@my-moment/ui": "workspace:*",
+    "@resvg/resvg-wasm": "2.6.2",
     "@solid-primitives/intersection-observer": "2.2.4",
     "@tanstack/solid-router": "1.170.15",
     "@tanstack/solid-virtual": "3.13.28",

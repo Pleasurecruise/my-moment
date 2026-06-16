@@ -38,5 +38,8 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    rolldownOptions: {
+      external: [/\.wasm$/],
+    },
   },
 });

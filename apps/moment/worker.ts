@@ -29,6 +29,8 @@ import {
 } from "~/lib/server/wishlist/repository";
 import { goodsFormSchema, wishFormSchema } from "~/modules/haul/types";
 import { photoUploadSchema, photoUpdateSchema } from "~/types/photo";
+import { renderOgImage, renderOgPng } from "~/lib/server/og";
+import { readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
 
 type Bindings = {
   DB: D1Database;
@@ -49,6 +51,26 @@ type Bindings = {
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+type OgSection = { key: "gallery" | "haul" | "wishlist"; title: string; description: string };
+
+function sectionForPath(url: URL): OgSection | null {
+  const path = url.pathname;
+  if (path === "/" || path.startsWith("/photos/")) {
+    return {
+      key: "gallery",
+      title: "Gallery",
+      description: "A personal photo gallery and collection journal.",
+    };
+  }
+  if (path === "/haul" || path === "/haul/") {
+    return { key: "haul", title: "Haul", description: "Things I bought and what I think of them." };
+  }
+  if (path === "/wish" || path === "/wish/") {
+    return { key: "wishlist", title: "Wishlist", description: "Things I'm hoping to get." };
+  }
+  return null;
+}
 
 app.all("/api/auth/*", async (c) => {
   const auth = getAuth(c.env);
@@ -94,7 +116,10 @@ app.post("/api/photos/upload", async (c) => {
   let maxNum = 0;
   let cursor: string | undefined;
   do {
-    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/image", cursor });
+    const listed = await c.env.MOMENT_BUCKET.list({
+      prefix: "img/image",
+      cursor,
+    });
     for (const obj of listed.objects) {
       const match = obj.key.match(/^img\/image(\d+)\./);
       if (match) maxNum = Math.max(maxNum, Number(match[1]));
@@ -225,6 +250,62 @@ app.patch("/api/photos/:id/tags", async (c) => {
   return c.json(photo);
 });
 
+app.get("/api/og/:section", async (c) => {
+  const section = c.req.param("section");
+  const domain = new URL(c.req.url).hostname;
+  const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
+  let svg: string;
+  let total: number;
+  if (section === "gallery") {
+    const photos = await listPhotos(c.env.DB);
+    total = photos.length;
+    svg = renderOgImage({
+      title: "Gallery",
+      subtitle: count(total, "moment"),
+      domain,
+      siteName: "My Moment",
+      type: "photo",
+    });
+  } else if (section === "haul") {
+    const items = await listAllHaulItems(c.env.DB);
+    total = items.length;
+    svg = renderOgImage({
+      title: "Haul",
+      subtitle: count(total, "item"),
+      domain,
+      siteName: "My Moment",
+      type: "haul",
+    });
+  } else if (section === "wishlist") {
+    const items = await listAllWishlistItems(c.env.DB);
+    total = items.length;
+    svg = renderOgImage({
+      title: "Wishlist",
+      subtitle: count(total, "item"),
+      domain,
+      siteName: "My Moment",
+      type: "wish",
+    });
+  } else {
+    return c.notFound();
+  }
+
+  const pngHeaders = {
+    "Content-Type": "image/png",
+    "Cache-Control": "public, max-age=86400, s-maxage=86400",
+  };
+
+  const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, total);
+  if (cached) {
+    return new Response(cached, { headers: pngHeaders });
+  }
+
+  const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
+  await writeOgImageKv(c.env.MOMENT_CACHE, section, total, png);
+  return new Response(png, { headers: pngHeaders });
+});
+
 app.get("/api/photos/*", async (c) => {
   const filename = c.req.path.replace(/^\/api\/photos\//, "");
   if (!filename) return c.notFound();
@@ -316,7 +397,11 @@ app.post("/api/migrate", async (c) => {
 
   const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
   if (!obj) {
-    return c.json({ migrated: false, count: 0, message: "No manifest.json in R2" });
+    return c.json({
+      migrated: false,
+      count: 0,
+      message: "No manifest.json in R2",
+    });
   }
 
   const data = await obj.json();
@@ -392,7 +477,10 @@ app.post("/api/haul/upload", async (c) => {
   let maxNum = 0;
   let cursor: string | undefined;
   do {
-    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/haul/image", cursor });
+    const listed = await c.env.MOMENT_BUCKET.list({
+      prefix: "img/haul/image",
+      cursor,
+    });
     for (const obj of listed.objects) {
       const match = obj.key.match(/^img\/haul\/image(\d+)\./);
       if (match) maxNum = Math.max(maxNum, Number(match[1]));
@@ -496,7 +584,10 @@ app.post("/api/wish/upload", async (c) => {
   let maxNum = 0;
   let cursor: string | undefined;
   do {
-    const listed = await c.env.MOMENT_BUCKET.list({ prefix: "img/wishlist/image", cursor });
+    const listed = await c.env.MOMENT_BUCKET.list({
+      prefix: "img/wishlist/image",
+      cursor,
+    });
     for (const obj of listed.objects) {
       const match = obj.key.match(/^img\/wishlist\/image(\d+)\./);
       if (match) maxNum = Math.max(maxNum, Number(match[1]));
@@ -576,6 +667,24 @@ app.delete("/api/wish/:id", async (c) => {
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
+function escAttr(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildOgMeta(tags: Record<string, string>): string {
+  return Object.entries(tags)
+    .map(([k, v]) => {
+      if (k === "title") return `<title>${escAttr(v)}</title>`;
+      if (k.startsWith("og:")) return `<meta property="${k}" content="${escAttr(v)}" />`;
+      return `<meta name="${k}" content="${escAttr(v)}" />`;
+    })
+    .join("\n    ");
+}
+
 app.get("*", async (c) => {
   if (!c.env.ASSETS) return c.notFound();
 
@@ -585,12 +694,35 @@ app.get("*", async (c) => {
   }
 
   const indexUrl = new URL("/", url);
-  return c.env.ASSETS.fetch(
+  const htmlRes = await c.env.ASSETS.fetch(
     new Request(indexUrl.toString(), {
       headers: c.req.raw.headers,
       method: "GET",
     }),
   );
+
+  const section = sectionForPath(url);
+  if (!section) {
+    return htmlRes;
+  }
+
+  const ogTags: Record<string, string> = {
+    title: `${section.title} — My Moment`,
+    "og:title": `${section.title} — My Moment`,
+    "og:description": section.description,
+    "og:image": `${url.origin}/api/og/${section.key}`,
+    "og:url": url.href,
+    "og:type": "website",
+  };
+
+  const injected = buildOgMeta(ogTags);
+  return new HTMLRewriter()
+    .on("head", {
+      element(el) {
+        el.append(injected, { html: true });
+      },
+    })
+    .transform(htmlRes);
 });
 
 export default app;

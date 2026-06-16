@@ -59,7 +59,7 @@ function WishAddPage() {
           variant="ghost"
           size="icon"
           class="size-8"
-          onClick={() => navigate({ to: "/haul" })}
+          onClick={() => navigate({ to: "/wish" })}
         >
           <ArrowLeft size={16} />
         </Button>
@@ -81,8 +81,8 @@ function WishAddPage() {
         <WishForm
           addItem={handleSubmit}
           editItem={editItem() ?? undefined}
-          onSuccess={() => navigate({ to: "/haul" })}
-          onCancel={() => navigate({ to: "/haul" })}
+          onSuccess={() => navigate({ to: "/wish" })}
+          onCancel={() => navigate({ to: "/wish" })}
         />
       </Show>
     </div>
