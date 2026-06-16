@@ -706,13 +706,22 @@ app.get("*", async (c) => {
     return htmlRes;
   }
 
+  const ogImage = `${url.origin}/api/og/${section.key}`;
+  const ogTitle = `${section.title} — My Moment`;
   const ogTags: Record<string, string> = {
-    title: `${section.title} — My Moment`,
-    "og:title": `${section.title} — My Moment`,
+    title: ogTitle,
+    "og:site_name": "My Moment",
+    "og:title": ogTitle,
     "og:description": section.description,
-    "og:image": `${url.origin}/api/og/${section.key}`,
+    "og:image": ogImage,
+    "og:image:width": "1200",
+    "og:image:height": "630",
     "og:url": url.href,
     "og:type": "website",
+    "twitter:card": "summary_large_image",
+    "twitter:title": ogTitle,
+    "twitter:description": section.description,
+    "twitter:image": ogImage,
   };
 
   const injected = buildOgMeta(ogTags);

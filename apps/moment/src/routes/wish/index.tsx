@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/solid-router";
-import { createResource, onMount } from "solid-js";
+import { createResource } from "solid-js";
 import { z } from "zod";
 import { WishPage } from "~/modules/haul/WishPage";
 import type { WishItem } from "~/modules/haul/types";
@@ -7,6 +7,8 @@ import type { WishItem } from "~/modules/haul/types";
 interface WishResponse {
   items: WishItem[];
 }
+
+let wishCache: WishResponse | undefined;
 
 export const Route = createFileRoute("/wish/")({
   component: WishRoute,
@@ -28,17 +30,18 @@ export const Route = createFileRoute("/wish/")({
 
 function WishRoute() {
   const search = useSearch({ from: "/wish/" });
-  const [wishes, { refetch }] = createResource<WishResponse>(async () => {
-    const res = await fetch("/api/wish");
-    if (!res.ok) {
-      throw new Error(`Failed to fetch: ${res.status}`);
-    }
-    return res.json();
-  });
-
-  onMount(() => {
-    refetch();
-  });
+  const [wishes, { refetch }] = createResource<WishResponse>(
+    async () => {
+      const res = await fetch("/api/wish");
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status}`);
+      }
+      const data = (await res.json()) as WishResponse;
+      wishCache = data;
+      return data;
+    },
+    { initialValue: wishCache },
+  );
 
   return <WishPage wishes={wishes} onRetry={() => refetch()} initialOpenItem={search().item} />;
 }

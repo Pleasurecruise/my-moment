@@ -249,7 +249,7 @@ export function HaulPage(props: HaulPageProps) {
             </Button>
           </div>
         </Match>
-        <Match when={props.haul.loading}>
+        <Match when={props.haul.loading && !items()}>
           <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
             <Spinner size="sm" />
             <p class="text-sm">Loading...</p>

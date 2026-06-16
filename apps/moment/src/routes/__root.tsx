@@ -256,7 +256,9 @@ function RootLayout() {
         </nav>
 
         <GallerySettingsProvider>
-          <Outlet />
+          <Show when={currentPath()} keyed>
+            <Outlet />
+          </Show>
         </GallerySettingsProvider>
 
         <Toaster />

@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/solid-router";
-import { createResource, onMount } from "solid-js";
+import { createResource } from "solid-js";
 import { z } from "zod";
 import { HaulPage } from "~/modules/haul";
 import type { GoodsItem } from "~/modules/haul/types";
@@ -7,6 +7,8 @@ import type { GoodsItem } from "~/modules/haul/types";
 interface HaulResponse {
   items: GoodsItem[];
 }
+
+let haulCache: HaulResponse | undefined;
 
 export const Route = createFileRoute("/haul/")({
   component: HaulRoute,
@@ -31,17 +33,18 @@ export const Route = createFileRoute("/haul/")({
 
 function HaulRoute() {
   const search = useSearch({ from: "/haul/" });
-  const [haul, { refetch }] = createResource<HaulResponse>(async () => {
-    const res = await fetch("/api/haul");
-    if (!res.ok) {
-      throw new Error(`Failed to fetch: ${res.status}`);
-    }
-    return res.json();
-  });
-
-  onMount(() => {
-    refetch();
-  });
+  const [haul, { refetch }] = createResource<HaulResponse>(
+    async () => {
+      const res = await fetch("/api/haul");
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status}`);
+      }
+      const data = (await res.json()) as HaulResponse;
+      haulCache = data;
+      return data;
+    },
+    { initialValue: haulCache },
+  );
 
   return <HaulPage haul={haul} onRetry={() => refetch()} initialOpenItem={search().item} />;
 }

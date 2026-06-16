@@ -127,7 +127,7 @@ export function WishPage(props: WishPageProps) {
             </Button>
           </div>
         </Match>
-        <Match when={props.wishes.loading}>
+        <Match when={props.wishes.loading && !wishItems()}>
           <div class="flex items-center justify-center gap-2 py-16 text-muted-foreground">
             <Spinner size="sm" />
             <p class="text-sm">Loading...</p>
