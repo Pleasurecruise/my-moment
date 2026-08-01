@@ -15,8 +15,7 @@
     "resolveJsonModule": true,
     "allowJs": true,
     "verbatimModuleSyntax": true,
-    "types": ["@cloudflare/workers-types", "vite-plus/client"],
-    "baseUrl": ".",
+    "types": ["void/env", "vite-plus/client"],
     "ignoreDeprecations": "6.0",
     "paths": {
       "~/*": ["./src/*"]

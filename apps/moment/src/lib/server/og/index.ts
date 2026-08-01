@@ -1,4 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
 import { Resvg, initWasm } from "@resvg/resvg-wasm";
 import { OG_FONT_FAMILIES, loadOgFonts } from "./fonts";
 

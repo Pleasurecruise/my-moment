@@ -3,15 +3,44 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSection,
   SelectTrigger,
   SelectValue,
-  SelectLabel,
-  SelectSeparator,
 } from "./Select";
+
+const fruits = ["Apple", "Banana", "Blueberry", "Grapes", "Pineapple"];
+
+interface FoodOption {
+  label: string;
+  value: string;
+  disabled?: boolean;
+}
+
+interface FoodGroup {
+  label: string;
+  items: FoodOption[];
+}
+
+const foodGroups: FoodGroup[] = [
+  {
+    label: "Fruits",
+    items: fruits.slice(0, 3).map((label) => ({ label, value: label.toLowerCase() })),
+  },
+  {
+    label: "Vegetables",
+    items: ["Carrot", "Broccoli", "Spinach"].map((label) => ({
+      label,
+      value: label.toLowerCase(),
+    })),
+  },
+];
 
 const meta = {
   title: "UI/Select",
   component: Select,
+  args: {
+    options: [],
+  },
   argTypes: {
     disabled: { control: "boolean" },
     required: { control: "boolean" },
@@ -22,75 +51,85 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {},
   render: () => (
-    <Select>
+    <Select<string>
+      options={fruits}
+      placeholder="Select a fruit"
+      itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>}
+    >
       <SelectTrigger class="w-[180px]">
-        <SelectValue placeholder="Select a fruit" />
+        <SelectValue<string>>{(state) => state.selectedOption()}</SelectValue>
       </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="apple">Apple</SelectItem>
-        <SelectItem value="banana">Banana</SelectItem>
-        <SelectItem value="blueberry">Blueberry</SelectItem>
-        <SelectItem value="grapes">Grapes</SelectItem>
-        <SelectItem value="pineapple">Pineapple</SelectItem>
-      </SelectContent>
+      <SelectContent />
     </Select>
   ),
 };
 
 export const WithGroups: Story = {
-  args: {},
   render: () => (
-    <Select>
+    <Select<FoodOption, FoodGroup>
+      options={foodGroups}
+      optionValue="value"
+      optionTextValue="label"
+      optionGroupChildren="items"
+      placeholder="Select a food"
+      itemComponent={(props) => (
+        <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>
+      )}
+      sectionComponent={(props) => <SelectSection>{props.section.rawValue.label}</SelectSection>}
+    >
       <SelectTrigger class="w-[200px]">
-        <SelectValue placeholder="Select a food" />
+        <SelectValue<FoodOption>>{(state) => state.selectedOption().label}</SelectValue>
       </SelectTrigger>
-      <SelectContent>
-        <SelectLabel>Fruits</SelectLabel>
-        <SelectItem value="apple">Apple</SelectItem>
-        <SelectItem value="banana">Banana</SelectItem>
-        <SelectItem value="blueberry">Blueberry</SelectItem>
-        <SelectSeparator />
-        <SelectLabel>Vegetables</SelectLabel>
-        <SelectItem value="carrot">Carrot</SelectItem>
-        <SelectItem value="broccoli">Broccoli</SelectItem>
-        <SelectItem value="spinach">Spinach</SelectItem>
-      </SelectContent>
+      <SelectContent />
     </Select>
   ),
 };
 
 export const Disabled: Story = {
-  args: {},
   render: () => (
-    <Select disabled>
+    <Select<string>
+      disabled
+      options={fruits.slice(0, 2)}
+      placeholder="Select a fruit"
+      itemComponent={(props) => <SelectItem item={props.item}>{props.item.rawValue}</SelectItem>}
+    >
       <SelectTrigger class="w-[180px]">
-        <SelectValue placeholder="Select a fruit" />
+        <SelectValue<string>>{(state) => state.selectedOption()}</SelectValue>
       </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="apple">Apple</SelectItem>
-        <SelectItem value="banana">Banana</SelectItem>
-      </SelectContent>
+      <SelectContent />
     </Select>
   ),
 };
 
 export const WithDisabledItems: Story = {
-  args: {},
-  render: () => (
-    <Select>
-      <SelectTrigger class="w-[180px]">
-        <SelectValue placeholder="Select a fruit" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="apple">Apple</SelectItem>
-        <SelectItem value="banana">Banana</SelectItem>
-        <SelectItem value="blueberry" disabled>
-          Blueberry (disabled)
-        </SelectItem>
-        <SelectItem value="grapes">Grapes</SelectItem>
-      </SelectContent>
-    </Select>
-  ),
+  render: () => {
+    const options: FoodOption[] = [
+      { label: "Apple", value: "apple" },
+      { label: "Banana", value: "banana" },
+      { label: "Blueberry", value: "blueberry", disabled: true },
+      { label: "Grapes", value: "grapes" },
+    ];
+
+    return (
+      <Select<FoodOption>
+        options={options}
+        optionValue="value"
+        optionTextValue="label"
+        optionDisabled="disabled"
+        placeholder="Select a fruit"
+        itemComponent={(props) => (
+          <SelectItem item={props.item}>
+            {props.item.rawValue.label}
+            {props.item.rawValue.disabled && " (disabled)"}
+          </SelectItem>
+        )}
+      >
+        <SelectTrigger class="w-[180px]">
+          <SelectValue<FoodOption>>{(state) => state.selectedOption().label}</SelectValue>
+        </SelectTrigger>
+        <SelectContent />
+      </Select>
+    );
+  },
 };

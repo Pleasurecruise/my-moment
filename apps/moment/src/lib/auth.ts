@@ -1,5 +1,3 @@
-/// <reference types="@cloudflare/workers-types" />
-
 import { betterAuth } from "better-auth";
 import type { Session, User } from "better-auth";
 

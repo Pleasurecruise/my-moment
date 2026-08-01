@@ -1,0 +1,46 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "my-moment",
+  "compatibility_date": "2026-08-01",
+  "upload_source_maps": true,
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "moment.you-find.me",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://moment.you-find.me",
+    "CF_ACCOUNT_ID": "fb71c4eceaf623ae1b19b8b37d7a38cf"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-moment",
+      "database_id": "c97bada7-4af1-44c7-85e3-16992959c181",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "MOMENT_CACHE",
+      "id": "50250d1bc6a04bc797cf15cfafdbec07"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MOMENT_BUCKET",
+      "bucket_name": "cherry-studio"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  }
+}

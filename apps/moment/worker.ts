@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { D1Database, R2Bucket, KVNamespace } from "@cloudflare/workers-types";
 import { getAuth } from "~/lib/auth";
 import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
@@ -32,7 +31,7 @@ import { photoUploadSchema, photoUpdateSchema } from "~/types/photo";
 import { renderOgImage, renderOgPng } from "~/lib/server/og";
 import { readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
 
-type Bindings = {
+export type Bindings = {
   DB: D1Database;
   MOMENT_BUCKET: R2Bucket;
   MOMENT_CACHE: KVNamespace;
@@ -330,7 +329,6 @@ app.get("/api/photos/*", async (c) => {
   const mime = mimeMap[ext] ?? "application/octet-stream";
 
   if (!obj.body) return c.notFound();
-  // @ts-expect-error
   return new Response(obj.body, {
     headers: {
       "content-type": mime,
@@ -689,7 +687,11 @@ app.get("*", async (c) => {
   if (!c.env.ASSETS) return c.notFound();
 
   const url = new URL(c.req.url);
-  if (url.pathname.startsWith("/assets/") || /\.[a-zA-Z0-9]+$/.test(url.pathname)) {
+  if (
+    url.pathname.startsWith("/@") ||
+    url.pathname.startsWith("/assets/") ||
+    /\.[a-zA-Z0-9]+$/.test(url.pathname)
+  ) {
     return c.env.ASSETS.fetch(c.req.raw);
   }
 

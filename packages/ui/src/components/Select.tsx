@@ -9,6 +9,13 @@ export const SelectValue = KobalteSelect.Value;
 
 export const SelectHiddenSelect = KobalteSelect.HiddenSelect;
 
+export function SelectSection(props: ComponentProps<typeof KobalteSelect.Section>) {
+  const [local, rest] = splitProps(props, ["class"]);
+  return (
+    <KobalteSelect.Section {...rest} class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} />
+  );
+}
+
 export function SelectTrigger(props: ComponentProps<typeof KobalteSelect.Trigger>) {
   const [local, rest] = splitProps(props, ["class", "children"]);
   return (

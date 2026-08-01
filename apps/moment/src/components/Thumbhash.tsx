@@ -8,7 +8,7 @@ export interface ThumbhashProps extends ComponentProps<"img"> {
 }
 
 export function Thumbhash(props: ThumbhashProps) {
-  const [local, rest] = splitProps(props, "thumbHash", "class");
+  const [local, rest] = splitProps(props, ["thumbHash", "class"]);
 
   const dataURL = createMemo(() => {
     const hash = local.thumbHash;

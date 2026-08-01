@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/void/schema.json",
+  "target": "cloudflare",
+  "inference": {
+    "appType": "void"
+  },
+  "worker": {
+    "compatibility_flags": ["nodejs_compat", "nodejs_als"]
+  }
+}

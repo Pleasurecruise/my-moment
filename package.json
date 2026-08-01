@@ -6,27 +6,25 @@
   "scripts": {
     "dev": "pnpm --filter @my-moment/app dev",
     "build": "pnpm --filter @my-moment/app build",
-    "dev:worker": "pnpm build && wrangler dev --remote",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm --filter @my-moment/app exec void deploy",
     "storybook": "pnpm --filter @my-moment/ui storybook",
     "storybook:build": "pnpm --filter @my-moment/ui storybook:build",
-    "d1:migrate:local": "wrangler d1 migrations apply DB --local",
-    "d1:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "check": "vp check",
+    "d1:migrate:local": "wrangler d1 migrations apply DB --cwd apps/moment --local --persist-to .void --config wrangler.json",
+    "d1:migrate:remote": "wrangler d1 migrations apply DB --cwd apps/moment --remote --config wrangler.json",
+    "check": "pnpm --filter @my-moment/app prepare && vp check && pnpm typecheck",
+    "typecheck": "tsc --noEmit -p apps/moment/tsconfig.json && tsc --noEmit -p packages/ui/tsconfig.json",
     "lint": "vp lint",
     "format": "vp fmt"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "latest",
-    "@tailwindcss/vite": "4.3.1",
-    "@types/node": "25.9.3",
-    "@typescript/native-preview": "beta",
-    "solid-js": "1.9.13",
-    "tailwindcss": "4.3.1",
-    "typescript": "6.0.3",
-    "vite-plugin-solid": "2.11.12",
-    "vite-plus": "0.1.24",
-    "wrangler": "4.100.0"
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "26.1.2",
+    "solid-js": "1.9.14",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite-plugin-solid": "2.11.14",
+    "vite-plus": "0.2.7",
+    "wrangler": "4.118.0"
   },
-  "packageManager": "pnpm@11.7.0"
+  "packageManager": "pnpm@11.18.0"
 }

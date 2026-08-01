@@ -1,38 +1,26 @@
-import { defineConfig } from "vite-plus";
+import { defineConfig, lazyPlugins } from "vite-plus";
 import solid from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import devServer from "@hono/vite-dev-server";
-import cloudflareAdapter from "@hono/vite-dev-server/cloudflare";
+import { voidPlugin } from "void";
 import { resolve } from "node:path";
 
-const srcDir = resolve(import.meta.dirname, "src");
-
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  envDir: command === "build" ? ".void/build-env" : ".",
   resolve: {
     alias: {
-      "~": srcDir,
+      "~": resolve(import.meta.dirname, "src"),
     },
   },
-  plugins: [
-    tanstackRouter({
-      target: "solid",
-    }),
-    tailwindcss(),
+  optimizeDeps: {
+    exclude: ["hono"],
+  },
+  plugins: lazyPlugins(() => [
+    ...voidPlugin(),
+    ...[tanstackRouter({ target: "solid" })].flat(),
+    ...tailwindcss(),
     solid(),
-    devServer({
-      entry: "worker.ts",
-      exclude: [/^(?!\/api(?:\/|$)).*/],
-      adapter: () =>
-        cloudflareAdapter({
-          proxy: {
-            persist: {
-              path: resolve(import.meta.dirname, "../../.wrangler/state/v3"),
-            },
-          },
-        }),
-    }),
-  ],
+  ]),
   server: {
     allowedHosts: true,
   },
@@ -42,4 +30,4 @@ export default defineConfig({
       external: [/\.wasm$/],
     },
   },
-});
+}));

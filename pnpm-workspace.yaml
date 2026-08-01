@@ -4,6 +4,7 @@ packages:
 
 allowBuilds:
   "@swc/core": true
+  better-sqlite3: true
   core-js-pure: true
   esbuild: true
   msw: true
@@ -11,13 +12,3 @@ allowBuilds:
   workerd: true
 
 minimumReleaseAge: 1440
-
-minimumReleaseAgeExclude:
-  - "better-auth@1.6.15"
-  - "@better-auth/core@1.6.15"
-  - "@better-auth/drizzle-adapter@1.6.15"
-  - "@better-auth/kysely-adapter@1.6.15"
-  - "@better-auth/memory-adapter@1.6.15"
-  - "@better-auth/mongo-adapter@1.6.15"
-  - "@better-auth/prisma-adapter@1.6.15"
-  - "@better-auth/telemetry@1.6.15"

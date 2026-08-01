@@ -1,4 +1,3 @@
-import type { D1Database } from "@cloudflare/workers-types";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, and } from "drizzle-orm";
 import { haulItems, type HaulItemRow } from "../db/schema";

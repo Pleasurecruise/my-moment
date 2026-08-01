@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import { createResource, createSignal, Show } from "solid-js";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
 import type { PhotoItem } from "~/types/photo";
@@ -45,19 +45,17 @@ function PhotoEditPage() {
   const [geoLng, setGeoLng] = createSignal("");
   const [saving, setSaving] = createSignal(false);
 
-  // Initialize form when photo loads
-  const initialized = () => {
+  createEffect(() => {
     const p = photo();
-    if (p && title() === "" && description() === "" && tags().length === 0) {
-      setTitle(p.title);
-      setDescription(p.description || "");
-      setTags([...p.tags]);
-      setDate(toDatetimeLocal(p.date));
-      setGeoLat(p.geo ? String(p.geo.lat) : "");
-      setGeoLng(p.geo ? String(p.geo.lng) : "");
-    }
-    return !!p;
-  };
+    if (!p) return;
+
+    setTitle(p.title);
+    setDescription(p.description || "");
+    setTags([...p.tags]);
+    setDate(toDatetimeLocal(p.date));
+    setGeoLat(p.geo ? String(p.geo.lat) : "");
+    setGeoLng(p.geo ? String(p.geo.lng) : "");
+  });
 
   const handleSave = async () => {
     const p = photo();
@@ -119,96 +117,87 @@ function PhotoEditPage() {
           </div>
         }
       >
-        {() => {
-          initialized();
-          return (
-            <>
-              <Show when={photo()?.thumbnailUrl}>
-                <div class="rounded-lg overflow-hidden border border-border">
-                  <img
-                    src={photo()!.thumbnailUrl}
-                    alt={photo()!.title}
-                    class="w-full max-h-60 object-cover"
-                  />
-                </div>
-              </Show>
+        <>
+          <Show when={photo()?.thumbnailUrl}>
+            <div class="rounded-lg overflow-hidden border border-border">
+              <img
+                src={photo()!.thumbnailUrl}
+                alt={photo()!.title}
+                class="w-full max-h-60 object-cover"
+              />
+            </div>
+          </Show>
 
-              <div class="space-y-4">
+          <div class="space-y-4">
+            <div>
+              <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">Title</Label>
+              <Input
+                value={title()}
+                onInput={(e) => setTitle(e.currentTarget.value)}
+                placeholder="Photo title"
+              />
+            </div>
+
+            <div>
+              <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Description
+              </Label>
+              <Textarea
+                value={description()}
+                onInput={(e) => setDescription(e.currentTarget.value)}
+                placeholder="Photo description (optional)"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">Tags</Label>
+              <TagInput
+                value={tags()}
+                onChange={setTags}
+                placeholder="Add tags (press Enter or comma to add)"
+                maxTags={10}
+              />
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">Date</Label>
+                <Input
+                  type="datetime-local"
+                  value={date()}
+                  onInput={(e) => setDate(e.currentTarget.value)}
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
                 <div>
                   <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    Title
+                    Latitude
                   </Label>
                   <Input
-                    value={title()}
-                    onInput={(e) => setTitle(e.currentTarget.value)}
-                    placeholder="Photo title"
+                    type="number"
+                    step="any"
+                    value={geoLat()}
+                    onInput={(e) => setGeoLat(e.currentTarget.value)}
+                    placeholder="—"
                   />
                 </div>
-
                 <div>
                   <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    Description
+                    Longitude
                   </Label>
-                  <Textarea
-                    value={description()}
-                    onInput={(e) => setDescription(e.currentTarget.value)}
-                    placeholder="Photo description (optional)"
-                    rows={3}
+                  <Input
+                    type="number"
+                    step="any"
+                    value={geoLng()}
+                    onInput={(e) => setGeoLng(e.currentTarget.value)}
+                    placeholder="—"
                   />
-                </div>
-
-                <div>
-                  <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">Tags</Label>
-                  <TagInput
-                    value={tags()}
-                    onChange={setTags}
-                    placeholder="Add tags (press Enter or comma to add)"
-                    maxTags={10}
-                  />
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
-                      Date
-                    </Label>
-                    <Input
-                      type="datetime-local"
-                      value={date()}
-                      onInput={(e) => setDate(e.currentTarget.value)}
-                    />
-                  </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
-                        Latitude
-                      </Label>
-                      <Input
-                        type="number"
-                        step="any"
-                        value={geoLat()}
-                        onInput={(e) => setGeoLat(e.currentTarget.value)}
-                        placeholder="—"
-                      />
-                    </div>
-                    <div>
-                      <Label class="mb-1.5 block text-xs font-medium text-muted-foreground">
-                        Longitude
-                      </Label>
-                      <Input
-                        type="number"
-                        step="any"
-                        value={geoLng()}
-                        onInput={(e) => setGeoLng(e.currentTarget.value)}
-                        placeholder="—"
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
-            </>
-          );
-        }}
+            </div>
+          </div>
+        </>
       </Show>
     </div>
   );

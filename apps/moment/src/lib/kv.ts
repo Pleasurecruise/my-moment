@@ -1,5 +1,3 @@
-import type { KVNamespace } from "@cloudflare/workers-types";
-
 const MANIFEST_KEY = "manifest";
 
 export interface PhotoManifest {

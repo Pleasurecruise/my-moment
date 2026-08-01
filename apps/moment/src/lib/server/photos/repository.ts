@@ -1,4 +1,3 @@
-import type { D1Database } from "@cloudflare/workers-types";
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, inArray } from "drizzle-orm";
 import { photos, tags, photoTags, type PhotoRow } from "../db/schema";
