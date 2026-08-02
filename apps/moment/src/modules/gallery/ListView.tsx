@@ -2,7 +2,8 @@ import { createVirtualizer } from "@tanstack/solid-virtual";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { Card, Badge } from "@my-moment/ui";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
-import type { PhotoItem } from "~/types/photo";
+import type { PhotoItem } from "~/types";
+import { EmptyState } from "~/components/EmptyState";
 
 interface ListViewProps {
   photos: PhotoItem[];
@@ -27,7 +28,12 @@ export function ListView(props: ListViewProps) {
   return (
     <Show
       when={photos().length > 0}
-      fallback={<div class="py-20 text-center text-sm text-muted-foreground">No photos found.</div>}
+      fallback={
+        <EmptyState
+          title="No photos found"
+          description="Try adjusting the filters or upload a new moment."
+        />
+      }
     >
       <div class="relative" style={{ height: `${totalSize()}px`, width: "100%" }}>
         <For each={virtualizer.getVirtualItems()}>

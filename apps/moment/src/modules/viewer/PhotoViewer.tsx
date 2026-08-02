@@ -1,17 +1,18 @@
-import { createSignal, createEffect, onCleanup, onMount, Show, For, createMemo } from "solid-js";
+import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import {
   ChevronLeft,
   ChevronRight,
   X,
-  MessageCircle,
   PanelRightOpen,
   PanelRightClose,
   Share2,
   Edit3,
 } from "lucide-solid";
-import { Card, Badge, Button, Input, Skeleton, toast } from "@my-moment/ui";
-import type { PhotoItem } from "~/types/photo";
+import { Button } from "@my-moment/ui";
+import { shareLink } from "~/lib/share";
+import type { PhotoItem } from "~/types";
+import { PhotoDetails } from "./PhotoDetails";
 
 interface PhotoViewerProps {
   photos: PhotoItem[];
@@ -62,20 +63,6 @@ export function PhotoViewer(props: PhotoViewerProps) {
     });
   });
 
-  const formattedDate = createMemo(() => {
-    const p = photo();
-    if (!p.date) return null;
-    try {
-      return new Date(p.date).toLocaleDateString("zh-CN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-    } catch {
-      return p.date;
-    }
-  });
-
   return (
     <Portal>
       <div class="fixed inset-0 z-50 flex bg-background/95 backdrop-blur-sm">
@@ -89,15 +76,12 @@ export function PhotoViewer(props: PhotoViewerProps) {
                 variant="ghost"
                 size="icon"
                 class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => {
-                  const url = `${window.location.origin}/photos/${photo().id}`;
-                  navigator.clipboard
-                    ?.writeText(url)
-                    .then(() => toast.success("Link copied"))
-                    .catch(() => {
-                      navigator.share?.({ url, title: photo().title });
-                    });
-                }}
+                onClick={() =>
+                  void shareLink({
+                    url: `${window.location.origin}/photos/${photo().id}`,
+                    title: photo().title,
+                  })
+                }
               >
                 <Share2 size={15} />
               </Button>
@@ -169,6 +153,16 @@ export function PhotoViewer(props: PhotoViewerProps) {
               </Button>
             </Show>
           </div>
+          <details class="group max-h-[42dvh] shrink-0 overflow-auto border-t border-border bg-background/92 lg:hidden">
+            <summary class="sticky top-0 flex cursor-pointer list-none items-center justify-between bg-background/95 px-4 py-3 text-sm font-medium backdrop-blur-sm">
+              Photo details
+              <span class="text-xs font-normal text-muted-foreground group-open:hidden">Open</span>
+              <span class="hidden text-xs font-normal text-muted-foreground group-open:inline">
+                Close
+              </span>
+            </summary>
+            <PhotoDetails photo={photo()} class="px-4 pb-5" />
+          </details>
         </div>
 
         <div
@@ -189,86 +183,7 @@ export function PhotoViewer(props: PhotoViewerProps) {
             </div>
 
             <div class="flex-1 overflow-auto p-4">
-              <div class="space-y-4">
-                <h2 class="text-lg font-semibold text-foreground">{photo().title}</h2>
-
-                <Show when={formattedDate()}>
-                  <Card class="p-3">
-                    <p class="text-xs text-muted-foreground/70">Date</p>
-                    <p class="text-foreground">{formattedDate()}</p>
-                  </Card>
-                </Show>
-
-                <Card class="grid grid-cols-2 gap-2 text-sm">
-                  <div class="p-3">
-                    <p class="text-xs text-muted-foreground/70">Dimensions</p>
-                    <p class="text-foreground">
-                      {photo().width} × {photo().height}
-                    </p>
-                  </div>
-                  <div class="p-3">
-                    <p class="text-xs text-muted-foreground/70">Format</p>
-                    <p class="text-foreground">{photo().format}</p>
-                  </div>
-                </Card>
-
-                <Show when={photo().size}>
-                  <Card class="p-3">
-                    <p class="text-xs text-muted-foreground/70">Size</p>
-                    <p class="text-foreground">
-                      {((photo().size ?? 0) / 1024 / 1024).toFixed(1)} MB
-                    </p>
-                  </Card>
-                </Show>
-
-                <Show when={photo().tags.length > 0}>
-                  <div>
-                    <div class="mb-2 flex items-center">
-                      <span class="text-xs text-muted-foreground/70">Tags</span>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5">
-                      <For each={photo().tags}>
-                        {(tag) => <Badge variant="outline">{tag}</Badge>}
-                      </For>
-                    </div>
-                  </div>
-                </Show>
-
-                <Show when={photo().description}>
-                  <p class="text-sm leading-relaxed text-muted-foreground">{photo().description}</p>
-                </Show>
-              </div>
-
-              <div class="mt-8 border-t border-border pt-6">
-                <div class="flex items-center gap-2 text-muted-foreground">
-                  <MessageCircle size={16} />
-                  <span class="text-sm">Comments</span>
-                </div>
-                <div class="mt-3 space-y-3">
-                  <div class="flex gap-3">
-                    <Skeleton class="size-7 rounded-full" />
-                    <div class="flex-1 space-y-1.5">
-                      <Skeleton class="h-3 w-16" />
-                      <Skeleton class="h-3 w-full" />
-                      <Skeleton class="h-3 w-3/4" />
-                    </div>
-                  </div>
-                  <div class="flex gap-3">
-                    <Skeleton class="size-7 rounded-full" />
-                    <div class="flex-1 space-y-1.5">
-                      <Skeleton class="h-3 w-12" />
-                      <Skeleton class="h-3 w-5/6" />
-                    </div>
-                  </div>
-                </div>
-                <div class="mt-4">
-                  <Input
-                    disabled
-                    placeholder="Sign in to comment"
-                    class="text-muted-foreground/70 placeholder:text-muted-foreground/40"
-                  />
-                </div>
-              </div>
+              <PhotoDetails photo={photo()} />
             </div>
           </div>
         </div>

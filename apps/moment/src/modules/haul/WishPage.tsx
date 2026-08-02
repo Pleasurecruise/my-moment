@@ -1,4 +1,13 @@
-import { Show, For, Match, Switch, createSignal, createEffect, type Resource } from "solid-js";
+import {
+  Show,
+  For,
+  Match,
+  Switch,
+  createSignal,
+  createEffect,
+  type Resource,
+  type JSX,
+} from "solid-js";
 import {
   Dialog,
   DialogContent,
@@ -15,17 +24,21 @@ import {
   Spinner,
   toast,
 } from "@my-moment/ui";
-import { Heart, Plus, Pencil, Trash2, Share2 } from "lucide-solid";
+import { Plus, Pencil, Trash2, Share2, ShoppingBag } from "lucide-solid";
 import { Link, useNavigate } from "@tanstack/solid-router";
 import { useSession } from "~/lib/services/auth";
+import { shareLink } from "~/lib/share";
+import { PageHeader } from "~/components/PageHeader";
+import { EmptyState } from "~/components/EmptyState";
 import { WishCard } from "./WishCard";
-import type { WishItem } from "./types";
+import type { WishItem } from "~/types";
 import { formatPrice } from "./utils";
 
 interface WishPageProps {
   wishes: Resource<{ items: WishItem[] } | undefined>;
   onRetry: () => void;
   initialOpenItem?: string;
+  viewSwitcher?: JSX.Element;
 }
 
 export function WishPage(props: WishPageProps) {
@@ -40,21 +53,17 @@ export function WishPage(props: WishPageProps) {
   const [deletingWish, setDeletingWish] = createSignal<WishItem | null>(null);
   const [showWishDelete, setShowWishDelete] = createSignal(false);
 
-  const shareWishlistLink = () => {
-    const url = `${window.location.origin}/wish`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied"))
-      .catch(() => navigator.share?.({ url, title: "My Wishlist" }));
-  };
+  const shareWishlistLink = () =>
+    void shareLink({
+      url: `${window.location.origin}/collection?view=wishlist`,
+      title: "My Wishlist",
+    });
 
-  const shareWishLink = (wishId: string, name?: string) => {
-    const url = `${window.location.origin}/wish?item=${wishId}`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied"))
-      .catch(() => navigator.share?.({ url, title: name }));
-  };
+  const shareWishLink = (wishId: string, name?: string) =>
+    void shareLink({
+      url: `${window.location.origin}/collection?view=wishlist&item=${wishId}`,
+      title: name,
+    });
 
   createEffect(() => {
     const data = wishItems();
@@ -87,45 +96,52 @@ export function WishPage(props: WishPageProps) {
 
   return (
     <div>
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-semibold text-foreground">Wishlist</h2>
+      <PageHeader
+        title="Collection"
+        actions={
+          <>
             <button
               onClick={shareWishlistLink}
-              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Share wishlist"
             >
               <Share2 size={11} />
             </button>
             <Show when={user()}>
               <Link
-                to="/wish/add"
-                class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                to="/collection/add"
+                search={{ view: "wishlist" }}
+                class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Add wish"
               >
                 <Plus size={12} />
               </Link>
             </Show>
-          </div>
+          </>
+        }
+        subtitle={
           <Show when={wishItems()}>
             {(data) => (
-              <p class="mt-1 text-sm text-muted-foreground">
-                {data().length} item{data().length !== 1 ? "s" : ""} saved
-              </p>
+              <>
+                Wishlist · {data().length} item{data().length !== 1 ? "s" : ""} saved
+              </>
             )}
           </Show>
-        </div>
-      </div>
+        }
+        controls={props.viewSwitcher}
+      />
 
       <Switch>
         <Match when={props.wishes.error}>
-          <div class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <p class="text-sm">Failed to load</p>
-            <Button variant="link" size="sm" class="text-xs mt-2" onClick={props.onRetry}>
-              Retry
-            </Button>
-          </div>
+          <EmptyState
+            title="Could not load wishes"
+            description="The wishlist is temporarily unavailable."
+            action={
+              <Button variant="link" size="sm" onClick={props.onRetry}>
+                Retry
+              </Button>
+            }
+          />
         </Match>
         <Match when={props.wishes.loading && !wishItems()}>
           <div class="flex items-center justify-center gap-2 py-16 text-muted-foreground">
@@ -138,16 +154,17 @@ export function WishPage(props: WishPageProps) {
             <Show
               when={data().length > 0}
               fallback={
-                <div class="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <Heart class="mb-4 h-10 w-10 opacity-30" />
-                  <p class="text-sm">No wishes yet.</p>
-                  <Show when={user()}>
-                    <p class="mt-1 text-xs opacity-60">Click + to save something you want.</p>
-                  </Show>
-                </div>
+                <EmptyState
+                  title="No wishes yet"
+                  description={
+                    user()
+                      ? "Use the add button to save something you want."
+                      : "Nothing has been added to this wishlist yet."
+                  }
+                />
               }
             >
-              <div class="space-y-2">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <For each={data()}>
                   {(item) => (
                     <WishCard
@@ -177,6 +194,21 @@ export function WishPage(props: WishPageProps) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        class="size-7 text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setShowWishDetail(false);
+                          navigate({
+                            to: "/collection/add",
+                            search: { view: "haul", convert: item().id },
+                          });
+                        }}
+                        aria-label="Mark as purchased"
+                      >
+                        <ShoppingBag size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         class="size-7 text-muted-foreground hover:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                         onClick={() => shareWishLink(item().id, item().name)}
                         aria-label="Share wish"
@@ -190,8 +222,8 @@ export function WishPage(props: WishPageProps) {
                         onClick={() => {
                           setShowWishDetail(false);
                           navigate({
-                            to: "/wish/add",
-                            search: { edit: item().id },
+                            to: "/collection/add",
+                            search: { view: "wishlist", edit: item().id },
                           });
                         }}
                         aria-label="Edit wish"

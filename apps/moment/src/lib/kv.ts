@@ -29,10 +29,3 @@ export async function writeManifest(kv: KVNamespace, photos: PhotoManifest[]): P
 export async function deleteManifest(kv: KVNamespace): Promise<void> {
   await kv.delete(MANIFEST_KEY);
 }
-
-export async function appendPhoto(kv: KVNamespace, photo: PhotoManifest): Promise<PhotoManifest[]> {
-  const photos = await readManifest(kv);
-  photos.push(photo);
-  await writeManifest(kv, photos);
-  return photos;
-}

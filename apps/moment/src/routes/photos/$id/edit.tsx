@@ -2,27 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
-import type { PhotoItem } from "~/types/photo";
+import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
+import type { PhotoItem } from "~/types";
 
 export const Route = createFileRoute("/photos/$id/edit")({
   component: PhotoEditPage,
 });
-
-function toDatetimeLocal(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
-}
-
-function fromDatetimeLocal(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d.toISOString();
-}
 
 function PhotoEditPage() {
   const params = Route.useParams();

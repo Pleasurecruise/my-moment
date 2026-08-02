@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { Badge, cn } from "@my-moment/ui";
 import { Heart } from "lucide-solid";
-import type { WishItem } from "./types";
+import type { WishItem } from "~/types";
 import { formatPrice, getCategoryConfig } from "./utils";
 
 interface WishCardProps {
@@ -15,18 +15,18 @@ export function WishCard(props: WishCardProps) {
   return (
     <div
       class={cn(
-        "group flex items-center gap-4 rounded-xl border border-border/60 bg-card p-4",
+        "group flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card",
         "transition-all duration-200 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5",
         "cursor-pointer",
       )}
       onClick={() => props.onClick?.(props.item)}
     >
-      <div class="shrink-0 size-18 rounded-lg overflow-hidden bg-muted border border-border/50">
+      <div class="aspect-4/3 w-full overflow-hidden bg-muted">
         <Show
           when={props.item.imageUrl}
           fallback={
             <div class="flex size-full items-center justify-center text-muted-foreground">
-              <Heart size={22} class="opacity-30" />
+              <Heart size={28} class="opacity-25" />
             </div>
           }
         >
@@ -39,7 +39,7 @@ export function WishCard(props: WishCardProps) {
         </Show>
       </div>
 
-      <div class="flex-1 min-w-0">
+      <div class="flex min-w-0 flex-1 flex-col p-4 pt-3">
         <div class="flex items-center gap-2 mb-1">
           <Badge variant="secondary" class="text-[10px]">
             {category().label}
@@ -51,7 +51,7 @@ export function WishCard(props: WishCardProps) {
         <Show when={props.item.brand}>
           <p class="text-xs text-muted-foreground mt-0.5 truncate">{props.item.brand}</p>
         </Show>
-        <p class="mt-1.5 text-sm font-bold text-primary">{formatPrice(props.item.price)}</p>
+        <p class="mt-auto pt-3 text-sm font-bold text-primary">{formatPrice(props.item.price)}</p>
       </div>
     </div>
   );

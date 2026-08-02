@@ -7,13 +7,13 @@ import {
   RATING_CONFIG,
   goodsFormSchema,
   type Category,
-  type GoodsFormData,
+  type GoodsFormInput,
   type GoodsItem,
   type Rating,
-} from "./types";
+} from "~/types/haul";
 
 interface GoodsFormProps {
-  addItem: (data: GoodsFormData) => Promise<GoodsItem | null>;
+  addItem: (data: GoodsFormInput) => Promise<GoodsItem | null>;
   editItem?: GoodsItem;
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -27,7 +27,7 @@ function getLocalDate(): string {
   return `${year}-${month}-${day}`;
 }
 
-const INITIAL_FORM: GoodsFormData = {
+const INITIAL_FORM: GoodsFormInput = {
   name: "",
   brand: "",
   price: "",
@@ -41,7 +41,7 @@ const INITIAL_FORM: GoodsFormData = {
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-function getInitialForm(editItem?: GoodsItem): GoodsFormData {
+function getInitialForm(editItem?: GoodsItem): GoodsFormInput {
   if (!editItem) return { ...INITIAL_FORM };
   return {
     name: editItem.name,
@@ -58,12 +58,12 @@ function getInitialForm(editItem?: GoodsItem): GoodsFormData {
 
 export function GoodsForm(props: GoodsFormProps) {
   const isEditing = () => !!props.editItem;
-  const [form, setForm] = createSignal<GoodsFormData>(getInitialForm(props.editItem));
+  const [form, setForm] = createSignal<GoodsFormInput>(getInitialForm(props.editItem));
   const [imageFile, setImageFile] = createSignal<File | null>(null);
   const [previewUrl, setPreviewUrl] = createSignal<string | undefined>();
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-  const updateField = <K extends keyof GoodsFormData>(key: K, value: GoodsFormData[K]) => {
+  const updateField = <K extends keyof GoodsFormInput>(key: K, value: GoodsFormInput[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 

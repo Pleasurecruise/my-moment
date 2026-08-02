@@ -1,5 +1,5 @@
 import { createSignal, createContext, useContext, type ParentProps, type Accessor } from "solid-js";
-import type { GallerySettings } from "~/types/gallery";
+import type { GallerySettings } from "~/types";
 import { DEFAULT_GALLERY_SETTINGS } from "~/types/gallery";
 
 const GallerySettingsContext = createContext<{

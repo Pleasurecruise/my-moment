@@ -1,4 +1,4 @@
-import type { FileProgressEntry, PreviewCache } from "./types";
+import type { FileProgressEntry, PreviewCache } from "~/types";
 
 const PREVIEW_MIME_TYPES = new Set([
   "image/jpeg",
@@ -97,26 +97,6 @@ export function calculateTotalSize(files: File[]): number {
 
 export function calculateUploadedBytes(entries: FileProgressEntry[]): number {
   return entries.reduce((sum, entry) => sum + Math.min(entry.uploadedBytes, entry.size), 0);
-}
-
-export function createFileList(fileArray: File[]): FileList {
-  if (typeof DataTransfer !== "undefined") {
-    const transfer = new DataTransfer();
-    fileArray.forEach((file) => transfer.items.add(file));
-    return transfer.files;
-  }
-
-  const fallback: Record<number, File> & { length: number; item: (index: number) => File | null } =
-    {
-      length: fileArray.length,
-      item: (index: number) => fileArray[index] ?? null,
-    };
-
-  fileArray.forEach((file, index) => {
-    fallback[index] = file;
-  });
-
-  return fallback as unknown as FileList;
 }
 
 export function getErrorMessage(error: unknown, fallback: string): string {

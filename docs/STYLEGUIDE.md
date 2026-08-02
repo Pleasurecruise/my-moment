@@ -1,12 +1,12 @@
 # Style Guide
 
-This guide defines the local style for My Memos. Prefer clear domain names, explicit
+This guide defines the local style for My Moment. Prefer clear domain names, explicit
 boundaries, and ordinary TypeScript over decorative abstraction. When in doubt, follow
 nearby code and keep changes small.
 
 ## Scope
 
-- These rules apply most strictly to production code in `apps/memos/src` and
+- These rules apply most strictly to production code in `apps/moment/src` and
   `packages/ui/src`.
 - Dev-only demos under `packages/ui/dev` may use inline layout styles when that keeps
   examples compact.
@@ -29,30 +29,30 @@ nearby code and keep changes small.
 Names should describe the domain role of a value, not its implementation type.
 
 ```ts
-const archivedMemos = await listArchivedMemos();
-const canEditMemo = user?.id === memo.authorId;
-const tagCounts = countMemoTags(memos);
+const messages = await listMessages();
+const canDeleteMessage = user?.id === message.authorId;
+const tagCounts = countPhotoTags(photos);
 ```
 
 Avoid names that only say "something exists":
 
 ```ts
 const data = await getData();
-const flag = check(user, memo);
-const memoArray = await getMemos();
+const flag = check(user, message);
+const photoArray = await getPhotos();
 ```
 
-- Use `PascalCase` for types, classes, and Svelte components.
+- Use `PascalCase` for types, classes, and Solid components.
 - Use `camelCase` for variables, functions, methods, and object properties.
 - Use `UPPER_SNAKE_CASE` only for constants that represent shared policy.
-- Use concrete nouns for values: `memo`, `session`, `tagCounts`, `visibility`.
-- Use verbs for functions: `createMemo`, `loadTags`, `invalidateMemoCache`.
+- Use concrete nouns for values: `photo`, `message`, `session`, `tagCounts`.
+- Use verbs for functions: `createMessage`, `loadTags`, `updatePhoto`.
 - Use predicate names for booleans: `isArchived`, `hasSession`, `canDelete`.
 - Avoid vague names: `data`, `info`, `payload`, `result`, `item`, `obj`, `temp`,
   `utils`.
-- Avoid type-encoded names: `memoArray`, `nameString`, `responseObject`.
+- Avoid type-encoded names: `photoArray`, `nameString`, `responseObject`.
 - Use transport names only at transport boundaries. Database records can be `row`;
-  application data should be `memo`.
+  application data should be `photo`, `message`, or another domain noun.
 
 Allowed suffixes:
 
@@ -70,8 +70,11 @@ Use TypeScript to describe contracts, not to restate obvious local inference.
 - Add explicit types at exported functions, route params, Cloudflare bindings,
   database rows, serialized API responses, and shared package APIs.
 - For untrusted request bodies and query params, let the schema or named parser own the
-  input contract, then pass its inferred domain type inward.
-- Avoid display-only aliases such as `type MemoId = string` unless the name is reused
+  input contract, then pass its inferred domain type inward. Keep form input types
+  separate from parsed domain types when a field changes representation.
+- Use discriminated unions for operations with mutually exclusive success and failure
+  states. Do not model errors as nullable data plus unrelated optional flags.
+- Avoid display-only aliases such as `type PhotoId = string` unless the name is reused
   across modules or documents a stable contract.
 - Type-query `typeof` is fine in type positions, for example
   `ReturnType<typeof getAuth>` or Drizzle inference.
@@ -90,7 +93,7 @@ Validate external input once at the boundary and pass typed domain values inward
   domain contract.
 
 ```ts
-const result = createMemoSchema.safeParse(await request.json());
+const result = messageCreateSchema.safeParse(await request.json());
 
 if (!result.success) {
   throw error(400, "Invalid request body");
@@ -125,7 +128,7 @@ Constants should name shared policy, not hide ordinary literals.
 
 ```ts
 const MAX_EXCERPT_LENGTH = 240;
-const MEMO_LIST_CACHE_KEY = "memo:list";
+const GALLERY_CACHE_KEY = "gallery:list";
 ```
 
 - Extract a constant when the value is reused, configurable, or names a policy.
@@ -138,11 +141,15 @@ const MEMO_LIST_CACHE_KEY = "memo:list";
 
 Fallbacks should describe deliberate product behavior, not hide invalid state.
 
-- Display fallbacks are fine: `memo.title.trim() || "Untitled"`.
+- Display fallbacks are fine: `photo.title.trim() || "Untitled"`.
 - Do not fallback secrets, bindings, auth state, database IDs, cache keys, or
   permissions.
 - Prefer throwing or returning a typed error at server boundaries.
 - Avoid broad `catch` blocks that return empty arrays, empty objects, or success states.
+- Reject malformed pagination cursors and query parameters with `400`; never reinterpret
+  them as the first page.
+- Treat `404` as missing data only when the endpoint contract says so. Surface auth and
+  server failures separately.
 
 ## Styling
 
@@ -160,18 +167,24 @@ The project uses Tailwind CSS v4 through `@tailwindcss/vite`. `theme.css` maps
   `style="--w:{value}%" class="w-[var(--w)]"`.
 - Use arbitrary values only for one-off details outside the scale. Promote repeated
   values to `tokens.css` and `theme.css`.
-- Compose conditional class strings with `cn()` from `@my-memos/ui`; simple binary
+- Compose conditional class strings with `cn()` from `@my-moment/ui`; simple binary
   interpolation is fine.
 - Use scoped `<style>` blocks only for selectors or third-party overrides Tailwind
   cannot express cleanly.
 
 ## Project APIs
 
-- Use Drizzle query builders instead of assembling SQL strings by hand.
-- Use SvelteKit `error`, `redirect`, `load`, and route handlers instead of custom
-  routing glue.
-- Use `@my-memos/ui` for generic UI primitives.
-- Use Cloudflare bindings directly at server boundaries until a wrapper has clear value.
+- Use TanStack Solid Router for route definitions, search validation, navigation, and
+  redirects.
+- Use Hono for Worker API routes and validate request bodies and query parameters with
+  Zod at the route boundary.
+- Prefer Drizzle for schema-backed CRUD. Raw SQL is acceptable for focused D1 queries
+  when it is clearer, but keep it inside the owning repository.
+- Use Solid primitives (`createResource`, `createMemo`, `Show`, `Switch`) directly; make
+  loading, missing, unauthorized, and failed states distinct.
+- Use `@my-moment/ui` for generic UI primitives.
+- Use Cloudflare D1, R2, and KV bindings directly at server boundaries until a wrapper
+  has clear value.
 - Use standard library helpers before adding local utilities.
 
 ## Review Checklist

@@ -1,6 +1,6 @@
-export type Rating = "worth" | "great" | "amazing" | "godtier";
-
 import { z } from "zod";
+
+export type Rating = "worth" | "great" | "amazing" | "godtier";
 
 export const RATING_CONFIG: Record<Rating, { label: string; color: string; description: string }> =
   {
@@ -66,13 +66,17 @@ export interface GoodsItem {
   updatedAt: string;
 }
 
+const priceSchema = z
+  .string()
+  .trim()
+  .min(1, "price is required")
+  .transform(Number)
+  .pipe(z.number().finite("invalid price").nonnegative("invalid price"));
+
 export const goodsFormSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
   brand: z.string().trim(),
-  price: z
-    .string()
-    .min(1, "price is required")
-    .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "invalid price"),
+  price: priceSchema,
   category: z.enum([
     "digital",
     "audio",
@@ -95,10 +99,7 @@ export const goodsFormSchema = z.object({
 export const wishFormSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
   brand: z.string().trim(),
-  price: z
-    .string()
-    .min(1, "price is required")
-    .refine((v) => !Number.isNaN(Number(v)) && Number(v) >= 0, "invalid price"),
+  price: priceSchema,
   category: z.enum([
     "digital",
     "audio",
@@ -114,8 +115,10 @@ export const wishFormSchema = z.object({
   imageUrl: z.string().optional(),
 });
 
-export type GoodsFormData = z.infer<typeof goodsFormSchema>;
-export type WishFormData = z.infer<typeof wishFormSchema>;
+export type GoodsFormInput = z.input<typeof goodsFormSchema>;
+export type GoodsFormData = z.output<typeof goodsFormSchema>;
+export type WishFormInput = z.input<typeof wishFormSchema>;
+export type WishFormData = z.output<typeof wishFormSchema>;
 
 export interface FilterState {
   search: string;
@@ -123,8 +126,6 @@ export interface FilterState {
   ratings: Rating[];
   sortBy: "newest" | "price-asc" | "price-desc" | "rating";
 }
-
-export type ViewMode = "grid" | "list";
 
 export interface WishItem {
   id: string;

@@ -13,7 +13,7 @@ import { Button } from "@my-moment/ui";
 import { Upload } from "lucide-solid";
 import { cn } from "@my-moment/ui";
 import { FileUploadList } from "./FileUploadList";
-import type { FileProgressEntry, PreviewCache, WorkflowPhase } from "./types";
+import type { FileProgressEntry, PreviewCache, WorkflowPhase } from "~/types";
 import {
   formatBytes,
   entryFingerprint,

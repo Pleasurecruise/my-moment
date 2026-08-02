@@ -1,20 +1,17 @@
-import { createFileRoute, useSearch } from "@tanstack/solid-router";
-import { createResource } from "solid-js";
+import { createFileRoute, redirect } from "@tanstack/solid-router";
 import { z } from "zod";
-import { WishPage } from "~/modules/haul/WishPage";
-import type { WishItem } from "~/modules/haul/types";
-
-interface WishResponse {
-  items: WishItem[];
-}
-
-let wishCache: WishResponse | undefined;
 
 export const Route = createFileRoute("/wish/")({
-  component: WishRoute,
   validateSearch: z.object({
     item: z.string().optional(),
   }),
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: "/collection",
+      search: { view: "wishlist", item: search.item },
+      replace: true,
+    });
+  },
   head: () => ({
     meta: [
       { title: "Wishlist — My Moment" },
@@ -27,21 +24,3 @@ export const Route = createFileRoute("/wish/")({
   }),
   staleTime: 0,
 });
-
-function WishRoute() {
-  const search = useSearch({ from: "/wish/" });
-  const [wishes, { refetch }] = createResource<WishResponse>(
-    async () => {
-      const res = await fetch("/api/wish");
-      if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status}`);
-      }
-      const data = (await res.json()) as WishResponse;
-      wishCache = data;
-      return data;
-    },
-    { initialValue: wishCache },
-  );
-
-  return <WishPage wishes={wishes} onRetry={() => refetch()} initialOpenItem={search().item} />;
-}

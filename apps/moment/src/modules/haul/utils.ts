@@ -1,5 +1,4 @@
-import type { Category, Rating } from "./types";
-import { CATEGORY_CONFIG, RATING_CONFIG } from "./types";
+import { CATEGORY_CONFIG, RATING_CONFIG, type Category, type Rating } from "~/types/haul";
 
 /**
  * Format price for display (e.g. ¥1899, ¥1.2w)
@@ -28,36 +27,6 @@ export function formatDate(dateStr: string): string {
 }
 
 /**
- * Convert timestamp to relative time (e.g. "3 days ago")
- */
-export function timeAgo(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 30) {
-      return formatDate(dateStr);
-    } else if (days > 0) {
-      return `${days} days ago`;
-    } else if (hours > 0) {
-      return `${hours} hours ago`;
-    } else if (minutes > 0) {
-      return `${minutes} minutes ago`;
-    } else {
-      return "just now";
-    }
-  } catch {
-    return "";
-  }
-}
-
-/**
  * Get rating display config
  */
 export function getRatingConfig(rating: Rating) {
@@ -69,37 +38,4 @@ export function getRatingConfig(rating: Rating) {
  */
 export function getCategoryConfig(category: Category) {
   return CATEGORY_CONFIG[category];
-}
-
-/**
- * Compress uploaded image to base64 WebP
- */
-export function compressImage(file: File, maxWidth = 800, quality = 0.8): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let { width, height } = img;
-
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas unavailable"));
-
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/webp", quality));
-      };
-      img.onerror = () => reject(new Error("Image load failed"));
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = () => reject(new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
 }

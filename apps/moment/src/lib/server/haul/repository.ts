@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, and } from "drizzle-orm";
 import { haulItems, type HaulItemRow } from "../db/schema";
-import type { GoodsFormData, GoodsItem } from "~/modules/haul/types";
+import type { GoodsFormData, GoodsItem } from "~/types";
 
 function rowToItem(row: HaulItemRow): GoodsItem {
   return {
@@ -18,17 +18,6 @@ function rowToItem(row: HaulItemRow): GoodsItem {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
-}
-
-export async function listHaulItems(d1: D1Database, userId: string): Promise<GoodsItem[]> {
-  const db = drizzle(d1);
-  const rows = await db
-    .select()
-    .from(haulItems)
-    .where(eq(haulItems.userId, userId))
-    .orderBy(desc(haulItems.purchaseDate));
-
-  return rows.map(rowToItem);
 }
 
 export async function getHaulItem(d1: D1Database, id: string): Promise<GoodsItem | null> {
@@ -63,7 +52,7 @@ export async function createHaulItem(
     userId,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     rating: data.rating,
     purchaseDate: data.purchaseDate || null,
@@ -79,7 +68,7 @@ export async function createHaulItem(
     userId,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     rating: data.rating,
     purchaseDate: data.purchaseDate || null,
@@ -130,7 +119,7 @@ export async function updateHaulItem(
     .set({
       name: data.name.trim(),
       brand: data.brand.trim() || null,
-      price: parseFloat(data.price) || 0,
+      price: data.price,
       category: data.category,
       rating: data.rating,
       purchaseDate: data.purchaseDate || null,
@@ -145,7 +134,7 @@ export async function updateHaulItem(
     ...existing,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     rating: data.rating,
     purchaseDate: data.purchaseDate || null,

@@ -2,17 +2,17 @@ import { Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Upload, X } from "lucide-solid";
 import { processImage } from "~/lib/image-processor";
-import { CATEGORY_CONFIG, wishFormSchema, type Category } from "./types";
-import type { WishFormData, WishItem } from "./types";
+import { CATEGORY_CONFIG, wishFormSchema, type Category } from "~/types/haul";
+import type { WishFormInput, WishItem } from "~/types";
 
 interface WishFormProps {
-  addItem: (data: WishFormData) => Promise<WishItem | null>;
+  addItem: (data: WishFormInput) => Promise<WishItem | null>;
   editItem?: WishItem;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-const INITIAL_FORM: WishFormData = {
+const INITIAL_FORM: WishFormInput = {
   name: "",
   brand: "",
   price: "",
@@ -22,7 +22,7 @@ const INITIAL_FORM: WishFormData = {
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
-function getInitialForm(editItem?: WishItem): WishFormData {
+function getInitialForm(editItem?: WishItem): WishFormInput {
   if (!editItem) return { ...INITIAL_FORM };
   return {
     name: editItem.name,
@@ -35,12 +35,12 @@ function getInitialForm(editItem?: WishItem): WishFormData {
 
 export function WishForm(props: WishFormProps) {
   const isEditing = () => !!props.editItem;
-  const [form, setForm] = createSignal<WishFormData>(getInitialForm(props.editItem));
+  const [form, setForm] = createSignal<WishFormInput>(getInitialForm(props.editItem));
   const [imageFile, setImageFile] = createSignal<File | null>(null);
   const [previewUrl, setPreviewUrl] = createSignal<string | undefined>();
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-  const updateField = <K extends keyof WishFormData>(key: K, value: WishFormData[K]) => {
+  const updateField = <K extends keyof WishFormInput>(key: K, value: WishFormInput[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 

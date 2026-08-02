@@ -1,7 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js";
 import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router";
 import { useSession, signIn, signOut } from "~/lib/services/auth";
-import { Images, Camera, ShoppingBag, Heart, Sun, Moon, LogIn, LogOut } from "lucide-solid";
+import { Images, Map, MessageCircle, Library, Sun, Moon, LogIn, LogOut } from "lucide-solid";
 import {
   Avatar,
   Button,
@@ -30,9 +30,9 @@ const THEME_KEY = "my-moment:theme";
 
 const TABS = [
   { href: "/", label: "Gallery", Icon: Images },
-  { href: "/snapshot", label: "Snapshot", Icon: Camera },
-  { href: "/haul", label: "Haul", Icon: ShoppingBag },
-  { href: "/wish", label: "Wishlist", Icon: Heart },
+  { href: "/journey", label: "Journey", Icon: Map },
+  { href: "/messages", label: "Guestbook", Icon: MessageCircle },
+  { href: "/collection", label: "Collection", Icon: Library },
 ] as const;
 
 function RootLayout() {
@@ -59,6 +59,11 @@ function RootLayout() {
   };
 
   const currentPath = () => router.state.location.pathname ?? "/";
+  const isJourney = () => currentPath() === "/journey" || currentPath().startsWith("/journey/");
+  const tabIsActive = (href: string) =>
+    href === "/"
+      ? currentPath() === "/" || currentPath().startsWith("/photos/")
+      : currentPath() === href || currentPath().startsWith(`${href}/`);
 
   const user = () => session()?.data?.user ?? null;
 
@@ -132,10 +137,7 @@ function RootLayout() {
           {(u) => (
             <div class="flex flex-col items-center gap-3 py-4 px-4">
               <Avatar src={u().image ?? undefined} fallback={u().name ?? "?"} size="lg" />
-              <div class="text-center">
-                <p class="text-sm font-medium">{u().name}</p>
-                <p class="text-xs text-muted-foreground truncate max-w-44">{u().email}</p>
-              </div>
+              <p class="text-center text-sm font-medium">{u().name}</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -177,8 +179,14 @@ function RootLayout() {
         </div>
       </header>
 
-      <div class="mx-auto max-w-[70rem] px-4 sm:px-8 pb-24 pt-7 max-lg:pt-4">
-        <header class="hidden lg:flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-5 pb-4 border-b border-border mb-4">
+      <div
+        class={
+          isJourney()
+            ? "flex h-[calc(100dvh-3rem)] flex-col pt-4 lg:h-dvh lg:pt-7"
+            : "pb-24 pt-7 max-lg:pt-4"
+        }
+      >
+        <header class="mx-auto hidden w-full max-w-[70rem] px-8 lg:flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-5 pb-4 border-b border-border mb-4">
           <div class="flex flex-col gap-1.5 shrink-0">
             <p class="font-mono text-[10px] tracking-[0.18em] uppercase text-muted-foreground">
               {new Date().toLocaleDateString("en-US", {
@@ -198,19 +206,23 @@ function RootLayout() {
           </div>
 
           <div class="flex items-center justify-between gap-2 lg:flex-1 lg:justify-end lg:gap-4">
-            <nav class="flex gap-1 lg:pr-3 lg:mr-1 lg:border-r lg:border-border">
+            <nav
+              aria-label="Primary"
+              class="flex gap-1 lg:pr-3 lg:mr-1 lg:border-r lg:border-border"
+            >
               {TABS.map(({ href, label, Icon }) => {
-                const active = currentPath() === href;
+                const active = tabIsActive(href);
                 return (
                   <Link
                     to={href}
-                    class={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-colors ${
+                    aria-current={active ? "page" : undefined}
+                    class={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                       active
                         ? "text-foreground bg-accent/20 font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
-                    <Icon size={13} />
+                    <Icon size={13} aria-hidden="true" />
                     <span>{label}</span>
                   </Link>
                 );
@@ -236,30 +248,36 @@ function RootLayout() {
           </div>
         </header>
 
-        <nav class="flex gap-1 mb-4 lg:hidden">
+        <nav
+          aria-label="Primary"
+          class="mx-auto mb-4 flex w-full max-w-[70rem] gap-0.5 px-3 sm:gap-1 sm:px-8 lg:hidden"
+        >
           {TABS.map(({ href, label, Icon }) => {
-            const active = currentPath() === href;
+            const active = tabIsActive(href);
             return (
               <Link
                 to={href}
-                class={`flex items-center gap-1.5 px-3 py-2 rounded-md text-xs transition-colors ${
+                aria-current={active ? "page" : undefined}
+                class={`flex min-h-12 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md px-1 py-1.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-0 sm:flex-none sm:flex-row sm:px-3 sm:py-2 sm:text-xs ${
                   active
                     ? "text-foreground bg-accent/20 font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                <Icon size={14} />
-                <span>{label}</span>
+                <Icon size={14} aria-hidden="true" />
+                <span class="leading-none">{label}</span>
               </Link>
             );
           })}
         </nav>
 
-        <GallerySettingsProvider>
-          <Show when={currentPath()} keyed>
-            <Outlet />
-          </Show>
-        </GallerySettingsProvider>
+        <div class={isJourney() ? "min-h-0 w-full flex-1" : "mx-auto max-w-[70rem] px-4 sm:px-8"}>
+          <GallerySettingsProvider>
+            <Show when={currentPath()} keyed>
+              <Outlet />
+            </Show>
+          </GallerySettingsProvider>
+        </div>
 
         <Toaster />
       </div>

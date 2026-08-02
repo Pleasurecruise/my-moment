@@ -2,27 +2,12 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Upload, ArrowLeft, X } from "lucide-solid";
 import { Show, createSignal, createMemo, onCleanup } from "solid-js";
 import { Button, Input, Textarea, TagInput, Label, toast } from "@my-moment/ui";
+import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
 import { processImage, type ImageProcessResult } from "~/lib/image-processor";
 
 export const Route = createFileRoute("/upload")({
   component: UploadPage,
 });
-
-function toDatetimeLocal(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours(),
-  )}:${pad(d.getMinutes())}`;
-}
-
-function fromDatetimeLocal(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d.toISOString();
-}
 
 function UploadPage() {
   const navigate = useNavigate();

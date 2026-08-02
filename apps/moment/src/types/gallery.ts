@@ -37,6 +37,9 @@ export function filterAndSortPhotos(
   return filteredPhotos.sort((a, b) => {
     const aDateStr = a.date || "";
     const bDateStr = b.date || "";
+    if (!aDateStr && !bDateStr) return 0;
+    if (!aDateStr) return 1;
+    if (!bDateStr) return -1;
     return sortOrder === "asc"
       ? aDateStr.localeCompare(bDateStr)
       : bDateStr.localeCompare(aDateStr);

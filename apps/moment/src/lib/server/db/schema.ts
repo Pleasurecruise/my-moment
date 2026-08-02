@@ -1,4 +1,12 @@
-import { index, integer, real, sqliteTable, primaryKey, text } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  real,
+  sqliteTable,
+  primaryKey,
+  text,
+  type AnySQLiteColumn,
+} from "drizzle-orm/sqlite-core";
 
 export const haulItems = sqliteTable(
   "haul_items",
@@ -111,8 +119,6 @@ export const tags = sqliteTable("tags", {
   createdAt: text("created_at").notNull(),
 });
 
-export type TagRow = typeof tags.$inferSelect;
-
 // ---- Photo-Tags junction ----
 
 export const photoTags = sqliteTable(
@@ -128,4 +134,32 @@ export const photoTags = sqliteTable(
   (t) => [primaryKey({ columns: [t.photoId, t.tagId] }), index("idx_photo_tags_tag").on(t.tagId)],
 );
 
-export type PhotoTagRow = typeof photoTags.$inferSelect;
+// ---- Guestbook ----
+
+// Better Auth owns this table. Keeping the small local declaration lets Drizzle
+// express the guestbook foreign key without taking over auth migrations.
+export const authUsers = sqliteTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  image: text("image"),
+});
+
+export const guestbookMessages = sqliteTable(
+  "guestbook_messages",
+  {
+    id: text("id").primaryKey(),
+    authorId: text("authorId")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    parentId: text("parentId").references((): AnySQLiteColumn => guestbookMessages.id, {
+      onDelete: "cascade",
+    }),
+    content: text("content").notNull(),
+    createdAt: text("createdAt").notNull(),
+  },
+  (t) => [
+    index("guestbook_parent_created_idx").on(t.parentId, t.createdAt, t.id),
+    index("guestbook_author_created_idx").on(t.authorId, t.createdAt),
+  ],
+);

@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, inArray } from "drizzle-orm";
 import { photos, tags, photoTags, type PhotoRow } from "../db/schema";
-import type { PhotoItem } from "~/types/photo";
+import type { PhotoItem } from "~/types";
 
 export type { PhotoItem };
 

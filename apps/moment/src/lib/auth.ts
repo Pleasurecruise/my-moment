@@ -1,5 +1,4 @@
 import { betterAuth } from "better-auth";
-import type { Session, User } from "better-auth";
 
 export interface AuthEnv {
   DB: D1Database;
@@ -7,11 +6,6 @@ export interface AuthEnv {
   BETTER_AUTH_URL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
-}
-
-export interface AuthSession {
-  user: User;
-  session: Session;
 }
 
 export function createAuth(env: AuthEnv) {
@@ -38,18 +32,3 @@ export function createAuth(env: AuthEnv) {
 }
 
 export const getAuth = createAuth;
-
-export type Auth = ReturnType<typeof createAuth>;
-
-export async function getSessionFromRequest(
-  auth: Auth,
-  headers: Headers,
-): Promise<AuthSession | null> {
-  const result = await auth.api.getSession({ headers });
-  if (!result) return null;
-
-  return {
-    user: result.user,
-    session: result.session,
-  };
-}

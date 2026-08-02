@@ -6,9 +6,11 @@
   "scripts": {
     "prepare": "void prepare",
     "dev": "vp dev",
-    "build": "vp build"
+    "build": "vp build",
+    "test": "vp test run --environment node"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-language": "1.0.1",
     "@my-moment/ui": "workspace:*",
     "@resvg/resvg-wasm": "2.6.2",
     "@solid-primitives/intersection-observer": "2.2.5",
@@ -19,12 +21,16 @@
     "exifr": "7.1.3",
     "hono": "4.12.33",
     "lucide-solid": "1.28.0",
+    "mapbox-gl": "3.26.0",
     "thumbhash": "0.1.1",
+    "yaml": "2.9.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@tanstack/router-plugin": "1.168.23",
+    "@testing-library/jest-dom": "6.9.1",
     "sharp": "0.35.3",
+    "vitest": "4.1.10",
     "void": "0.10.11"
   }
 }

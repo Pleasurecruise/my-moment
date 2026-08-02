@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, and } from "drizzle-orm";
 import { wishlistItems, type WishlistItemRow } from "../db/schema";
-import type { WishFormData, WishItem } from "~/modules/haul/types";
+import type { GoodsFormData, GoodsItem, WishFormData, WishItem } from "~/types";
 
 function rowToWishItem(row: WishlistItemRow): WishItem {
   return {
@@ -14,17 +14,6 @@ function rowToWishItem(row: WishlistItemRow): WishItem {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
-}
-
-export async function listWishlistItems(d1: D1Database, userId: string): Promise<WishItem[]> {
-  const db = drizzle(d1);
-  const rows = await db
-    .select()
-    .from(wishlistItems)
-    .where(eq(wishlistItems.userId, userId))
-    .orderBy(desc(wishlistItems.createdAt));
-
-  return rows.map(rowToWishItem);
 }
 
 export async function listAllWishlistItems(d1: D1Database): Promise<WishItem[]> {
@@ -57,7 +46,7 @@ export async function createWishlistItem(
     userId,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     imageKey,
     createdAt: now,
@@ -69,7 +58,7 @@ export async function createWishlistItem(
     userId,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     imageKey,
     createdAt: now,
@@ -101,7 +90,7 @@ export async function updateWishlistItem(
     .set({
       name: data.name.trim(),
       brand: data.brand.trim() || null,
-      price: parseFloat(data.price) || 0,
+      price: data.price,
       category: data.category,
       imageKey,
       updatedAt: now,
@@ -112,7 +101,7 @@ export async function updateWishlistItem(
     ...existing,
     name: data.name.trim(),
     brand: data.brand.trim() || null,
-    price: parseFloat(data.price) || 0,
+    price: data.price,
     category: data.category,
     imageKey,
     updatedAt: now,
@@ -136,4 +125,61 @@ export async function deleteWishlistItem(
 
   await db.delete(wishlistItems).where(eq(wishlistItems.id, id));
   return true;
+}
+
+export async function convertWishlistItem(
+  d1: D1Database,
+  userId: string,
+  id: string,
+  data: GoodsFormData,
+): Promise<GoodsItem | null> {
+  const existing = await d1
+    .prepare(`SELECT id FROM wishlist_items WHERE id = ? AND user_id = ?`)
+    .bind(id, userId)
+    .first();
+  if (!existing) return null;
+
+  const haulId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const imageKey = data.imageUrl?.replace(/^\/api\/photos\//, "") || null;
+  await d1.batch([
+    d1
+      .prepare(
+        `INSERT INTO haul_items
+         (id, user_id, name, brand, price, category, rating, purchase_date, comment,
+          image_key, purchase_link, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        haulId,
+        userId,
+        data.name.trim(),
+        data.brand.trim() || null,
+        data.price,
+        data.category,
+        data.rating,
+        data.purchaseDate || null,
+        data.comment.trim(),
+        imageKey,
+        data.purchaseLink?.trim() || null,
+        now,
+        now,
+      ),
+    d1.prepare(`DELETE FROM wishlist_items WHERE id = ? AND user_id = ?`).bind(id, userId),
+  ]);
+
+  return {
+    id: haulId,
+    name: data.name.trim(),
+    brand: data.brand.trim() || undefined,
+    price: data.price,
+    category: data.category,
+    rating: data.rating,
+    purchaseDate: data.purchaseDate,
+    comment: data.comment.trim(),
+    imageUrl: data.imageUrl,
+    purchaseLink: data.purchaseLink?.trim() || undefined,
+    createdAt: now,
+    updatedAt: now,
+  };
 }

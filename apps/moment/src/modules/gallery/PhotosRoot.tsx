@@ -1,13 +1,15 @@
 import { createSignal, createMemo, Show } from "solid-js";
 import { Link, useNavigate } from "@tanstack/solid-router";
-import { Upload, SlidersHorizontal, Share2 } from "lucide-solid";
+import { Share2, SlidersHorizontal, Upload } from "lucide-solid";
 import { Segment } from "~/components/Segment";
-import { Button, toast } from "@my-moment/ui";
+import { PageHeader } from "~/components/PageHeader";
+import { Button } from "@my-moment/ui";
+import { shareLink } from "~/lib/share";
 import { MasonryView } from "./MasonryView";
 import { ListView } from "./ListView";
 import { FilterPanel, ActiveFilterChips } from "./FilterPanel";
 import { PhotoViewer } from "~/modules/viewer/PhotoViewer";
-import type { PhotoItem } from "~/types/photo";
+import type { PhotoItem } from "~/types";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
 import { filterAndSortPhotos } from "~/types/gallery";
 
@@ -32,13 +34,8 @@ export function PhotosRoot(props: PhotosRootProps) {
 
   const allPhotos = () => props.photos;
 
-  const shareGalleryLink = () => {
-    const url = `${window.location.origin}/`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied"))
-      .catch(() => navigator.share?.({ url, title: "Gallery" }));
-  };
+  const shareGalleryLink = () =>
+    void shareLink({ url: `${window.location.origin}/`, title: "Gallery" });
 
   const filteredPhotos = createMemo(() => {
     const { selectedTags, sortOrder, tagFilterMode } = settings();
@@ -46,14 +43,14 @@ export function PhotosRoot(props: PhotosRootProps) {
   });
 
   return (
-    <div>
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-semibold text-foreground">Moments</h2>
+    <main class="pb-10">
+      <PageHeader
+        title="Gallery"
+        actions={
+          <>
             <button
               onClick={shareGalleryLink}
-              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Share gallery"
             >
               <Share2 size={11} />
@@ -61,33 +58,37 @@ export function PhotosRoot(props: PhotosRootProps) {
             <Show when={props.canUpload}>
               <Link
                 to="/upload"
-                class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Upload photos"
               >
                 <Upload size={12} />
               </Link>
             </Show>
-          </div>
-          <p class="mt-1 text-sm text-muted-foreground">
+          </>
+        }
+        subtitle={
+          <>
             {filteredPhotos().length} photo{filteredPhotos().length !== 1 ? "s" : ""}
             <Show when={filteredPhotos().length !== allPhotos().length}>
               <span class="text-muted-foreground/60"> (filtered from {allPhotos().length})</span>
             </Show>
-          </p>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button
-            variant={showFilters() ? "default" : "ghost"}
-            size="icon"
-            class="size-8"
-            onClick={() => setShowFilters(!showFilters())}
-            aria-label="Toggle filters"
-          >
-            <SlidersHorizontal size={16} />
-          </Button>
-          <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
-        </div>
-      </div>
+          </>
+        }
+        controls={
+          <>
+            <Button
+              variant={showFilters() ? "default" : "ghost"}
+              size="icon"
+              class="size-8"
+              onClick={() => setShowFilters(!showFilters())}
+              aria-label="Toggle filters"
+            >
+              <SlidersHorizontal size={16} />
+            </Button>
+            <Segment<ViewMode> options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
+          </>
+        }
+      />
 
       <Show when={settings().selectedTags.length > 0}>
         <div class="mb-4">
@@ -96,7 +97,7 @@ export function PhotosRoot(props: PhotosRootProps) {
       </Show>
 
       <Show when={showFilters()}>
-        <div class="mb-6 rounded-lg border border-border bg-card p-4">
+        <div class="mb-6 border-y border-border/70 py-4">
           <FilterPanel photos={allPhotos()} />
         </div>
       </Show>
@@ -121,6 +122,6 @@ export function PhotosRoot(props: PhotosRootProps) {
           }}
         />
       </Show>
-    </div>
+    </main>
   );
 }

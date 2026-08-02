@@ -3,8 +3,6 @@ import { Button, Badge, Input, Tag, cn } from "@my-moment/ui";
 import {
   Search,
   SlidersHorizontal,
-  Grid3X3,
-  List,
   X,
   RotateCcw,
   Clock,
@@ -18,8 +16,7 @@ import {
   type Category,
   type FilterState,
   type Rating,
-  type ViewMode,
-} from "./types";
+} from "~/types/haul";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest", icon: Clock },
@@ -31,10 +28,8 @@ const SORT_OPTIONS = [
 interface FilterBarProps {
   store: {
     filter: () => FilterState;
-    viewMode: () => ViewMode;
     updateFilter: (partial: Partial<FilterState>) => void;
     resetFilter: () => void;
-    updateViewMode: (mode: ViewMode) => void;
   };
 }
 
@@ -62,82 +57,57 @@ export function FilterBar(props: FilterBarProps) {
   };
 
   return (
-    <div class="space-y-3">
-      <div class="flex items-center gap-2">
-        <div class="relative flex-1">
-          <Search
-            size={16}
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-          />
-          <Input
-            type="text"
-            value={props.store.filter().search}
-            onInput={(e) => props.store.updateFilter({ search: e.currentTarget.value })}
-            placeholder="Search items, brands, tags..."
-            class="pl-9 pr-9"
-          />
+    <div class="space-y-4">
+      <div class="group relative flex h-11 items-center border-y border-border/70 bg-background/60 transition-colors focus-within:border-foreground/40">
+        <Search
+          size={15}
+          class="pointer-events-none absolute left-3 text-muted-foreground/70 transition-colors group-focus-within:text-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          type="text"
+          value={props.store.filter().search}
+          onInput={(event) => props.store.updateFilter({ search: event.currentTarget.value })}
+          placeholder="Search items, brands, categories…"
+          aria-label="Search collection"
+          class="h-full rounded-none border-0 bg-transparent pl-10 pr-24 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+        />
+        <div class="absolute inset-y-0 right-0 flex items-center">
           <Show when={props.store.filter().search}>
             <button
               type="button"
               onClick={() => props.store.updateFilter({ search: "" })}
-              class="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-              aria-label="Clear search"
+              class="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              aria-label="Clear collection search"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           </Show>
-        </div>
-
-        <Button
-          variant={expanded() ? "default" : "outline"}
-          size="icon"
-          onClick={() => setExpanded(!expanded())}
-          class={cn(
-            "shrink-0 relative",
-            hasActiveFilters() && !expanded() && "ring-2 ring-primary/20",
-          )}
-          title="Filter"
-        >
-          <SlidersHorizontal size={16} />
-          <Show when={hasActiveFilters() && !expanded()}>
-            <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />
-          </Show>
-        </Button>
-
-        <div class="shrink-0 flex items-center bg-muted rounded-md p-0.5 border border-border">
           <button
             type="button"
-            onClick={() => props.store.updateViewMode("grid")}
+            onClick={() => setExpanded(!expanded())}
+            aria-expanded={expanded()}
+            aria-label="Toggle collection filters"
             class={cn(
-              "p-1.5 rounded-lg transition-all duration-150 cursor-pointer",
-              props.store.viewMode() === "grid"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+              "relative flex h-full w-11 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+              expanded() &&
+                "bg-foreground text-background hover:bg-foreground hover:text-background",
             )}
-            title="Grid view"
           >
-            <Grid3X3 size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => props.store.updateViewMode("list")}
-            class={cn(
-              "p-1.5 rounded-lg transition-all duration-150 cursor-pointer",
-              props.store.viewMode() === "list"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-            title="List view"
-          >
-            <List size={15} />
+            <SlidersHorizontal size={15} />
+            <Show when={hasActiveFilters() && !expanded()}>
+              <span class="absolute right-2 top-2 size-1.5 rounded-full bg-accent" />
+            </Show>
           </button>
         </div>
       </div>
 
       <Show when={expanded()}>
-        <div class="bg-card rounded-lg border border-border shadow-sm p-4 space-y-4">
-          <div>
-            <p class="text-xs font-semibold text-muted-foreground mb-2">Category</p>
+        <div class="grid gap-5 border-y border-border/70 py-4 lg:grid-cols-3 lg:gap-0 lg:divide-x lg:divide-border/70">
+          <section class="min-w-0 lg:pr-6">
+            <p class="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Category
+            </p>
             <div class="flex flex-wrap gap-1.5">
               <For each={Object.keys(CATEGORY_CONFIG) as Category[]}>
                 {(cat) => {
@@ -148,11 +118,12 @@ export function FilterBar(props: FilterBarProps) {
                       type="button"
                       onClick={() => toggleCategory(cat)}
                       class={cn(
-                        "inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer select-none",
+                        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive()
-                          ? "bg-primary/10 text-primary border-primary/20 shadow-sm"
-                          : "bg-background text-muted-foreground border-border hover:border-foreground/20 hover:bg-muted",
+                          ? "border-foreground bg-foreground text-background shadow-sm"
+                          : "border-border/80 bg-background/40 text-muted-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground",
                       )}
+                      aria-pressed={isActive()}
                     >
                       {config.label}
                     </button>
@@ -160,10 +131,12 @@ export function FilterBar(props: FilterBarProps) {
                 }}
               </For>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <p class="text-xs font-semibold text-muted-foreground mb-2">Rating</p>
+          <section class="min-w-0 lg:px-6">
+            <p class="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Rating
+            </p>
             <div class="flex flex-wrap gap-2">
               <For each={Object.keys(RATING_CONFIG) as Rating[]}>
                 {(rating) => {
@@ -174,11 +147,10 @@ export function FilterBar(props: FilterBarProps) {
                       type="button"
                       onClick={() => toggleRating(rating)}
                       class={cn(
-                        "transition-all duration-150 cursor-pointer",
-                        isActive()
-                          ? "scale-105 ring-2 ring-primary/20 rounded-full"
-                          : "opacity-50 hover:opacity-75",
+                        "rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isActive() ? "opacity-100" : "opacity-45 hover:opacity-75",
                       )}
+                      aria-pressed={isActive()}
                     >
                       <Badge
                         variant="outline"
@@ -192,10 +164,12 @@ export function FilterBar(props: FilterBarProps) {
                 }}
               </For>
             </div>
-          </div>
+          </section>
 
-          <div>
-            <p class="text-xs font-semibold text-muted-foreground mb-2">Sort</p>
+          <section class="min-w-0 lg:pl-6">
+            <p class="mb-3 font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Order
+            </p>
             <div class="flex flex-wrap gap-1.5">
               <For each={SORT_OPTIONS}>
                 {(opt) => {
@@ -205,11 +179,12 @@ export function FilterBar(props: FilterBarProps) {
                       type="button"
                       onClick={() => props.store.updateFilter({ sortBy: opt.value })}
                       class={cn(
-                        "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-150 cursor-pointer select-none",
+                        "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive()
-                          ? "bg-foreground text-background border-foreground"
-                          : "bg-background text-muted-foreground border-border hover:border-foreground/20 hover:bg-muted",
+                          ? "border-foreground bg-foreground text-background shadow-sm"
+                          : "border-border/80 bg-background/40 text-muted-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground",
                       )}
+                      aria-pressed={isActive()}
                     >
                       <opt.icon size={12} />
                       {opt.label}
@@ -218,10 +193,10 @@ export function FilterBar(props: FilterBarProps) {
                 }}
               </For>
             </div>
-          </div>
+          </section>
 
           <Show when={hasActiveFilters()}>
-            <div class="pt-2 border-t border-border">
+            <div class="border-t border-border/70 pt-3 lg:col-span-3 lg:mt-5">
               <Button
                 variant="ghost"
                 size="sm"
@@ -229,7 +204,7 @@ export function FilterBar(props: FilterBarProps) {
                   props.store.resetFilter();
                   setExpanded(false);
                 }}
-                class="text-xs text-muted-foreground"
+                class="h-auto px-2 py-1 text-xs text-muted-foreground"
               >
                 <RotateCcw size={12} />
                 Reset all filters
@@ -240,7 +215,7 @@ export function FilterBar(props: FilterBarProps) {
       </Show>
 
       <Show when={!expanded() && hasActiveFilters()}>
-        <div class="flex items-center gap-1.5 flex-wrap">
+        <div class="flex flex-wrap items-center gap-1.5">
           <For each={props.store.filter().categories}>
             {(cat) => {
               const config = CATEGORY_CONFIG[cat];
@@ -256,7 +231,7 @@ export function FilterBar(props: FilterBarProps) {
               <button
                 type="button"
                 onClick={() => toggleRating(rating)}
-                class="cursor-pointer hover:opacity-80 transition-opacity"
+                class="transition-opacity hover:opacity-80"
               >
                 <Badge
                   variant="outline"
@@ -272,14 +247,14 @@ export function FilterBar(props: FilterBarProps) {
             )}
           </For>
           <Show when={props.store.filter().sortBy !== "newest"}>
-            <Badge variant="outline" class="text-[11px] px-1.5 py-0">
+            <Badge variant="outline" class="px-1.5 py-0 text-[11px]">
               {SORT_OPTIONS.find((o) => o.value === props.store.filter().sortBy)?.label}
             </Badge>
           </Show>
           <Button
             variant="ghost"
             size="sm"
-            class="text-[11px] h-auto py-0.5"
+            class="h-auto py-0.5 text-[11px]"
             onClick={props.store.resetFilter}
           >
             <RotateCcw size={10} />

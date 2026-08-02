@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
-import { Show, createMemo } from "solid-js";
-import { ArrowLeft, Share2, Edit3, Calendar, Maximize2, FileIcon, Tag } from "lucide-solid";
-import { Button, Badge, Card, toast } from "@my-moment/ui";
-import type { PhotoItem } from "~/types/photo";
+import { Show } from "solid-js";
+import { ArrowLeft, Share2, Edit3 } from "lucide-solid";
+import { Button } from "@my-moment/ui";
+import { shareLink } from "~/lib/share";
+import type { PhotoItem } from "~/types";
+import { PhotoDetails } from "~/modules/viewer/PhotoDetails";
+import { EmptyState } from "~/components/EmptyState";
 
 export const Route = createFileRoute("/photos/$id/")({
   component: PhotoDetailPage,
@@ -34,7 +37,8 @@ export const Route = createFileRoute("/photos/$id/")({
   },
   loader: async ({ params }) => {
     const res = await fetch(`/api/photos/${params.id}`);
-    if (!res.ok) return null;
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`Could not load photo (${res.status}).`);
     return (await res.json()) as PhotoItem;
   },
 });
@@ -43,33 +47,12 @@ function PhotoDetailPage() {
   const photo = Route.useLoaderData() as () => PhotoItem | null;
   const params = Route.useParams();
 
-  const formattedDate = createMemo(() => {
-    const p = photo();
-    if (!p?.date) return null;
-    try {
-      return new Date(p.date).toLocaleDateString("zh-CN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return p.date;
-    }
-  });
-
-  const handleShare = () => {
-    const url = `${window.location.origin}/photos/${params().id}`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied to clipboard"))
-      .catch(() => {
-        // Fallback to Web Share API
-        navigator.share?.({
-          url,
-          title: photo()?.title || "Photo",
-        });
-      });
-  };
+  const handleShare = () =>
+    void shareLink({
+      url: `${window.location.origin}/photos/${params().id}`,
+      title: photo()?.title || "Photo",
+      successMessage: "Link copied to clipboard",
+    });
 
   return (
     <div class="mx-auto max-w-4xl space-y-6">
@@ -113,9 +96,10 @@ function PhotoDetailPage() {
       <Show
         when={photo()}
         fallback={
-          <div class="flex items-center justify-center py-20 text-muted-foreground">
-            <p>Photo not found</p>
-          </div>
+          <EmptyState
+            title="Photo not found"
+            description="The photo may have been removed or the link is no longer valid."
+          />
         }
       >
         {(p) => (
@@ -130,68 +114,7 @@ function PhotoDetailPage() {
               />
             </div>
 
-            {/* Info Cards */}
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Show when={formattedDate()}>
-                <Card class="p-4">
-                  <div class="flex items-center gap-2 text-muted-foreground mb-1">
-                    <Calendar size={14} />
-                    <span class="text-xs">Date</span>
-                  </div>
-                  <p class="text-foreground">{formattedDate()}</p>
-                </Card>
-              </Show>
-
-              <Card class="p-4">
-                <div class="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Maximize2 size={14} />
-                  <span class="text-xs">Dimensions</span>
-                </div>
-                <p class="text-foreground">
-                  {p().width} × {p().height}
-                </p>
-              </Card>
-
-              <Card class="p-4">
-                <div class="flex items-center gap-2 text-muted-foreground mb-1">
-                  <FileIcon size={14} />
-                  <span class="text-xs">Format</span>
-                </div>
-                <p class="text-foreground">{p().format}</p>
-              </Card>
-
-              <Show when={p().size}>
-                <Card class="p-4">
-                  <div class="flex items-center gap-2 text-muted-foreground mb-1">
-                    <FileIcon size={14} />
-                    <span class="text-xs">Size</span>
-                  </div>
-                  <p class="text-foreground">{((p().size ?? 0) / 1024 / 1024).toFixed(1)} MB</p>
-                </Card>
-              </Show>
-            </div>
-
-            {/* Description */}
-            <Show when={p().description}>
-              <Card class="p-4">
-                <p class="text-sm leading-relaxed text-muted-foreground">{p().description}</p>
-              </Card>
-            </Show>
-
-            {/* Tags */}
-            <Show when={p().tags && p().tags.length > 0}>
-              <Card class="p-4">
-                <div class="flex items-center gap-2 text-muted-foreground mb-3">
-                  <Tag size={14} />
-                  <span class="text-xs">Tags</span>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  {p().tags!.map((tag) => (
-                    <Badge variant="outline">{tag}</Badge>
-                  ))}
-                </div>
-              </Card>
-            </Show>
+            <PhotoDetails photo={p()} />
           </div>
         )}
       </Show>

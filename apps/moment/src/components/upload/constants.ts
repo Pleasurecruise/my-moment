@@ -1,18 +1,4 @@
-import type { FileUploadStatus, WorkflowPhase } from "./types";
-
-export const WORKFLOW_STEP_LABEL: Record<Exclude<WorkflowPhase, "error">, string> = {
-  review: "Review",
-  uploading: "Uploading",
-  processing: "Processing",
-  completed: "Done",
-};
-
-export const DISPLAY_STEPS: Array<Exclude<WorkflowPhase, "error">> = [
-  "review",
-  "uploading",
-  "processing",
-  "completed",
-];
+import type { FileUploadStatus } from "~/types";
 
 export const FILE_STATUS_LABEL: Record<FileUploadStatus, string> = {
   pending: "Pending",

@@ -1,6 +1,6 @@
 import { Show, For } from "solid-js";
 import { X, ImageOff } from "lucide-solid";
-import type { FileProgressEntry } from "./types";
+import type { FileProgressEntry } from "~/types";
 import { FILE_STATUS_LABEL, FILE_STATUS_CLASS } from "./constants";
 import { formatBytes } from "./utils";
 

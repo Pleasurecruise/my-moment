@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @my-moment/app dev",
     "build": "pnpm --filter @my-moment/app build",
     "deploy": "pnpm --filter @my-moment/app exec void deploy",
+    "test": "pnpm --filter @my-moment/app test",
     "storybook": "pnpm --filter @my-moment/ui storybook",
     "storybook:build": "pnpm --filter @my-moment/ui storybook:build",
     "d1:migrate:local": "wrangler d1 migrations apply DB --cwd apps/moment --local --persist-to .void --config wrangler.json",

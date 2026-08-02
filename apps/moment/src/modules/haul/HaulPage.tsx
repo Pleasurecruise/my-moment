@@ -7,6 +7,7 @@ import {
   createMemo,
   createEffect,
   type Resource,
+  type JSX,
 } from "solid-js";
 import {
   Dialog,
@@ -24,24 +25,22 @@ import {
   Spinner,
   toast,
 } from "@my-moment/ui";
-import { ShoppingBag, Plus, SlidersHorizontal, Pencil, Trash2, Share2 } from "lucide-solid";
+import { Plus, SlidersHorizontal, Pencil, Trash2, Share2 } from "lucide-solid";
 import { Link, useNavigate } from "@tanstack/solid-router";
-import { Segment } from "~/components/Segment";
+import { PageHeader } from "~/components/PageHeader";
+import { EmptyState } from "~/components/EmptyState";
+import { shareLink } from "~/lib/share";
 import { useSession } from "~/lib/services/auth";
 import { GoodsCard } from "./GoodsCard";
 import { FilterBar } from "./FilterBar";
-import type { GoodsItem, FilterState, ViewMode, Rating } from "./types";
+import type { FilterState, GoodsItem, Rating } from "~/types";
 import { formatPrice } from "./utils";
-
-const VIEW_OPTIONS = [
-  { value: "grid" as const, label: "Grid" },
-  { value: "list" as const, label: "List" },
-];
 
 interface HaulPageProps {
   haul: Resource<{ items: GoodsItem[] } | undefined>;
   onRetry: () => void;
   initialOpenItem?: string;
+  viewSwitcher?: JSX.Element;
 }
 
 export function HaulPage(props: HaulPageProps) {
@@ -51,7 +50,6 @@ export function HaulPage(props: HaulPageProps) {
 
   const items = () => props.haul()?.items;
 
-  const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
   const [filter, setFilter] = createSignal<FilterState>({
     search: "",
     categories: [],
@@ -126,30 +124,24 @@ export function HaulPage(props: HaulPageProps) {
 
   const store = {
     items,
-    viewMode,
     filter,
     filteredItems,
     stats,
     updateFilter,
     resetFilter,
-    updateViewMode: setViewMode,
   };
 
-  const shareHaulLink = () => {
-    const url = `${window.location.origin}/haul`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied"))
-      .catch(() => navigator.share?.({ url, title: "My Haul" }));
-  };
+  const shareHaulLink = () =>
+    void shareLink({
+      url: `${window.location.origin}/collection?view=haul`,
+      title: "My Haul",
+    });
 
-  const shareItemLink = (itemId: string, name?: string) => {
-    const url = `${window.location.origin}/haul?item=${itemId}`;
-    navigator.clipboard
-      ?.writeText(url)
-      .then(() => toast.success("Link copied"))
-      .catch(() => navigator.share?.({ url, title: name }));
-  };
+  const shareItemLink = (itemId: string, name?: string) =>
+    void shareLink({
+      url: `${window.location.origin}/collection?view=haul&item=${itemId}`,
+      title: name,
+    });
 
   createEffect(() => {
     const data = items();
@@ -182,31 +174,34 @@ export function HaulPage(props: HaulPageProps) {
 
   return (
     <div>
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-lg font-semibold text-foreground">Haul</h2>
+      <PageHeader
+        title="Collection"
+        actions={
+          <>
             <button
               onClick={shareHaulLink}
-              class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Share haul"
             >
               <Share2 size={11} />
             </button>
             <Show when={user()}>
               <Link
-                to="/haul/add"
-                class="flex size-5 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                to="/collection/add"
+                search={{ view: "haul" }}
+                class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Add item"
               >
                 <Plus size={12} />
               </Link>
             </Show>
-          </div>
+          </>
+        }
+        subtitle={
           <Show when={items()}>
             {(data) => (
-              <p class="mt-1 text-sm text-muted-foreground">
-                {data().length} item{data().length !== 1 ? "s" : ""}
+              <>
+                Haul · {data().length} item{data().length !== 1 ? "s" : ""}
                 <Show when={filteredItems().length !== data().length}>
                   <span class="text-muted-foreground/60"> (filtered from {data().length})</span>
                 </Show>
@@ -216,38 +211,43 @@ export function HaulPage(props: HaulPageProps) {
                     · {formatPrice(stats().totalSpent)} total
                   </span>
                 </Show>
-              </p>
+              </>
             )}
           </Show>
-        </div>
-        <div class="flex items-center gap-2">
-          <Button
-            variant={showFilters() ? "default" : "ghost"}
-            size="icon"
-            class="size-8"
-            onClick={() => setShowFilters(!showFilters())}
-            aria-label="Toggle filters"
-          >
-            <SlidersHorizontal size={16} />
-          </Button>
-          <Segment options={VIEW_OPTIONS} value={viewMode()} onChange={setViewMode} />
-        </div>
-      </div>
+        }
+        controls={
+          <>
+            <Button
+              variant={showFilters() ? "default" : "ghost"}
+              size="icon"
+              class="size-8"
+              onClick={() => setShowFilters(!showFilters())}
+              aria-label="Toggle filters"
+            >
+              <SlidersHorizontal size={16} />
+            </Button>
+            {props.viewSwitcher}
+          </>
+        }
+      />
 
       <Show when={showFilters()}>
-        <div class="mb-6 rounded-lg border border-border bg-card p-4">
+        <div class="mb-6">
           <FilterBar store={store} />
         </div>
       </Show>
 
       <Switch>
         <Match when={props.haul.error}>
-          <div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <p class="text-sm">Failed to load</p>
-            <Button variant="link" size="sm" class="text-xs mt-2" onClick={props.onRetry}>
-              Retry
-            </Button>
-          </div>
+          <EmptyState
+            title="Could not load items"
+            description="The collection is temporarily unavailable."
+            action={
+              <Button variant="link" size="sm" onClick={props.onRetry}>
+                Retry
+              </Button>
+            }
+          />
         </Match>
         <Match when={props.haul.loading && !items()}>
           <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
@@ -261,58 +261,38 @@ export function HaulPage(props: HaulPageProps) {
               <Show
                 when={data().length > 0}
                 fallback={
-                  <div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                    <ShoppingBag class="mb-4 h-12 w-12 opacity-40" />
-                    <p class="text-sm">No items yet.</p>
-                    <Show when={user()}>
-                      <p class="mt-1 text-xs opacity-60">Click + to add your first item.</p>
-                    </Show>
-                  </div>
+                  <EmptyState
+                    title="No items yet"
+                    description={
+                      user()
+                        ? "Use the add button to collect your first item."
+                        : "Nothing has been added to this collection yet."
+                    }
+                  />
                 }
               >
                 <Show
                   when={filteredItems().length > 0}
                   fallback={
-                    <div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                      <ShoppingBag class="mb-4 h-12 w-12 opacity-40" />
-                      <p class="text-sm">No matching items.</p>
-                      <p class="mt-1 text-xs opacity-60">Try adjusting your filters.</p>
-                    </div>
+                    <EmptyState
+                      title="No matching items"
+                      description="Try adjusting or resetting the filters."
+                    />
                   }
                 >
-                  <Show
-                    when={viewMode() === "grid"}
-                    fallback={
-                      <div class="space-y-2">
-                        <For each={filteredItems()}>
-                          {(item) => (
-                            <GoodsCard
-                              item={item}
-                              onClick={(i) => {
-                                setSelectedItem(i);
-                                setShowDetail(true);
-                              }}
-                              compact
-                            />
-                          )}
-                        </For>
-                      </div>
-                    }
-                  >
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <For each={filteredItems()}>
-                        {(item) => (
-                          <GoodsCard
-                            item={item}
-                            onClick={(i) => {
-                              setSelectedItem(i);
-                              setShowDetail(true);
-                            }}
-                          />
-                        )}
-                      </For>
-                    </div>
-                  </Show>
+                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <For each={filteredItems()}>
+                      {(item) => (
+                        <GoodsCard
+                          item={item}
+                          onClick={(i) => {
+                            setSelectedItem(i);
+                            setShowDetail(true);
+                          }}
+                        />
+                      )}
+                    </For>
+                  </div>
                 </Show>
               </Show>
               <Show when={data().length > 0}>
@@ -348,8 +328,8 @@ export function HaulPage(props: HaulPageProps) {
                         onClick={() => {
                           setShowDetail(false);
                           navigate({
-                            to: "/haul/add",
-                            search: { edit: item().id },
+                            to: "/collection/add",
+                            search: { view: "haul", edit: item().id },
                           });
                         }}
                         aria-label="Edit item"

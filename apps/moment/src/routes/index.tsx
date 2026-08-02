@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { createResource } from "solid-js";
 import { PhotosRoot } from "~/modules/gallery/PhotosRoot";
-import type { PhotoItem } from "~/types/photo";
+import type { PhotoItem } from "~/types";
 
 interface GalleryResponse {
   photos: PhotoItem[];

@@ -1,6 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { getAuth } from "~/lib/auth";
+import {
+  createOwnerGuard,
+  getRequestSession,
+  requestIsOwner,
+  type WorkerEnv,
+} from "~/lib/server/access";
+import { uploadCollectionImage } from "~/lib/server/collection-image";
 import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
   listPhotos,
@@ -25,33 +32,45 @@ import {
   createWishlistItem,
   updateWishlistItem,
   deleteWishlistItem,
+  convertWishlistItem,
 } from "~/lib/server/wishlist/repository";
-import { goodsFormSchema, wishFormSchema } from "~/modules/haul/types";
+import { goodsFormSchema, wishFormSchema } from "~/types/haul";
 import { photoUploadSchema, photoUpdateSchema } from "~/types/photo";
 import { renderOgImage, renderOgPng } from "~/lib/server/og";
 import { readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
+import {
+  createMessage,
+  deleteMessage,
+  getMessageOwner,
+  listMessages,
+} from "~/lib/server/messages/repository";
+import type { MessageCursor, OgSection } from "~/types";
+import { HOST_DISPLAY_NAME } from "~/lib/identity";
 
-export type Bindings = {
-  DB: D1Database;
-  MOMENT_BUCKET: R2Bucket;
-  MOMENT_CACHE: KVNamespace;
-  BETTER_AUTH_SECRET: string;
-  BETTER_AUTH_URL: string;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
-  ALLOWED_EMAIL?: string;
-  CF_ACCOUNT_ID: string;
-  CF_GATEWAY_NAME: string;
-  AI_GATEWAY_PROVIDER_SLUG: string;
-  OPENAI_API_KEY?: string;
-  CF_AIG_TOKEN?: string;
-  TAVILY_API_KEY?: string;
-  ASSETS: Fetcher;
-};
+const app = new Hono<WorkerEnv>();
+const ownerOnly = createOwnerGuard();
+const uploadOwnerOnly = createOwnerGuard("Upload not configured");
 
-const app = new Hono<{ Bindings: Bindings }>();
+const messageCreateSchema = z.object({
+  content: z.string().trim().min(1).max(1000),
+  parentId: z.string().uuid().optional(),
+});
 
-type OgSection = { key: "gallery" | "haul" | "wishlist"; title: string; description: string };
+const messageCursorSchema = z.string().transform((value, context): MessageCursor => {
+  const separator = value.lastIndexOf("~");
+  const createdAt = separator > 0 ? value.slice(0, separator) : "";
+  const id = separator > 0 ? value.slice(separator + 1) : "";
+  if (Number.isNaN(Date.parse(createdAt)) || !z.string().uuid().safeParse(id).success) {
+    context.addIssue({ code: "custom", message: "invalid cursor" });
+    return z.NEVER;
+  }
+  return { createdAt, id };
+});
+
+const messageListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).default(20),
+  cursor: messageCursorSchema.optional(),
+});
 
 function sectionForPath(url: URL): OgSection | null {
   const path = url.pathname;
@@ -68,12 +87,37 @@ function sectionForPath(url: URL): OgSection | null {
   if (path === "/wish" || path === "/wish/") {
     return { key: "wishlist", title: "Wishlist", description: "Things I'm hoping to get." };
   }
+  if (path === "/collection" || path === "/collection/") {
+    return {
+      key: "collection",
+      title: "Collection",
+      description: "Things collected, considered, and remembered.",
+    };
+  }
   return null;
 }
 
 app.all("/api/auth/*", async (c) => {
   const auth = getAuth(c.env);
-  return auth.handler(c.req.raw);
+  const response = await auth.handler(c.req.raw);
+  if (c.req.path !== "/api/auth/get-session" || !response.ok || !c.env.ALLOWED_EMAIL) {
+    return response;
+  }
+
+  const payload = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { user?: { email?: string; name?: string } } | null;
+  if (payload?.user?.email !== c.env.ALLOWED_EMAIL) return response;
+
+  payload.user.name = HOST_DISPLAY_NAME;
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  return new Response(JSON.stringify(payload), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 });
 
 app.get("/api/health", (c) =>
@@ -84,29 +128,69 @@ app.get("/api/health", (c) =>
   }),
 );
 
-app.get("/api/gallery", async (c) => {
-  let canUpload = false;
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (allowed) {
-    const auth = getAuth(c.env);
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    canUpload = session?.user?.email === allowed;
+app.get("/api/messages", async (c) => {
+  const query = messageListQuerySchema.safeParse(c.req.query());
+  if (!query.success) return c.json({ error: query.error.issues[0]?.message }, 400);
+  const session = await getRequestSession(c);
+  const result = await listMessages(
+    c.env.DB,
+    session?.user?.id ?? null,
+    session?.user?.email ?? null,
+    c.env.ALLOWED_EMAIL,
+    query.data.cursor ?? null,
+    query.data.limit,
+  );
+  return c.json(result);
+});
+
+app.post("/api/messages", async (c) => {
+  const session = await getRequestSession(c);
+  if (!session?.user) return c.json({ ok: false, error: "Sign in to leave a message" }, 401);
+  const parsed = messageCreateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" }, 400);
   }
 
+  const result = await createMessage(
+    c.env.DB,
+    session.user.id,
+    session.user.email,
+    parsed.data.parentId ?? null,
+    parsed.data.content,
+    c.env.ALLOWED_EMAIL,
+  );
+  if (!result.ok) {
+    if (result.reason === "rate_limited") {
+      c.header("Retry-After", String(result.retryAfter));
+      return c.json(
+        { ok: false, error: `Please wait ${result.retryAfter}s before posting again` },
+        429,
+      );
+    }
+    return c.json({ ok: false, error: "Replies must target a top-level message" }, 400);
+  }
+  return c.json({ ok: true, message: result.message }, 201);
+});
+
+app.delete("/api/messages/:id", async (c) => {
+  const session = await getRequestSession(c);
+  if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
+  const owner = await getMessageOwner(c.env.DB, c.req.param("id"));
+  if (!owner) return c.json({ error: "Message not found" }, 404);
+  const isHost = Boolean(c.env.ALLOWED_EMAIL && session.user.email === c.env.ALLOWED_EMAIL);
+  if (owner.authorId !== session.user.id && !isHost) return c.json({ error: "Forbidden" }, 403);
+  await deleteMessage(c.env.DB, c.req.param("id"));
+  return c.json({ ok: true, deletedReplies: owner.isTopLevel });
+});
+
+app.get("/api/gallery", async (c) => {
+  const canUpload = await requestIsOwner(c);
   const photos = await listPhotos(c.env.DB);
 
   return c.json({ photos, canUpload });
 });
 
-app.post("/api/photos/upload", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Upload not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.post("/api/photos/upload", uploadOwnerOnly, async (c) => {
   const form = await c.req.formData();
   const file = form.get("file");
   const thumbnail = form.get("thumbnail");
@@ -165,7 +249,7 @@ app.post("/api/photos/upload", async (c) => {
   }
   const input = parsed.data;
 
-  const photo = await createPhoto(c.env.DB, session.user.id, {
+  const photo = await createPhoto(c.env.DB, c.get("ownerId"), {
     url: `/api/photos/image${num}.png`,
     thumbnailUrl: `/api/photos/${thumbKey}`,
     thumbHash: input.thumbHash,
@@ -191,15 +275,7 @@ app.get("/api/photos/:id", async (c) => {
   return c.json(photo);
 });
 
-app.put("/api/photos/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.put("/api/photos/:id", ownerOnly, async (c) => {
   const parsed = photoUpdateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return c.json({ error: parsed.error.issues[0]?.message }, 400);
@@ -211,30 +287,14 @@ app.put("/api/photos/:id", async (c) => {
   return c.json(photo);
 });
 
-app.delete("/api/photos/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.delete("/api/photos/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
   const deleted = await deletePhoto(c.env.DB, id);
   if (!deleted) return c.json({ error: "Photo not found" }, 404);
   return c.json({ ok: true });
 });
 
-app.patch("/api/photos/:id/tags", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.patch("/api/photos/:id/tags", ownerOnly, async (c) => {
   const parsed = photoUpdateSchema
     .pick({ tags: true })
     .safeParse(await c.req.json().catch(() => null));
@@ -285,6 +345,19 @@ app.get("/api/og/:section", async (c) => {
       domain,
       siteName: "My Moment",
       type: "wish",
+    });
+  } else if (section === "collection") {
+    const [haul, wishes] = await Promise.all([
+      listAllHaulItems(c.env.DB),
+      listAllWishlistItems(c.env.DB),
+    ]);
+    total = haul.length + wishes.length;
+    svg = renderOgImage({
+      title: "Collection",
+      subtitle: `${haul.length} collected · ${wishes.length} wished`,
+      domain,
+      siteName: "My Moment",
+      type: "haul",
     });
   } else {
     return c.notFound();
@@ -342,15 +415,7 @@ app.get("/api/tags", async (c) => {
   return c.json({ tags: allTags });
 });
 
-app.put("/api/tags/:name", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.put("/api/tags/:name", ownerOnly, async (c) => {
   const oldName = decodeURIComponent(c.req.param("name"));
   const parsed = z
     .object({ name: z.string().trim().min(1, "name is required") })
@@ -364,15 +429,7 @@ app.put("/api/tags/:name", async (c) => {
   return c.json({ ok: true });
 });
 
-app.delete("/api/tags/:name", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.delete("/api/tags/:name", ownerOnly, async (c) => {
   const name = decodeURIComponent(c.req.param("name"));
   const ok = await deleteTag(c.env.DB, name);
   if (!ok) return c.json({ error: "Tag not found" }, 404);
@@ -419,14 +476,7 @@ app.get("/api/debug/photos", async (c) => {
 
 app.get("/api/haul", async (c) => {
   const items = await listAllHaulItems(c.env.DB);
-
-  let canManage = false;
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (allowed) {
-    const auth = getAuth(c.env);
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    canManage = session?.user?.email === allowed;
-  }
+  const canManage = await requestIsOwner(c);
 
   return c.json({ items, canManage });
 });
@@ -438,118 +488,41 @@ app.get("/api/haul/:id", async (c) => {
   return c.json(item);
 });
 
-app.post("/api/haul", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.post("/api/haul", ownerOnly, async (c) => {
   const parsed = goodsFormSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
 
-  const item = await createHaulItem(c.env.DB, session.user.id, parsed.data);
+  const item = await createHaulItem(c.env.DB, c.get("ownerId"), parsed.data);
   return c.json(item, 201);
 });
 
-app.post("/api/haul/upload", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.post("/api/haul/upload", ownerOnly, async (c) => {
   const form = await c.req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
-
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
-  if (!allowedTypes.includes(file.type)) {
-    return c.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, AVIF" }, 400);
-  }
-
-  let maxNum = 0;
-  let cursor: string | undefined;
-  do {
-    const listed = await c.env.MOMENT_BUCKET.list({
-      prefix: "img/haul/image",
-      cursor,
-    });
-    for (const obj of listed.objects) {
-      const match = obj.key.match(/^img\/haul\/image(\d+)\./);
-      if (match) maxNum = Math.max(maxNum, Number(match[1]));
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-
-  const num = maxNum + 1;
-  const extMap: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "image/avif": "avif",
-  };
-  const ext = extMap[file.type] ?? "png";
-  const imageKey = `img/haul/image${String(num).padStart(2, "0")}.${ext}`;
-
-  await c.env.MOMENT_BUCKET.put(imageKey, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type },
-  });
-
-  return c.json({
-    key: imageKey,
-    url: `/api/photos/haul/image${String(num).padStart(2, "0")}.${ext}`,
-  });
+  const result = await uploadCollectionImage(c.env.MOMENT_BUCKET, "haul", form.get("file"));
+  if (!result.ok) return c.json({ error: result.error }, 400);
+  return c.json({ key: result.key, url: result.url });
 });
 
-app.put("/api/haul/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.put("/api/haul/:id", ownerOnly, async (c) => {
   const parsed = goodsFormSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
 
   const id = c.req.param("id");
-  const item = await updateHaulItem(c.env.DB, session.user.id, id, parsed.data);
+  const item = await updateHaulItem(c.env.DB, c.get("ownerId"), id, parsed.data);
   if (!item) return c.json({ error: "Not found" }, 404);
   return c.json(item);
 });
 
-app.delete("/api/haul/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.delete("/api/haul/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
-  const deleted = await deleteHaulItem(c.env.DB, session.user.id, id);
+  const deleted = await deleteHaulItem(c.env.DB, c.get("ownerId"), id);
   if (!deleted) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });
 
 app.get("/api/wish", async (c) => {
   const items = await listAllWishlistItems(c.env.DB);
-
-  let canManage = false;
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (allowed) {
-    const auth = getAuth(c.env);
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
-    canManage = session?.user?.email === allowed;
-  }
+  const canManage = await requestIsOwner(c);
 
   return c.json({ items, canManage });
 });
@@ -561,106 +534,49 @@ app.get("/api/wish/:id", async (c) => {
   return c.json(item);
 });
 
-app.post("/api/wish/upload", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.post("/api/wish/upload", ownerOnly, async (c) => {
   const form = await c.req.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
-
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"];
-  if (!allowedTypes.includes(file.type)) {
-    return c.json({ error: "Invalid file type. Allowed: JPG, PNG, WebP, GIF, AVIF" }, 400);
-  }
-
-  let maxNum = 0;
-  let cursor: string | undefined;
-  do {
-    const listed = await c.env.MOMENT_BUCKET.list({
-      prefix: "img/wishlist/image",
-      cursor,
-    });
-    for (const obj of listed.objects) {
-      const match = obj.key.match(/^img\/wishlist\/image(\d+)\./);
-      if (match) maxNum = Math.max(maxNum, Number(match[1]));
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-
-  const num = maxNum + 1;
-  const extMap: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "image/avif": "avif",
-  };
-  const ext = extMap[file.type] ?? "png";
-  const imageKey = `img/wishlist/image${String(num).padStart(2, "0")}.${ext}`;
-
-  await c.env.MOMENT_BUCKET.put(imageKey, await file.arrayBuffer(), {
-    httpMetadata: { contentType: file.type },
-  });
-
-  return c.json({
-    key: imageKey,
-    url: `/api/photos/wishlist/image${String(num).padStart(2, "0")}.${ext}`,
-  });
+  const result = await uploadCollectionImage(c.env.MOMENT_BUCKET, "wishlist", form.get("file"));
+  if (!result.ok) return c.json({ error: result.error }, 400);
+  return c.json({ key: result.key, url: result.url });
 });
 
-app.post("/api/wish", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.post("/api/wish", ownerOnly, async (c) => {
   const parsed = wishFormSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
 
-  const item = await createWishlistItem(c.env.DB, session.user.id, parsed.data);
+  const item = await createWishlistItem(c.env.DB, c.get("ownerId"), parsed.data);
   return c.json(item, 201);
 });
 
-app.put("/api/wish/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.put("/api/wish/:id", ownerOnly, async (c) => {
   const parsed = wishFormSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
 
   const id = c.req.param("id");
-  const item = await updateWishlistItem(c.env.DB, session.user.id, id, parsed.data);
+  const item = await updateWishlistItem(c.env.DB, c.get("ownerId"), id, parsed.data);
   if (!item) return c.json({ error: "Not found" }, 404);
   return c.json(item);
 });
 
-app.delete("/api/wish/:id", async (c) => {
-  const allowed = c.env.ALLOWED_EMAIL;
-  if (!allowed) return c.json({ error: "Not configured" }, 500);
-
-  const auth = getAuth(c.env);
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session?.user?.email) return c.json({ error: "Unauthorized" }, 401);
-  if (session.user.email !== allowed) return c.json({ error: "Forbidden" }, 403);
-
+app.delete("/api/wish/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
-  const deleted = await deleteWishlistItem(c.env.DB, session.user.id, id);
+  const deleted = await deleteWishlistItem(c.env.DB, c.get("ownerId"), id);
   if (!deleted) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
+});
+
+app.post("/api/wish/:id/convert", ownerOnly, async (c) => {
+  const parsed = goodsFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+  const item = await convertWishlistItem(
+    c.env.DB,
+    c.get("ownerId"),
+    c.req.param("id"),
+    parsed.data,
+  );
+  if (!item) return c.json({ error: "Wish not found" }, 404);
+  return c.json(item, 201);
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

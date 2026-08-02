@@ -5,5 +5,5 @@ export { FilterBar } from "./FilterBar";
 export { GoodsForm } from "./GoodsForm";
 export { WishCard } from "./WishCard";
 export { WishForm } from "./WishForm";
-export * from "./types";
+export * from "~/types/haul";
 export * from "./utils";

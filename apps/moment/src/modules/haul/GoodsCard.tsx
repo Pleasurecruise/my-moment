@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { Card, Badge, cn } from "@my-moment/ui";
 import { Calendar, ChevronRight } from "lucide-solid";
-import type { GoodsItem } from "./types";
+import type { GoodsItem } from "~/types";
 import { formatPrice, formatDate, getCategoryConfig, getRatingConfig } from "./utils";
 
 interface GoodsCardProps {

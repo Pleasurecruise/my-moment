@@ -2,7 +2,7 @@ import { Show } from "solid-js";
 import { Badge } from "@my-moment/ui";
 import { LazyImage } from "~/components/LazyImage";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
-import type { PhotoItem } from "~/types/photo";
+import type { PhotoItem } from "~/types";
 
 interface MasonryPhotoItemProps {
   photo: PhotoItem;
