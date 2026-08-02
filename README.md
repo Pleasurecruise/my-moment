@@ -15,6 +15,7 @@ Vite+ · Void · SolidJS · TypeScript · TailwindCSS v4 · Hono · TanStack Rou
 
 ## References
 
+- [Afilmory/afilmory](https://github.com/Afilmory/afilmory) — Reference for HEIC/HEIF signature detection and browser-side conversion before the gallery's existing image processing pipeline.
 - [Pleasurecruise/my-memos](https://github.com/Pleasurecruise/my-memos) — Workspace and reusable UI package organization, semantic theme tokens and theme switching, plus the Cloudflare, Better Auth, D1, R2, and KV application patterns.
 - [sxzz/kevins-journey](https://github.com/sxzz/kevins-journey) — Inspiration for the Journey page's Mapbox travel-footprint visualization and map interactions.
 - [dogxii/iGoods](https://github.com/dogxii/iGoods) — Reference for the Collection haul's item model, four-tier ratings, goods cards and detail views, and category, search, filtering, and sorting interactions.

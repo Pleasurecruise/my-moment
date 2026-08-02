@@ -51,12 +51,6 @@ export function MasonryPhotoItem(props: MasonryPhotoItemProps) {
             {photo().title}
           </h3>
 
-          <Show when={photo().description}>
-            <p class="mb-1 line-clamp-2 text-xs text-white/75 opacity-0 group-hover:opacity-100">
-              {photo().description}
-            </p>
-          </Show>
-
           <div class="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-white/70 opacity-0 group-hover:opacity-100">
             <span>
               {photo().width} × {photo().height}

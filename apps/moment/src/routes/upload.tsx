@@ -3,7 +3,7 @@ import { Upload, ArrowLeft, X } from "lucide-solid";
 import { Show, createSignal, createMemo, onCleanup } from "solid-js";
 import { Button, Input, Textarea, TagInput, Label, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
-import { processImage, type ImageProcessResult } from "~/lib/image-processor";
+import { isAcceptedImageFile, processImage, type ImageProcessResult } from "~/lib/image";
 
 export const Route = createFileRoute("/upload")({
   component: UploadPage,
@@ -43,7 +43,7 @@ function UploadPage() {
   };
 
   const handleFileSelect = async (selected: File) => {
-    if (!selected.type.startsWith("image/")) {
+    if (!isAcceptedImageFile(selected)) {
       toast.error("Please select an image file");
       return;
     }
@@ -169,8 +169,15 @@ function UploadPage() {
           >
             <Upload class="size-8 text-muted-foreground" />
             <span class="text-sm font-medium">Click or drag to select a photo</span>
-            <span class="text-xs text-muted-foreground">JPG, PNG, WebP, GIF, AVIF — max 20MB</span>
-            <input type="file" accept="image/*" class="hidden" onChange={onInputChange} />
+            <span class="text-xs text-muted-foreground">
+              JPG, PNG, WebP, GIF, AVIF, HEIC/HEIF — max 20MB
+            </span>
+            <input
+              type="file"
+              accept="image/*,.heic,.heif"
+              class="hidden"
+              onChange={onInputChange}
+            />
           </label>
         }
       >

@@ -1,7 +1,7 @@
 import { Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { Button, Input, Textarea, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Star, ExternalLink, Link, Upload, X } from "lucide-solid";
-import { processImage } from "~/lib/image-processor";
+import { processImage } from "~/lib/image";
 import {
   CATEGORY_CONFIG,
   RATING_CONFIG,

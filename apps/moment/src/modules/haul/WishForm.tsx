@@ -1,7 +1,7 @@
 import { Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Upload, X } from "lucide-solid";
-import { processImage } from "~/lib/image-processor";
+import { processImage } from "~/lib/image";
 import { CATEGORY_CONFIG, wishFormSchema, type Category } from "~/types/haul";
 import type { WishFormInput, WishItem } from "~/types";
 

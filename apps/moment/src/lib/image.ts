@@ -1,5 +1,4 @@
 import { rgbaToThumbHash } from "thumbhash";
-import exifr from "exifr";
 
 const THUMBNAIL_WIDTH = 600;
 const THUMBNAIL_QUALITY = 1.0;
@@ -15,6 +14,15 @@ export interface ImageProcessResult {
   exifGeo: { lat: number; lng: number } | null;
 }
 
+interface LoadedImage {
+  image: HTMLImageElement;
+  url: string;
+}
+
+export function isAcceptedImageFile(file: Pick<File, "name" | "type">): boolean {
+  return file.type.toLowerCase().startsWith("image/") || /\.(heic|heif)$/i.test(file.name);
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -22,6 +30,43 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = reject;
     img.src = src;
   });
+}
+
+async function decodeHeic(file: File): Promise<Blob | null> {
+  const { heicTo, isHeic } = await import("heic-to");
+  if (!(await isHeic(file))) return null;
+
+  return heicTo({
+    blob: file,
+    type: "image/jpeg",
+    quality: 1,
+  });
+}
+
+async function loadImageFile(file: File): Promise<LoadedImage> {
+  const originalUrl = URL.createObjectURL(file);
+  try {
+    return { image: await loadImage(originalUrl), url: originalUrl };
+  } catch (nativeDecodeError) {
+    URL.revokeObjectURL(originalUrl);
+
+    let converted: Blob | null;
+    try {
+      converted = await decodeHeic(file);
+    } catch (error) {
+      throw new Error("Failed to decode HEIC/HEIF image", { cause: error });
+    }
+
+    if (!converted) throw nativeDecodeError;
+
+    const convertedUrl = URL.createObjectURL(converted);
+    try {
+      return { image: await loadImage(convertedUrl), url: convertedUrl };
+    } catch (error) {
+      URL.revokeObjectURL(convertedUrl);
+      throw error;
+    }
+  }
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
@@ -48,14 +93,7 @@ function drawToCanvas(
   return ctx;
 }
 
-function arrayBufferToHex(buffer: ArrayBuffer | Uint8Array): string {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-async function generateThumbHash(img: HTMLImageElement): Promise<string | null> {
+function generateThumbHash(img: HTMLImageElement): string {
   const hashSize = 100;
   const scale = Math.min(1, hashSize / Math.max(img.width, img.height));
   const w = Math.round(img.width * scale);
@@ -64,28 +102,34 @@ async function generateThumbHash(img: HTMLImageElement): Promise<string | null> 
   const ctx = drawToCanvas(img, w, h);
   const imageData = ctx.getImageData(0, 0, w, h);
   const hash = rgbaToThumbHash(w, h, imageData.data);
-  return arrayBufferToHex(hash);
+  return Array.from(hash, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function processImage(file: File): Promise<ImageProcessResult> {
-  const url = URL.createObjectURL(file);
+  const loaded = await loadImageFile(file);
   try {
-    const img = await loadImage(url);
+    const img = loaded.image;
     const width = img.naturalWidth;
     const height = img.naturalHeight;
     const aspectRatio = width / height;
 
     // EXIF extraction
-    const exif = await exifr.parse(file, {
-      pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "GPSLatitude", "GPSLongitude"],
-      gps: true,
-    });
+    const { default: exifr } = await import("exifr");
+    let exif = null;
+    try {
+      exif = await exifr.parse(file, {
+        pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "GPSLatitude", "GPSLongitude"],
+        gps: true,
+      });
+    } catch (error) {
+      console.warn("Failed to read optional EXIF metadata", error);
+    }
 
     const d = exif?.DateTimeOriginal ?? exif?.CreateDate ?? exif?.ModifyDate;
     const exifDate = d instanceof Date && !isNaN(d.getTime()) ? d.toISOString() : null;
 
-    const lat = exif?.GPSLatitude;
-    const lng = exif?.GPSLongitude;
+    const lat = exif?.latitude;
+    const lng = exif?.longitude;
     const exifGeo = typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
 
     // Full-size image
@@ -99,10 +143,10 @@ export async function processImage(file: File): Promise<ImageProcessResult> {
     const thumbCtx = drawToCanvas(img, thumbW, thumbH);
     const thumbnail = await canvasToBlob(thumbCtx.canvas, "image/jpeg", THUMBNAIL_QUALITY);
 
-    const thumbHash = await generateThumbHash(img);
+    const thumbHash = generateThumbHash(img);
 
     return { image, thumbnail, width, height, aspectRatio, thumbHash, exifDate, exifGeo };
   } finally {
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(loaded.url);
   }
 }
