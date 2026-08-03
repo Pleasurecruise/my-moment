@@ -9,6 +9,7 @@ import type {
   MessagesResponse,
   MessageTimestampRecord,
 } from "~/types/messages";
+import { GUESTBOOK_POST_COOLDOWN_SECONDS } from "~/types/messages";
 import { HOST_DISPLAY_NAME } from "~/lib/identity";
 
 function toMessage(
@@ -29,6 +30,7 @@ function toMessage(
       image: row.authorImage,
       isHost: authorIsHost,
     },
+    canEdit: row.authorId === viewerId,
     canDelete: row.authorId === viewerId || viewerIsHost,
     replies: [],
   };
@@ -131,11 +133,12 @@ export async function createMessage(
     .first<MessageTimestampRecord>();
   if (latest) {
     const elapsed = Date.now() - new Date(latest.createdAt).getTime();
-    if (elapsed < 30_000) {
+    const cooldownMs = GUESTBOOK_POST_COOLDOWN_SECONDS * 1000;
+    if (elapsed < cooldownMs) {
       return {
         ok: false,
         reason: "rate_limited",
-        retryAfter: Math.ceil((30_000 - elapsed) / 1000),
+        retryAfter: Math.ceil((cooldownMs - elapsed) / 1000),
       };
     }
   }
@@ -161,6 +164,26 @@ export async function createMessage(
   const message = await getMessage(db, id, authorId, authorEmail, hostEmail);
   if (!message) throw new Error("Created message could not be read");
   return { ok: true, message };
+}
+
+export async function updateMessage(
+  db: D1Database,
+  id: string,
+  authorId: string,
+  authorEmail: string,
+  content: string,
+  hostEmail: string | undefined,
+): Promise<GuestbookMessage | null> {
+  const result = await db
+    .prepare(
+      `UPDATE guestbook_messages
+       SET content = ?
+       WHERE id = ? AND "authorId" = ?`,
+    )
+    .bind(content, id, authorId)
+    .run();
+  if (result.meta.changes === 0) return null;
+  return getMessage(db, id, authorId, authorEmail, hostEmail);
 }
 
 export async function deleteMessage(db: D1Database, id: string): Promise<boolean> {

@@ -28,6 +28,21 @@ export async function getHaulItem(d1: D1Database, id: string): Promise<GoodsItem
   return rowToItem(row);
 }
 
+export async function getOwnedHaulItem(
+  d1: D1Database,
+  userId: string,
+  id: string,
+): Promise<GoodsItem | null> {
+  const db = drizzle(d1);
+  const [row] = await db
+    .select()
+    .from(haulItems)
+    .where(and(eq(haulItems.id, id), eq(haulItems.userId, userId)))
+    .limit(1);
+
+  return row ? rowToItem(row) : null;
+}
+
 export async function listAllHaulItems(d1: D1Database): Promise<GoodsItem[]> {
   const db = drizzle(d1);
   const rows = await db.select().from(haulItems).orderBy(desc(haulItems.purchaseDate));

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { For, Show, createEffect, createSignal, onCleanup, onMount, type JSX } from "solid-js";
-import { ChevronDown, CornerDownRight, Plus, Reply, Send, Trash2 } from "lucide-solid";
+import { ChevronDown, CornerDownRight, Pencil, Plus, Reply, Send, Trash2 } from "lucide-solid";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +22,12 @@ import { PageHeader } from "~/components/PageHeader";
 import { EmptyState } from "~/components/EmptyState";
 import { EmojiPicker } from "~/components/EmojiPicker";
 import { IMAGE_EMOJIS } from "~/lib/emojis";
-import { messageMutationResponseSchema, messagesResponseSchema } from "~/types/messages";
+import { splitTextLinks } from "~/lib/text";
+import {
+  GUESTBOOK_POST_COOLDOWN_SECONDS,
+  messageMutationResponseSchema,
+  messagesResponseSchema,
+} from "~/types/messages";
 import type { GuestbookMessage, MessageRowProps } from "~/types/messages";
 
 export const Route = createFileRoute("/messages")({
@@ -218,6 +223,18 @@ function MessagesPage() {
     setDeleteDialogOpen(true);
   };
 
+  const replaceMessage = (updated: GuestbookMessage) => {
+    setMessages((items) =>
+      items.map((item) => {
+        if (item.id === updated.id) return { ...updated, replies: item.replies };
+        return {
+          ...item,
+          replies: item.replies.map((reply) => (reply.id === updated.id ? updated : reply)),
+        };
+      }),
+    );
+  };
+
   const remove = async () => {
     const target = deleteTarget();
     if (!target || deleting()) return;
@@ -315,6 +332,9 @@ function MessagesPage() {
                     <span class="font-mono text-[10px] tabular-nums text-muted-foreground">
                       {content().length} / 1000
                     </span>
+                    <span class="hidden text-[10px] text-muted-foreground/70 sm:inline">
+                      {GUESTBOOK_POST_COOLDOWN_SECONDS}s account cooldown
+                    </span>
                   </div>
                   <Button
                     size="sm"
@@ -376,6 +396,7 @@ function MessagesPage() {
                       repliesExpanded={expandedReplies().has(message.id)}
                       onToggleReplies={() => toggleReplies(message.id)}
                       onReply={() => startReply(message)}
+                      onUpdated={replaceMessage}
                       onDelete={() => requestDelete(message, true)}
                     />
                     <Show when={expandedReplies().has(message.id) && message.replies.length}>
@@ -391,6 +412,7 @@ function MessagesPage() {
                                 message={reply}
                                 compact
                                 onReply={() => startReply(message)}
+                                onUpdated={replaceMessage}
                                 onDelete={() => requestDelete(reply, false)}
                               />
                             </div>
@@ -477,6 +499,10 @@ function MessagesPage() {
 }
 
 function MessageRow(props: MessageRowProps) {
+  const [editing, setEditing] = createSignal(false);
+  const [editContent, setEditContent] = createSignal("");
+  const [saving, setSaving] = createSignal(false);
+
   const replyControls = () => {
     if (props.compact === true) return null;
     return {
@@ -484,6 +510,43 @@ function MessageRow(props: MessageRowProps) {
       expanded: props.repliesExpanded,
       toggle: props.onToggleReplies,
     };
+  };
+
+  const startEdit = () => {
+    setEditContent(props.message.content);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => {
+    if (saving()) return;
+    setEditing(false);
+    setEditContent("");
+  };
+
+  const saveEdit = async (event: Event) => {
+    event.preventDefault();
+    const content = editContent().trim();
+    if (!content || content.length > 1000 || saving()) return;
+    if (content === props.message.content) return cancelEdit();
+
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/messages/${props.message.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      const data = messageMutationResponseSchema.parse(await response.json());
+      if (!data.ok) throw new Error(data.error);
+      props.onUpdated(data.message);
+      setEditing(false);
+      setEditContent("");
+      toast.success(props.compact ? "Reply updated" : "Note updated");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Could not update the note.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -508,55 +571,128 @@ function MessageRow(props: MessageRowProps) {
             {relativeTime(props.message.createdAt)}
           </time>
         </div>
-        <span class="mt-1.5 block whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
-          {renderGuestbookContent(props.message.content)}
-        </span>
-        <div
-          class={
-            props.compact
-              ? "mt-2 flex items-center gap-3 text-[11px] text-muted-foreground"
-              : "mt-3 flex items-center gap-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground"
+        <Show
+          when={!editing()}
+          fallback={
+            <form onSubmit={saveEdit} class="mt-2 rounded-md border border-border bg-muted/20 p-2">
+              <Textarea
+                value={editContent()}
+                onInput={(event) => setEditContent(event.currentTarget.value)}
+                rows={props.compact ? 2 : 3}
+                maxLength={1000}
+                aria-label={props.compact ? "Edit reply" : "Edit guestbook note"}
+                class="min-h-0 resize-y border-0 bg-transparent px-1 py-1 text-sm leading-6 shadow-none focus-visible:ring-0"
+              />
+              <div class="mt-1 flex items-center justify-between gap-3">
+                <span class="font-mono text-[9px] tabular-nums text-muted-foreground">
+                  {editContent().length} / 1000
+                </span>
+                <div class="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={saving()}
+                    onClick={cancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!editContent().trim() || saving()}
+                    class="gap-1.5"
+                  >
+                    <Show when={!saving()} fallback={<Spinner size="sm" />}>
+                      <Pencil size={11} />
+                    </Show>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </form>
           }
         >
-          <Show when={replyControls()}>
-            {(controls) => (
-              <Show when={controls().count > 0}>
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
-                  onClick={controls().toggle}
-                  aria-expanded={controls().expanded}
-                >
-                  {controls().expanded ? "Hide" : "Show"} replies ({controls().count})
-                  <ChevronDown
-                    size={12}
-                    class={`transition-transform duration-200 ${controls().expanded ? "rotate-180" : ""}`}
-                  />
-                </button>
-              </Show>
-            )}
-          </Show>
-          <button
-            class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
-            onClick={props.onReply}
+          <span class="mt-1.5 block whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
+            {renderGuestbookContent(props.message.content)}
+          </span>
+          <div
+            class={
+              props.compact
+                ? "mt-2 flex items-center gap-3 text-[11px] text-muted-foreground"
+                : "mt-3 flex items-center gap-3 border-t border-border/70 pt-3 text-[11px] text-muted-foreground"
+            }
           >
-            <Reply size={11} /> Reply
-          </button>
-          <Show when={props.message.canDelete}>
+            <Show when={replyControls()}>
+              {(controls) => (
+                <Show when={controls().count > 0}>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
+                    onClick={controls().toggle}
+                    aria-expanded={controls().expanded}
+                  >
+                    {controls().expanded ? "Hide" : "Show"} replies ({controls().count})
+                    <ChevronDown
+                      size={12}
+                      class={`transition-transform duration-200 ${controls().expanded ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </Show>
+              )}
+            </Show>
             <button
-              class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-destructive/10 hover:text-destructive"
-              onClick={props.onDelete}
+              type="button"
+              class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
+              onClick={props.onReply}
             >
-              <Trash2 size={11} /> Delete
+              <Reply size={11} /> Reply
             </button>
-          </Show>
-        </div>
+            <Show when={props.message.canEdit}>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
+                onClick={startEdit}
+              >
+                <Pencil size={11} /> Edit
+              </button>
+            </Show>
+            <Show when={props.message.canDelete}>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                onClick={props.onDelete}
+              >
+                <Trash2 size={11} /> Delete
+              </button>
+            </Show>
+          </div>
+        </Show>
       </div>
     </div>
   );
 }
 
 function renderGuestbookContent(content: string): JSX.Element {
+  return splitTextLinks(content).flatMap((part) =>
+    part.type === "link"
+      ? [
+          <a
+            href={part.value}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            referrerPolicy="no-referrer"
+            class="break-all text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
+          >
+            {part.value}
+          </a>,
+        ]
+      : renderImageEmojis(part.value),
+  );
+}
+
+function renderImageEmojis(content: string): JSX.Element[] {
   const parts: JSX.Element[] = [];
   const pattern = /:([a-z0-9]+)_([^:\s]+):/gi;
   let cursor = 0;

@@ -30,6 +30,21 @@ export async function getWishlistItem(d1: D1Database, id: string): Promise<WishI
   return rowToWishItem(row);
 }
 
+export async function getOwnedWishlistItem(
+  d1: D1Database,
+  userId: string,
+  id: string,
+): Promise<WishItem | null> {
+  const db = drizzle(d1);
+  const [row] = await db
+    .select()
+    .from(wishlistItems)
+    .where(and(eq(wishlistItems.id, id), eq(wishlistItems.userId, userId)))
+    .limit(1);
+
+  return row ? rowToWishItem(row) : null;
+}
+
 export async function createWishlistItem(
   d1: D1Database,
   userId: string,

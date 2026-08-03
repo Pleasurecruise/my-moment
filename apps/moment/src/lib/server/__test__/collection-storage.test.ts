@@ -1,11 +1,44 @@
 import { describe, expect, it, vi } from "vitest";
-import { uploadCollectionImage } from "../collection-image";
+import {
+  collectionImageKeyFromUrl,
+  deleteCollectionImage,
+  uploadCollectionImage,
+} from "../collection/storage";
 
 function createBucket() {
   const list = vi.fn();
   const put = vi.fn();
-  return { bucket: { list, put } as unknown as R2Bucket, list, put };
+  const remove = vi.fn();
+  return { bucket: { list, put, delete: remove } as unknown as R2Bucket, list, put, remove };
 }
+
+describe("collection image deletion", () => {
+  it("maps only images belonging to the requested collection", () => {
+    expect(collectionImageKeyFromUrl("/api/photos/haul/image02.webp", "haul")).toBe(
+      "img/haul/image02.webp",
+    );
+    expect(collectionImageKeyFromUrl("/api/photos/wishlist/image02.webp", "haul")).toBeNull();
+    expect(collectionImageKeyFromUrl("/api/photos/haul/../private.txt", "haul")).toBeNull();
+  });
+
+  it("deletes the mapped R2 object", async () => {
+    const { bucket, remove } = createBucket();
+    remove.mockResolvedValue(undefined);
+
+    await deleteCollectionImage(bucket, "wishlist", "/api/photos/wishlist/image04.png");
+
+    expect(remove).toHaveBeenCalledWith("img/wishlist/image04.png");
+  });
+
+  it("rejects invalid URLs without touching R2", async () => {
+    const { bucket, remove } = createBucket();
+
+    await expect(
+      deleteCollectionImage(bucket, "haul", "https://cdn.example/image.jpg"),
+    ).rejects.toThrow("Invalid haul image URL");
+    expect(remove).not.toHaveBeenCalled();
+  });
+});
 
 describe("uploadCollectionImage", () => {
   it("rejects missing files without touching R2", async () => {

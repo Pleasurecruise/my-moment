@@ -7,35 +7,34 @@ import {
   requestIsOwner,
   type WorkerEnv,
 } from "~/lib/server/access";
-import { uploadCollectionImage } from "~/lib/server/collection-image";
 import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
-  listPhotos,
-  getPhoto,
-  createPhoto,
-  updatePhoto,
+  createPhotoFromUpload,
   deletePhoto,
-  getAllTags,
-  renameTag,
-  deleteTag,
-} from "~/lib/server/photos/repository";
+  getPhoto,
+  listPhotos,
+  updatePhoto,
+} from "~/lib/server/photos/service";
+import { getAllTags, renameTag, deleteTag } from "~/lib/server/photos/repository";
 import {
+  createHaulItem,
+  deleteHaulItem,
   getHaulItem,
   listAllHaulItems,
-  createHaulItem,
   updateHaulItem,
-  deleteHaulItem,
-} from "~/lib/server/haul/repository";
+  uploadHaulImage,
+} from "~/lib/server/haul/service";
 import {
+  convertWishlistItem,
+  createWishlistItem,
+  deleteWishlistItem,
   getWishlistItem,
   listAllWishlistItems,
-  createWishlistItem,
   updateWishlistItem,
-  deleteWishlistItem,
-  convertWishlistItem,
-} from "~/lib/server/wishlist/repository";
+  uploadWishlistImage,
+} from "~/lib/server/wishlist/service";
 import { goodsFormSchema, wishFormSchema } from "~/types/haul";
-import { photoUploadSchema, photoUpdateSchema } from "~/types/photo";
+import { photoUpdateSchema } from "~/types/photo";
 import { renderOgImage, renderOgPng } from "~/lib/server/og";
 import { readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
 import {
@@ -43,6 +42,7 @@ import {
   deleteMessage,
   getMessageOwner,
   listMessages,
+  updateMessage,
 } from "~/lib/server/messages/repository";
 import type { MessageCursor, OgSection } from "~/types";
 import { HOST_DISPLAY_NAME } from "~/lib/identity";
@@ -55,6 +55,8 @@ const messageCreateSchema = z.object({
   content: z.string().trim().min(1).max(1000),
   parentId: z.string().uuid().optional(),
 });
+
+const messageUpdateSchema = messageCreateSchema.pick({ content: true });
 
 const messageCursorSchema = z.string().transform((value, context): MessageCursor => {
   const separator = value.lastIndexOf("~");
@@ -172,6 +174,32 @@ app.post("/api/messages", async (c) => {
   return c.json({ ok: true, message: result.message }, 201);
 });
 
+app.patch("/api/messages/:id", async (c) => {
+  const session = await getRequestSession(c);
+  if (!session?.user) return c.json({ ok: false, error: "Sign in to edit a message" }, 401);
+  const parsed = messageUpdateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ ok: false, error: parsed.error.issues[0]?.message ?? "Invalid message" }, 400);
+  }
+
+  const owner = await getMessageOwner(c.env.DB, c.req.param("id"));
+  if (!owner) return c.json({ ok: false, error: "Message not found" }, 404);
+  if (owner.authorId !== session.user.id) {
+    return c.json({ ok: false, error: "You can only edit your own messages" }, 403);
+  }
+
+  const message = await updateMessage(
+    c.env.DB,
+    c.req.param("id"),
+    session.user.id,
+    session.user.email,
+    parsed.data.content,
+    c.env.ALLOWED_EMAIL,
+  );
+  if (!message) return c.json({ ok: false, error: "Message not found" }, 404);
+  return c.json({ ok: true, message });
+});
+
 app.delete("/api/messages/:id", async (c) => {
   const session = await getRequestSession(c);
   if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
@@ -191,81 +219,14 @@ app.get("/api/gallery", async (c) => {
 });
 
 app.post("/api/photos/upload", uploadOwnerOnly, async (c) => {
-  const form = await c.req.formData();
-  const file = form.get("file");
-  const thumbnail = form.get("thumbnail");
-  if (!(file instanceof File)) return c.json({ error: "No file provided" }, 400);
-
-  let maxNum = 0;
-  let cursor: string | undefined;
-  do {
-    const listed = await c.env.MOMENT_BUCKET.list({
-      prefix: "img/image",
-      cursor,
-    });
-    for (const obj of listed.objects) {
-      const match = obj.key.match(/^img\/image(\d+)\./);
-      if (match) maxNum = Math.max(maxNum, Number(match[1]));
-    }
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-
-  const num = maxNum + 1;
-  const imageKey = `img/image${num}.png`;
-  const thumbKey = `img/thumbnails/image${num}.jpg`;
-
-  const [imageBuffer, thumbBuffer] = await Promise.all([
-    file.arrayBuffer(),
-    thumbnail instanceof File ? thumbnail.arrayBuffer() : file.arrayBuffer(),
-  ]);
-
-  await Promise.all([
-    c.env.MOMENT_BUCKET.put(imageKey, imageBuffer, {
-      httpMetadata: { contentType: "image/png" },
-    }),
-    c.env.MOMENT_BUCKET.put(thumbKey, thumbBuffer, {
-      httpMetadata: { contentType: "image/jpeg" },
-    }),
-  ]);
-
-  const str = (key: string) => {
-    const v = form.get(key);
-    return typeof v === "string" ? v : undefined;
-  };
-
-  const parsed = photoUploadSchema.safeParse({
-    title: str("title"),
-    description: str("description"),
-    date: str("date"),
-    geo: str("geo") ? JSON.parse(str("geo")!) : undefined,
-    tags: str("tags") ? JSON.parse(str("tags")!) : [],
-    thumbHash: str("thumbHash"),
-    width: str("width"),
-    height: str("height"),
-    aspectRatio: str("aspectRatio"),
-  });
-  if (!parsed.success) {
-    return c.json({ error: parsed.error.issues[0]?.message }, 400);
-  }
-  const input = parsed.data;
-
-  const photo = await createPhoto(c.env.DB, c.get("ownerId"), {
-    url: `/api/photos/image${num}.png`,
-    thumbnailUrl: `/api/photos/${thumbKey}`,
-    thumbHash: input.thumbHash,
-    title: input.title || file.name,
-    width: input.width,
-    height: input.height,
-    aspectRatio: input.aspectRatio,
-    size: file.size,
-    format: file.name.split(".").pop()?.toUpperCase() || "PNG",
-    date: input.date || new Date().toISOString(),
-    description: input.description || "",
-    geo: input.geo,
-    tags: input.tags,
-  });
-
-  return c.json(photo);
+  const result = await createPhotoFromUpload(
+    c.env.DB,
+    c.env.MOMENT_BUCKET,
+    c.get("ownerId"),
+    await c.req.formData(),
+  );
+  if (!result.ok) return c.json({ error: result.error }, 400);
+  return c.json(result.photo);
 });
 
 app.get("/api/photos/:id", async (c) => {
@@ -289,7 +250,7 @@ app.put("/api/photos/:id", ownerOnly, async (c) => {
 
 app.delete("/api/photos/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
-  const deleted = await deletePhoto(c.env.DB, id);
+  const deleted = await deletePhoto(c.env.DB, c.env.MOMENT_BUCKET, id);
   if (!deleted) return c.json({ error: "Photo not found" }, 404);
   return c.json({ ok: true });
 });
@@ -498,7 +459,7 @@ app.post("/api/haul", ownerOnly, async (c) => {
 
 app.post("/api/haul/upload", ownerOnly, async (c) => {
   const form = await c.req.formData();
-  const result = await uploadCollectionImage(c.env.MOMENT_BUCKET, "haul", form.get("file"));
+  const result = await uploadHaulImage(c.env.MOMENT_BUCKET, form.get("file"));
   if (!result.ok) return c.json({ error: result.error }, 400);
   return c.json({ key: result.key, url: result.url });
 });
@@ -515,7 +476,7 @@ app.put("/api/haul/:id", ownerOnly, async (c) => {
 
 app.delete("/api/haul/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
-  const deleted = await deleteHaulItem(c.env.DB, c.get("ownerId"), id);
+  const deleted = await deleteHaulItem(c.env.DB, c.env.MOMENT_BUCKET, c.get("ownerId"), id);
   if (!deleted) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });
@@ -536,7 +497,7 @@ app.get("/api/wish/:id", async (c) => {
 
 app.post("/api/wish/upload", ownerOnly, async (c) => {
   const form = await c.req.formData();
-  const result = await uploadCollectionImage(c.env.MOMENT_BUCKET, "wishlist", form.get("file"));
+  const result = await uploadWishlistImage(c.env.MOMENT_BUCKET, form.get("file"));
   if (!result.ok) return c.json({ error: result.error }, 400);
   return c.json({ key: result.key, url: result.url });
 });
@@ -561,7 +522,7 @@ app.put("/api/wish/:id", ownerOnly, async (c) => {
 
 app.delete("/api/wish/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
-  const deleted = await deleteWishlistItem(c.env.DB, c.get("ownerId"), id);
+  const deleted = await deleteWishlistItem(c.env.DB, c.env.MOMENT_BUCKET, c.get("ownerId"), id);
   if (!deleted) return c.json({ error: "Not found" }, 404);
   return c.json({ ok: true });
 });

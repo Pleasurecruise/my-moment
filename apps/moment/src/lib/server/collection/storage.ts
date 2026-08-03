@@ -14,6 +14,25 @@ export type CollectionImageResult =
   | { ok: true; key: string; url: string }
   | { ok: false; error: string };
 
+export function collectionImageKeyFromUrl(value: string, kind: CollectionImageKind): string | null {
+  const routePrefix = `/api/photos/${kind}/`;
+  if (!value.startsWith(routePrefix)) return null;
+
+  const filename = value.slice(routePrefix.length);
+  if (!filename || /[/\\%?#]/.test(filename)) return null;
+  return `img/${kind}/${filename}`;
+}
+
+export async function deleteCollectionImage(
+  bucket: R2Bucket,
+  kind: CollectionImageKind,
+  url: string,
+): Promise<void> {
+  const key = collectionImageKeyFromUrl(url, kind);
+  if (!key) throw new Error(`Invalid ${kind} image URL`);
+  await bucket.delete(key);
+}
+
 export async function uploadCollectionImage(
   bucket: R2Bucket,
   kind: CollectionImageKind,

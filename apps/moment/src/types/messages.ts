@@ -12,9 +12,12 @@ export interface GuestbookMessage {
   content: string;
   createdAt: string;
   author: MessageAuthor;
+  canEdit: boolean;
   canDelete: boolean;
   replies: GuestbookMessage[];
 }
+
+export const GUESTBOOK_POST_COOLDOWN_SECONDS = 30;
 
 export interface MessagesResponse {
   messages: GuestbookMessage[];
@@ -33,6 +36,7 @@ export const guestbookMessageSchema: z.ZodType<GuestbookMessage> = z.lazy(() =>
       image: z.string().nullable(),
       isHost: z.boolean(),
     }),
+    canEdit: z.boolean(),
     canDelete: z.boolean(),
     replies: z.array(guestbookMessageSchema),
   }),
@@ -59,6 +63,7 @@ export interface MessageCursor {
 interface MessageRowBaseProps {
   message: GuestbookMessage;
   onReply: () => void;
+  onUpdated: (message: GuestbookMessage) => void;
   onDelete: () => void;
 }
 

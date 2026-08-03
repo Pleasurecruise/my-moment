@@ -31,8 +31,9 @@ export function PhotosRoot(props: PhotosRootProps) {
   const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
   const [viewerIndex, setViewerIndex] = createSignal<number | null>(null);
   const [showFilters, setShowFilters] = createSignal(false);
+  const [deletedPhotoIds, setDeletedPhotoIds] = createSignal(new Set<string>());
 
-  const allPhotos = () => props.photos;
+  const allPhotos = () => props.photos.filter((photo) => !deletedPhotoIds().has(photo.id));
 
   const shareGalleryLink = () =>
     void shareLink({ url: `${window.location.origin}/`, title: "Gallery" });
@@ -119,6 +120,10 @@ export function PhotosRoot(props: PhotosRootProps) {
           onEdit={(photo) => {
             setViewerIndex(null);
             navigate({ to: `/photos/${photo.id}/edit` });
+          }}
+          onDeleted={(photo) => {
+            setViewerIndex(null);
+            setDeletedPhotoIds((current) => new Set(current).add(photo.id));
           }}
         />
       </Show>
