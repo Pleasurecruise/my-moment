@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { createResource } from "solid-js";
 import { PhotosRoot } from "~/modules/gallery/PhotosRoot";
 import type { PhotoItem } from "~/types";
+import { publicPageMeta } from "~/lib/seo";
 
 interface GalleryResponse {
   photos: PhotoItem[];
@@ -13,17 +14,7 @@ let galleryCache: GalleryResponse | undefined;
 export const Route = createFileRoute("/")({
   component: HomePage,
   head: () => ({
-    meta: [
-      { title: "My Moment — 私の瞬間" },
-      { property: "og:title", content: "My Moment — 私の瞬間" },
-      {
-        property: "og:description",
-        content: "A personal photo gallery and collection journal.",
-      },
-      { property: "og:image", content: "/api/og/gallery" },
-      { property: "og:url", content: "/" },
-      { property: "og:type", content: "website" },
-    ],
+    meta: publicPageMeta("gallery"),
   }),
   staleTime: 0,
 });

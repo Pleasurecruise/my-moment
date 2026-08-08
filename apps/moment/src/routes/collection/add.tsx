@@ -5,6 +5,7 @@ import { ArrowLeft, Heart, ShoppingBag } from "lucide-solid";
 import { Button, Spinner, toast } from "@my-moment/ui";
 import { GoodsForm, WishForm } from "~/modules/haul";
 import type { GoodsFormInput, GoodsItem, WishFormInput, WishItem } from "~/types";
+import { privatePageMeta } from "~/lib/seo";
 
 const collectionFormSearchSchema = z
   .object({
@@ -37,6 +38,7 @@ interface SourceRequest {
 export const Route = createFileRoute("/collection/add")({
   component: CollectionFormPage,
   validateSearch: collectionFormSearchSchema,
+  head: () => ({ meta: privatePageMeta("Edit Collection") }),
 });
 
 function CollectionFormPage() {

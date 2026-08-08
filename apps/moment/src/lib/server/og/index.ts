@@ -4,24 +4,19 @@ import { OG_FONT_FAMILIES, loadOgFonts } from "./fonts";
 const W = 1200;
 const H = 630;
 
-const light = {
-  paper: "#faf7ee",
-  card: "#fffdf7",
-  oat: "#e6dfd1",
-  fog: "#756f66",
-  ink: "#2c2823",
-} as const;
-
-const gold = {
-  deep: "#b7872c",
-  mid: "#cf9e34",
-  bright: "#e7c46a",
-  tint: "#f4e8c8",
+// Resolved equivalents of the semantic light-theme tokens. The generated SVG is
+// rendered outside the document, so browser CSS custom properties are unavailable.
+const semantic = {
+  background: "#faf9f5",
+  card: "#fffefa",
+  foreground: "#2d2a26",
+  mutedForeground: "#6e6962",
+  border: "#dedbd4",
+  primary: "#dfc35e",
 } as const;
 
 const font = {
-  sans: '"Geist", "Inter", system-ui, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif',
-  serif: '"Lora", "Noto Serif SC", "Source Han Serif SC", Georgia, serif',
+  sans: '"Inter", "Noto Sans SC", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif',
   mono: '"Geist Mono", "JetBrains Mono", "Fira Code", Consolas, Monaco, monospace',
 } as const;
 
@@ -136,34 +131,23 @@ function txt(
   return `<text ${a}>${esc(text)}</text>`;
 }
 
-function bg(): string {
-  return `
-    <defs>
-      <radialGradient id="wash" cx="78%" cy="12%" r="70%">
-        <stop offset="0%" stop-color="${gold.bright}" stop-opacity="0.14" />
-        <stop offset="60%" stop-color="${gold.tint}" stop-opacity="0.05" />
-        <stop offset="100%" stop-color="${light.paper}" stop-opacity="0" />
-      </radialGradient>
-    </defs>
-    <rect width="${W}" height="${H}" fill="${light.paper}" />
-    <rect width="${W}" height="${H}" fill="url(#wash)" />
-  `;
-}
-
 export interface OgImageOptions {
   title: string;
   subtitle?: string;
   domain?: string;
   date?: string | null;
   siteName?: string;
-  type?: "photo" | "haul" | "wish" | "default";
+  logoDataUrl?: string;
+  type?: "photo" | "haul" | "wish" | "journey" | "guestbook" | "default";
 }
 
-const typeMeta: Record<string, { emoji: string; kicker: string }> = {
-  photo: { emoji: "📷", kicker: "Captured Moments" },
-  haul: { emoji: "🛍️", kicker: "Things I Bought" },
-  wish: { emoji: "💝", kicker: "Saved For Later" },
-  default: { emoji: "✨", kicker: "Collection" },
+const typeMeta: Record<string, { code: string; kicker: string }> = {
+  photo: { code: "GA", kicker: "Photographic archive" },
+  haul: { code: "CO", kicker: "Objects & observations" },
+  wish: { code: "WI", kicker: "Things worth remembering" },
+  journey: { code: "JR", kicker: "Places & memory" },
+  guestbook: { code: "GB", kicker: "Notes from visitors" },
+  default: { code: "AR", kicker: "Personal archive" },
 };
 
 export function renderOgImage(options: OgImageOptions): string {
@@ -173,142 +157,172 @@ export function renderOgImage(options: OgImageOptions): string {
     domain = "my-moment.pages.dev",
     date = null,
     siteName = "My Moment",
+    logoDataUrl,
     type = "default",
   } = options;
 
   const meta = typeMeta[type] || typeMeta.default;
 
-  const FRAME = { x: 44, y: 44, w: W - 88, h: H - 88, rx: 28 };
-  const X = 100;
-  const R = W - 100;
+  const X = 72;
+  const PANEL_X = 830;
+  const CONTENT_R = PANEL_X - 72;
 
   const len = Array.from(title).length;
-  const titleSize = len <= 8 ? 112 : len <= 16 ? 82 : len <= 28 ? 60 : 46;
-  const lines = wrapText(title, R - X, titleSize, titleSize, 3);
-  const lineH = titleSize * 1.06;
-
-  const countMatch = subtitle?.match(/^\s*([\d.,]+)\s+(.+)$/);
+  const titleSize = len <= 9 ? 94 : len <= 18 ? 76 : len <= 32 ? 60 : 48;
+  const lines = wrapText(title, CONTENT_R - X, titleSize, titleSize, 3);
+  const lineH = titleSize * 1.02;
 
   const parts: string[] = [];
 
   parts.push(`
-    <defs>
-      <linearGradient id="frameEdge" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${gold.mid}" stop-opacity="0.5" />
-        <stop offset="100%" stop-color="${light.oat}" stop-opacity="0.9" />
-      </linearGradient>
-    </defs>
-    <rect x="${FRAME.x}" y="${FRAME.y}" width="${FRAME.w}" height="${FRAME.h}" rx="${FRAME.rx}"
-      fill="${light.card}" stroke="url(#frameEdge)" stroke-width="1.5" />
+    <rect width="${W}" height="${H}" fill="${semantic.background}" />
+    <rect x="${PANEL_X + 34}" y="62" width="302" height="506" rx="18"
+      fill="${semantic.card}" stroke="${semantic.border}" stroke-width="1.5" />
+    <line x1="${X}" y1="108" x2="${CONTENT_R}" y2="108" stroke="${semantic.border}" stroke-width="1.5" />
   `);
 
-  const brandY = 120;
-  parts.push(
-    `<rect x="${X}" y="${brandY - 12}" width="30" height="5" rx="2.5" fill="${gold.mid}" />`,
-  );
   parts.push(
     txt(siteName.toUpperCase(), {
-      x: X + 46,
-      y: brandY,
-      ff: font.mono,
-      fs: 22,
-      fw: 500,
-      fill: light.ink,
-      opacity: 0.72,
-      ls: "0.22em",
-    }),
-  );
-
-  const badge = { cx: R - 40, cy: 110, r: 40 };
-  parts.push(
-    `<circle cx="${badge.cx}" cy="${badge.cy}" r="${badge.r}" fill="${gold.tint}" stroke="${gold.mid}" stroke-width="1.5" stroke-opacity="0.55" />`,
-  );
-  parts.push(
-    txt(meta.emoji, {
-      x: badge.cx,
-      y: badge.cy + 15,
+      x: X,
+      y: 82,
       ff: font.sans,
-      fs: 40,
+      fs: 19,
+      fw: 600,
+      fill: semantic.foreground,
+      ls: "0.04em",
+    }),
+  );
+  parts.push(
+    txt("A PERSONAL INDEX", {
+      x: CONTENT_R,
+      y: 82,
+      ff: font.mono,
+      fs: 13,
       fw: 400,
-      fill: light.ink,
-      anchor: "middle",
+      fill: semantic.mutedForeground,
+      ls: "0.04em",
+      anchor: "end",
     }),
   );
 
-  const kickerY = 258;
+  parts.push(`<rect x="${X}" y="156" width="42" height="5" rx="2.5" fill="${semantic.primary}" />`);
   parts.push(
     txt(meta.kicker.toUpperCase(), {
       x: X,
-      y: kickerY,
+      y: 194,
       ff: font.sans,
-      fs: 22,
-      fw: 600,
-      fill: gold.deep,
-      ls: "0.16em",
+      fs: 15,
+      fw: 500,
+      fill: semantic.mutedForeground,
+      ls: "0.04em",
     }),
   );
 
-  const firstBaseline = 352;
+  const firstBaseline = 316;
   lines.forEach((line, i) => {
     parts.push(
       txt(line, {
         x: X,
         y: firstBaseline + i * lineH,
-        ff: font.serif,
+        ff: font.sans,
         fs: titleSize,
         fw: 600,
-        fill: light.ink,
+        fill: semantic.foreground,
+        ls: "-0.02em",
       }),
     );
   });
 
-  const countY = firstBaseline + (lines.length - 1) * lineH + 78;
-  if (countMatch) {
-    const [, num, label] = countMatch;
-    parts.push(txt(num, { x: X, y: countY, ff: font.serif, fs: 58, fw: 600, fill: gold.deep }));
-    const numW = Array.from(num).length * 58 * 0.56;
+  if (subtitle) {
+    const subtitleY = Math.max(466, firstBaseline + lines.length * lineH + 34);
     parts.push(
-      txt(label.toUpperCase(), {
-        x: X + numW + 18,
-        y: countY - 6,
+      txt(subtitle, {
+        x: X,
+        y: Math.min(subtitleY, 500),
         ff: font.sans,
-        fs: 26,
-        fw: 500,
-        fill: light.fog,
-        ls: "0.12em",
+        fs: 23,
+        fw: 400,
+        fill: semantic.mutedForeground,
       }),
     );
-  } else if (subtitle) {
-    parts.push(txt(subtitle, { x: X, y: countY, ff: font.sans, fs: 32, fw: 400, fill: light.fog }));
   }
 
-  const footY = 524;
   parts.push(
-    `<line x1="${X}" y1="${footY - 26}" x2="${R}" y2="${footY - 26}" stroke="${light.oat}" stroke-width="1" />`,
+    txt(meta.code, {
+      x: PANEL_X + 66,
+      y: 98,
+      ff: font.mono,
+      fs: 14,
+      fw: 500,
+      fill: semantic.mutedForeground,
+      ls: "0.04em",
+    }),
+  );
+  if (logoDataUrl) {
+    parts.push(
+      `<image href="${esc(logoDataUrl)}" x="894" y="138" width="244" height="244" preserveAspectRatio="xMidYMid meet" />`,
+    );
+  } else {
+    parts.push(
+      txt("M", {
+        x: PANEL_X + 185,
+        y: 354,
+        ff: font.sans,
+        fs: 220,
+        fw: 600,
+        fill: semantic.foreground,
+        anchor: "middle",
+      }),
+    );
+  }
+  parts.push(
+    txt("MY MOMENT", {
+      x: PANEL_X + 185,
+      y: 448,
+      ff: font.sans,
+      fs: 18,
+      fw: 600,
+      fill: semantic.foreground,
+      ls: "0.04em",
+      anchor: "middle",
+    }),
+  );
+  parts.push(
+    txt("PERSONAL ARCHIVE", {
+      x: PANEL_X + 185,
+      y: 478,
+      ff: font.mono,
+      fs: 12,
+      fw: 400,
+      fill: semantic.mutedForeground,
+      ls: "0.04em",
+      anchor: "middle",
+    }),
+  );
+
+  parts.push(
+    `<line x1="${X}" y1="558" x2="${CONTENT_R}" y2="558" stroke="${semantic.border}" stroke-width="1" />`,
   );
   parts.push(
     txt(domain, {
       x: X,
-      y: footY,
+      y: 588,
       ff: font.mono,
-      fs: 15,
+      fs: 14,
       fw: 400,
-      fill: light.fog,
-      opacity: 0.75,
-      ls: "0.06em",
-      tt: "uppercase",
+      fill: semantic.mutedForeground,
+      ls: "0.05em",
     }),
   );
   if (date) {
     parts.push(
       txt(date, {
-        x: R,
-        y: footY,
+        x: CONTENT_R,
+        y: 588,
         ff: font.mono,
-        fs: 15,
+        fs: 14,
         fw: 400,
-        fill: light.fog,
-        opacity: 0.6,
+        fill: semantic.mutedForeground,
         anchor: "end",
       }),
     );
@@ -316,7 +330,6 @@ export function renderOgImage(options: OgImageOptions): string {
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
-    bg(),
     ...parts,
     `</svg>`,
   ].join("\n");
@@ -349,13 +362,13 @@ export async function renderOgPng(svg: string, kv: KVNamespace): Promise<ArrayBu
   const fontBuffers = await loadOgFonts(extractText(svg), kv);
 
   const resvg = new Resvg(svg, {
-    background: light.paper,
+    background: semantic.background,
     fitTo: { mode: "width", value: W },
     font: {
       fontBuffers,
       defaultFontFamily: OG_FONT_FAMILIES.sans,
       sansSerifFamily: OG_FONT_FAMILIES.sans,
-      serifFamily: OG_FONT_FAMILIES.serif,
+      serifFamily: OG_FONT_FAMILIES.sans,
     },
   });
 

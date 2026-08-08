@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Segment } from "~/components/Segment";
 import { HaulPage, WishPage } from "~/modules/haul";
 import type { CollectionResponse, GoodsItem, WishItem } from "~/types";
+import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/collection/")({
   component: CollectionPage,
@@ -12,13 +13,7 @@ export const Route = createFileRoute("/collection/")({
     item: z.string().optional(),
   }),
   head: () => ({
-    meta: [
-      { title: "Collection — My Moment" },
-      { property: "og:title", content: "Collection — My Moment" },
-      { property: "og:description", content: "Things collected, considered, and remembered." },
-      { property: "og:image", content: "/api/og/collection" },
-      { property: "og:url", content: "/collection" },
-    ],
+    meta: publicPageMeta("collection"),
   }),
 });
 

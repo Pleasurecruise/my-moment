@@ -1,5 +1,5 @@
-import { createSignal, onMount, Show } from "solid-js";
-import { createRootRoute, Link, Outlet, useRouter } from "@tanstack/solid-router";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
+import { createRootRoute, HeadContent, Link, Outlet, useRouter } from "@tanstack/solid-router";
 import { useSession, signIn, signOut } from "~/lib/services/auth";
 import { Images, Map, MessageCircle, Library, Sun, Moon, LogIn, LogOut } from "lucide-solid";
 import {
@@ -18,9 +18,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { property: "og:site_name", content: "My Moment" },
-      { property: "og:image:width", content: "1200" },
-      { property: "og:image:height", content: "630" },
-      { property: "og:type", content: "website" },
+      { property: "og:locale", content: "en_US" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
@@ -59,6 +57,44 @@ function RootLayout() {
   };
 
   const currentPath = () => router.state.location.pathname ?? "/";
+  let initialPath: string | undefined;
+  let hasNavigated = false;
+
+  onMount(() => {
+    initialPath = currentPath();
+    queueMicrotask(() => {
+      const staticElements = document.head.querySelectorAll<HTMLElement>("[data-static-head]");
+      staticElements.forEach((element) => {
+        const isShadowed = Array.from(document.head.children).some((candidate) => {
+          if (candidate === element || candidate.hasAttribute("data-static-head")) return false;
+          if (candidate.tagName !== element.tagName) return false;
+          if (element.tagName === "TITLE") return true;
+          if (element.tagName === "META") {
+            return (
+              candidate.getAttribute("name") === element.getAttribute("name") &&
+              candidate.getAttribute("property") === element.getAttribute("property")
+            );
+          }
+          return (
+            element.tagName === "LINK" &&
+            candidate.getAttribute("rel") === element.getAttribute("rel")
+          );
+        });
+        if (isShadowed) element.remove();
+      });
+    });
+  });
+
+  createEffect(() => {
+    const path = currentPath();
+    if (!initialPath) return;
+    if (path !== initialPath) hasNavigated = true;
+    if (!hasNavigated) return;
+    queueMicrotask(() => {
+      document.head.querySelectorAll("[data-static-head]").forEach((element) => element.remove());
+    });
+  });
+
   const isJourney = () => currentPath() === "/journey" || currentPath().startsWith("/journey/");
   const tabIsActive = (href: string) =>
     href === "/"
@@ -158,6 +194,7 @@ function RootLayout() {
       id="app-scroll-container"
       class="min-h-screen bg-background text-foreground font-sans overflow-x-hidden overflow-y-auto"
     >
+      <HeadContent />
       <header class="sticky top-0 z-30 flex items-center justify-between px-4 h-12 bg-background/95 backdrop-blur-sm border-b border-border lg:hidden">
         <div class="flex items-center gap-2">
           <span class="font-serif font-semibold text-foreground tracking-tight">my moment</span>

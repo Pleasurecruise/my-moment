@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/solid-router";
 import { z } from "zod";
+import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/haul/")({
   validateSearch: z.object({
@@ -13,17 +14,7 @@ export const Route = createFileRoute("/haul/")({
     });
   },
   head: () => ({
-    meta: [
-      { title: "Haul — My Moment" },
-      { property: "og:title", content: "Haul — My Moment" },
-      {
-        property: "og:description",
-        content: "Things I bought and what I think of them.",
-      },
-      { property: "og:image", content: "/api/og/haul" },
-      { property: "og:url", content: "/haul" },
-      { property: "og:type", content: "website" },
-    ],
+    meta: publicPageMeta("haul"),
   }),
   staleTime: 0,
 });

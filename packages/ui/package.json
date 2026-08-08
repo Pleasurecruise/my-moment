@@ -20,14 +20,14 @@
   "dependencies": {
     "@kobalte/core": "0.13.12",
     "clsx": "2.1.1",
-    "lucide-solid": "1.28.0",
+    "lucide-solid": "1.30.0",
     "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@storybook/addon-a11y": "10.5.5",
-    "@storybook/addon-docs": "10.5.5",
-    "@storybook/addon-themes": "10.5.5",
-    "storybook": "10.5.5",
+    "@storybook/addon-a11y": "10.5.7",
+    "@storybook/addon-docs": "10.5.7",
+    "@storybook/addon-themes": "10.5.7",
+    "storybook": "10.5.7",
     "storybook-solidjs-vite": "10.6.0"
   }
 }

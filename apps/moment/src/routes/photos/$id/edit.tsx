@@ -4,9 +4,11 @@ import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
 import type { PhotoItem } from "~/types";
+import { privatePageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/photos/$id/edit")({
   component: PhotoEditPage,
+  head: () => ({ meta: privatePageMeta("Edit Photo") }),
 });
 
 function PhotoEditPage() {

@@ -29,16 +29,12 @@ import {
   messagesResponseSchema,
 } from "~/types/messages";
 import type { GuestbookMessage, MessageRowProps } from "~/types/messages";
+import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/messages")({
   component: MessagesPage,
   head: () => ({
-    meta: [
-      { title: "Guestbook — My Moment" },
-      { property: "og:title", content: "Guestbook — My Moment" },
-      { property: "og:description", content: "Leave a small note in the guestbook." },
-      { property: "og:url", content: "/messages" },
-    ],
+    meta: publicPageMeta("guestbook"),
   }),
 });
 

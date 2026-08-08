@@ -6,6 +6,7 @@ import { shareLink } from "~/lib/share";
 import type { PhotoItem } from "~/types";
 import { PhotoDetails } from "~/modules/viewer/PhotoDetails";
 import { EmptyState } from "~/components/EmptyState";
+import { socialMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/photos/$id/")({
   component: PhotoDetailPage,
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/photos/$id/")({
       return {
         meta: [
           { title: "Photo Not Found — My Moment" },
+          { name: "robots", content: "noindex, nofollow" },
           { property: "og:title", content: "Photo Not Found — My Moment" },
           {
             property: "og:description",
@@ -25,14 +27,13 @@ export const Route = createFileRoute("/photos/$id/")({
     }
     const description = photo.description || photo.title || "A photo from My Moment";
     return {
-      meta: [
-        { title: `${photo.title} — My Moment` },
-        { property: "og:title", content: `${photo.title} — My Moment` },
-        { property: "og:description", content: description.slice(0, 160) },
-        { property: "og:image", content: "/api/og/gallery" },
-        { property: "og:url", content: `/photos/${photo.id}` },
-        { property: "og:type", content: "article" },
-      ],
+      meta: socialMeta({
+        title: `${photo.title || "Untitled moment"} — My Moment`,
+        description: description.slice(0, 160),
+        path: `/photos/${photo.id}`,
+        image: photo.url,
+        type: "article",
+      }),
     };
   },
   loader: async ({ params }) => {

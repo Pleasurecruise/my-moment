@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { lazy } from "solid-js";
+import { publicPageMeta } from "~/lib/seo";
 
 const JourneyMap = lazy(() =>
   import("~/modules/journey/JourneyMap").then((module) => ({ default: module.JourneyMap })),
@@ -8,12 +9,7 @@ const JourneyMap = lazy(() =>
 export const Route = createFileRoute("/journey")({
   component: JourneyPage,
   head: () => ({
-    meta: [
-      { title: "Journey — My Moment" },
-      { property: "og:title", content: "Journey — My Moment" },
-      { property: "og:description", content: "A map of places that became part of the story." },
-      { property: "og:url", content: "/journey" },
-    ],
+    meta: publicPageMeta("journey"),
   }),
 });
 

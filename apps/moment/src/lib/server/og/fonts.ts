@@ -6,11 +6,11 @@ const TTF_USER_AGENT =
   "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_4; en-us) AppleWebKit/533.18.1 (KHTML, like Gecko) Version/5.0.2 Safari/533.18.5";
 
 export const OG_FONT_FAMILIES = {
-  sans: "Noto Sans SC",
-  serif: "Noto Serif SC",
+  sans: "Inter",
+  cjk: "Noto Sans SC",
 } as const;
 
-const FONT_FAMILIES = [OG_FONT_FAMILIES.sans, OG_FONT_FAMILIES.serif] as const;
+const FONT_FAMILIES = [OG_FONT_FAMILIES.sans, OG_FONT_FAMILIES.cjk] as const;
 
 // Color emoji fonts are ~20MB even subset, so we fall back to monochrome Noto Emoji.
 const EMOJI_FAMILY = "Noto Emoji";

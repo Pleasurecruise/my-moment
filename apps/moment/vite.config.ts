@@ -26,8 +26,5 @@ export default defineConfig(({ command }) => ({
   },
   build: {
     outDir: "dist",
-    rolldownOptions: {
-      external: [/\.wasm$/],
-    },
   },
 }));

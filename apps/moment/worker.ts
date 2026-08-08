@@ -35,8 +35,8 @@ import {
 } from "~/lib/server/wishlist/service";
 import { goodsFormSchema, wishFormSchema } from "~/types/haul";
 import { photoUpdateSchema } from "~/types/photo";
-import { renderOgImage, renderOgPng } from "~/lib/server/og";
-import { readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
+import { renderOgImage, renderOgPng, type OgImageOptions } from "~/lib/server/og";
+import { getOgImageVersion, readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
 import {
   createMessage,
   deleteMessage,
@@ -44,8 +44,9 @@ import {
   listMessages,
   updateMessage,
 } from "~/lib/server/messages/repository";
-import type { MessageCursor, OgSection } from "~/types";
+import type { MessageCursor, WorkerBindings } from "~/types";
 import { HOST_DISPLAY_NAME } from "~/lib/identity";
+import { PUBLIC_PAGE_META, SITE_NAME, type PublicPageKey } from "~/lib/seo";
 
 const app = new Hono<WorkerEnv>();
 const ownerOnly = createOwnerGuard();
@@ -74,29 +75,140 @@ const messageListQuerySchema = z.object({
   cursor: messageCursorSchema.optional(),
 });
 
-function sectionForPath(url: URL): OgSection | null {
-  const path = url.pathname;
-  if (path === "/" || path.startsWith("/photos/")) {
+interface PageMeta {
+  title: string;
+  description: string;
+  canonical: string;
+  image?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  type?: "website" | "article";
+  robots?: string;
+}
+
+function absoluteUrl(origin: string, path: string): string {
+  return new URL(path, origin).href;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 32_768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32_768));
+  }
+  return btoa(binary);
+}
+
+function ogImageUrl(origin: string, path: string): string {
+  return absoluteUrl(origin, `${path}?v=${getOgImageVersion()}`);
+}
+
+function staticPageMeta(origin: string, key: PublicPageKey): PageMeta {
+  const page = PUBLIC_PAGE_META[key];
+  return {
+    title: page.title,
+    description: page.description,
+    canonical: absoluteUrl(origin, page.path),
+    image: ogImageUrl(origin, page.image),
+    imageWidth: 1200,
+    imageHeight: 630,
+  };
+}
+
+async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta> {
+  const path = url.pathname.replace(/\/$/, "") || "/";
+  const privatePath =
+    path === "/upload" ||
+    path === "/collection/add" ||
+    path.endsWith("/edit") ||
+    path === "/haul/add" ||
+    path === "/wish/add";
+
+  if (privatePath) {
     return {
-      key: "gallery",
-      title: "Gallery",
-      description: "A personal photo gallery and collection journal.",
+      title: `Private workspace — ${SITE_NAME}`,
+      description: "A private editing workspace.",
+      canonical: absoluteUrl(url.origin, path),
+      robots: "noindex, nofollow, noarchive",
     };
   }
-  if (path === "/haul" || path === "/haul/") {
-    return { key: "haul", title: "Haul", description: "Things I bought and what I think of them." };
+
+  if (path === "/") return staticPageMeta(url.origin, "gallery");
+  if (path === "/journey") return staticPageMeta(url.origin, "journey");
+  if (path === "/messages" || path === "/snapshot") {
+    return staticPageMeta(url.origin, "guestbook");
   }
-  if (path === "/wish" || path === "/wish/") {
-    return { key: "wishlist", title: "Wishlist", description: "Things I'm hoping to get." };
+
+  const photoMatch = path.match(/^\/photos\/([^/]+)$/);
+  if (photoMatch?.[1]) {
+    const photo = await getPhoto(env.DB, decodeURIComponent(photoMatch[1]));
+    if (photo) {
+      const title = photo.title.trim() || "Untitled moment";
+      return {
+        title: `${title} — ${SITE_NAME}`,
+        description: (photo.description || `A photographed moment from ${SITE_NAME}.`).slice(
+          0,
+          160,
+        ),
+        canonical: absoluteUrl(url.origin, `/photos/${photo.id}`),
+        image: absoluteUrl(url.origin, photo.url),
+        imageWidth: photo.width || undefined,
+        imageHeight: photo.height || undefined,
+        type: "article",
+      };
+    }
   }
-  if (path === "/collection" || path === "/collection/") {
-    return {
-      key: "collection",
-      title: "Collection",
-      description: "Things collected, considered, and remembered.",
-    };
+
+  if (path === "/haul") return staticPageMeta(url.origin, "haul");
+  if (path === "/wish") return staticPageMeta(url.origin, "wishlist");
+
+  if (path === "/collection") {
+    const view = url.searchParams.get("view") === "wishlist" ? "wishlist" : "haul";
+    const itemId = url.searchParams.get("item");
+    if (itemId) {
+      const resolved = await (async () => {
+        if (view === "wishlist") {
+          const item = await getWishlistItem(env.DB, itemId);
+          return item
+            ? {
+                item,
+                description: [item.brand, "Saved in the wishlist"].filter(Boolean).join(" · "),
+              }
+            : null;
+        }
+
+        const item = await getHaulItem(env.DB, itemId);
+        return item
+          ? {
+              item,
+              description:
+                item.comment || [item.brand, "Saved in the haul"].filter(Boolean).join(" · "),
+            }
+          : null;
+      })();
+      if (resolved) {
+        const { item, description } = resolved;
+        return {
+          title: `${item.name} — ${SITE_NAME}`,
+          description: description.slice(0, 160),
+          canonical: absoluteUrl(
+            url.origin,
+            `/collection?view=${view}&item=${encodeURIComponent(item.id)}`,
+          ),
+          image: item.imageUrl
+            ? absoluteUrl(url.origin, item.imageUrl)
+            : ogImageUrl(url.origin, PUBLIC_PAGE_META[view].image),
+          type: "article",
+        };
+      }
+    }
+    return staticPageMeta(url.origin, view);
   }
-  return null;
+
+  return {
+    ...staticPageMeta(url.origin, "gallery"),
+    canonical: absoluteUrl(url.origin, path),
+  };
 }
 
 app.all("/api/auth/*", async (c) => {
@@ -275,51 +387,69 @@ app.get("/api/og/:section", async (c) => {
   const domain = new URL(c.req.url).hostname;
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
-  let svg: string;
+  let options: OgImageOptions;
   let total: number;
   if (section === "gallery") {
     const photos = await listPhotos(c.env.DB);
     total = photos.length;
-    svg = renderOgImage({
+    options = {
       title: "Gallery",
       subtitle: count(total, "moment"),
       domain,
       siteName: "My Moment",
       type: "photo",
-    });
+    };
   } else if (section === "haul") {
     const items = await listAllHaulItems(c.env.DB);
     total = items.length;
-    svg = renderOgImage({
+    options = {
       title: "Haul",
       subtitle: count(total, "item"),
       domain,
       siteName: "My Moment",
       type: "haul",
-    });
+    };
   } else if (section === "wishlist") {
     const items = await listAllWishlistItems(c.env.DB);
     total = items.length;
-    svg = renderOgImage({
+    options = {
       title: "Wishlist",
       subtitle: count(total, "item"),
       domain,
       siteName: "My Moment",
       type: "wish",
-    });
+    };
   } else if (section === "collection") {
     const [haul, wishes] = await Promise.all([
       listAllHaulItems(c.env.DB),
       listAllWishlistItems(c.env.DB),
     ]);
     total = haul.length + wishes.length;
-    svg = renderOgImage({
+    options = {
       title: "Collection",
       subtitle: `${haul.length} collected · ${wishes.length} wished`,
       domain,
       siteName: "My Moment",
       type: "haul",
-    });
+    };
+  } else if (section === "journey") {
+    total = 0;
+    options = {
+      title: "Journey",
+      subtitle: "Places that became part of the story",
+      domain,
+      siteName: SITE_NAME,
+      type: "journey",
+    };
+  } else if (section === "guestbook") {
+    total = 0;
+    options = {
+      title: "Guestbook",
+      subtitle: "Notes left along the way",
+      domain,
+      siteName: SITE_NAME,
+      type: "guestbook",
+    };
   } else {
     return c.notFound();
   }
@@ -329,13 +459,19 @@ app.get("/api/og/:section", async (c) => {
     "Cache-Control": "public, max-age=86400, s-maxage=86400",
   };
 
-  const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, total);
+  const imageVersion = getOgImageVersion();
+  const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion);
   if (cached) {
     return new Response(cached, { headers: pngHeaders });
   }
 
+  const logoResponse = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
+  const logoDataUrl = logoResponse.ok
+    ? `data:${logoResponse.headers.get("Content-Type") || "image/png"};base64,${arrayBufferToBase64(await logoResponse.arrayBuffer())}`
+    : undefined;
+  const svg = renderOgImage({ ...options, logoDataUrl });
   const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
-  await writeOgImageKv(c.env.MOMENT_CACHE, section, total, png);
+  await writeOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion, png);
   return new Response(png, { headers: pngHeaders });
 });
 
@@ -550,12 +686,16 @@ function escAttr(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function buildOgMeta(tags: Record<string, string>): string {
+function buildHeadMeta(tags: Record<string, string>): string {
   return Object.entries(tags)
     .map(([k, v]) => {
-      if (k === "title") return `<title>${escAttr(v)}</title>`;
-      if (k.startsWith("og:")) return `<meta property="${k}" content="${escAttr(v)}" />`;
-      return `<meta name="${k}" content="${escAttr(v)}" />`;
+      if (k === "canonical") {
+        return `<link rel="canonical" href="${escAttr(v)}" data-static-head />`;
+      }
+      if (k.startsWith("og:")) {
+        return `<meta property="${k}" content="${escAttr(v)}" data-static-head />`;
+      }
+      return `<meta name="${k}" content="${escAttr(v)}" data-static-head />`;
     })
     .join("\n    ");
 }
@@ -580,31 +720,38 @@ app.get("*", async (c) => {
     }),
   );
 
-  const section = sectionForPath(url);
-  if (!section) {
-    return htmlRes;
-  }
-
-  const ogImage = `${url.origin}/api/og/${section.key}`;
-  const ogTitle = `${section.title} — My Moment`;
+  const page = await resolvePageMeta(url, c.env);
   const ogTags: Record<string, string> = {
-    title: ogTitle,
-    "og:site_name": "My Moment",
-    "og:title": ogTitle,
-    "og:description": section.description,
-    "og:image": ogImage,
-    "og:image:width": "1200",
-    "og:image:height": "630",
-    "og:url": url.href,
-    "og:type": "website",
+    description: page.description,
+    canonical: page.canonical,
+    "og:site_name": SITE_NAME,
+    "og:locale": "en_US",
+    "og:title": page.title,
+    "og:description": page.description,
+    "og:url": page.canonical,
+    "og:type": page.type ?? "website",
     "twitter:card": "summary_large_image",
-    "twitter:title": ogTitle,
-    "twitter:description": section.description,
-    "twitter:image": ogImage,
+    "twitter:title": page.title,
+    "twitter:description": page.description,
   };
+  if (page.image) {
+    ogTags["og:image"] = page.image;
+    ogTags["og:image:alt"] = page.title;
+    ogTags["twitter:image"] = page.image;
+    ogTags["twitter:image:alt"] = page.title;
+  }
+  if (page.imageWidth) ogTags["og:image:width"] = String(page.imageWidth);
+  if (page.imageHeight) ogTags["og:image:height"] = String(page.imageHeight);
+  if (page.robots) ogTags.robots = page.robots;
 
-  const injected = buildOgMeta(ogTags);
+  const injected = buildHeadMeta(ogTags);
   return new HTMLRewriter()
+    .on("title", {
+      element(element) {
+        element.setInnerContent(page.title);
+        element.setAttribute("data-static-head", "");
+      },
+    })
     .on("head", {
       element(el) {
         el.append(injected, { html: true });
