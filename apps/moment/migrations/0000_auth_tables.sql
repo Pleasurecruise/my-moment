@@ -4,16 +4,16 @@ CREATE TABLE IF NOT EXISTS "user" (
     "email" TEXT NOT NULL UNIQUE,
     "emailVerified" INTEGER NOT NULL DEFAULT 0,
     "image" TEXT,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL
+    "createdAt" INTEGER NOT NULL,
+    "updatedAt" INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "session" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "expiresAt" TEXT NOT NULL,
+    "expiresAt" INTEGER NOT NULL,
     "token" TEXT NOT NULL UNIQUE,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL,
+    "createdAt" INTEGER NOT NULL,
+    "updatedAt" INTEGER NOT NULL,
     "ipAddress" TEXT,
     "userAgent" TEXT,
     "userId" TEXT NOT NULL REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE CASCADE
@@ -27,19 +27,23 @@ CREATE TABLE IF NOT EXISTS "account" (
     "accessToken" TEXT,
     "refreshToken" TEXT,
     "idToken" TEXT,
-    "accessTokenExpiresAt" TEXT,
-    "refreshTokenExpiresAt" TEXT,
+    "accessTokenExpiresAt" INTEGER,
+    "refreshTokenExpiresAt" INTEGER,
     "scope" TEXT,
     "password" TEXT,
-    "createdAt" TEXT NOT NULL,
-    "updatedAt" TEXT NOT NULL
+    "createdAt" INTEGER NOT NULL,
+    "updatedAt" INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "verification" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "identifier" TEXT NOT NULL,
     "value" TEXT NOT NULL,
-    "expiresAt" TEXT NOT NULL,
-    "createdAt" TEXT,
-    "updatedAt" TEXT
+    "expiresAt" INTEGER NOT NULL,
+    "createdAt" INTEGER NOT NULL,
+    "updatedAt" INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS "session_userId_idx" ON "session" ("userId");
+CREATE INDEX IF NOT EXISTS "account_userId_idx" ON "account" ("userId");
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" ON "verification" ("identifier");

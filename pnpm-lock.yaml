@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  void@0.10.12: 6e4b06ee86b1a46a87d9279365ee87a71edf67d7189eba0977f34171eb7b4ea2
+
 importers:
 
   .:
@@ -101,7 +104,7 @@ importers:
         version: 4.1.10(@types/node@26.2.0)(@vitest/browser-preview@4.1.10)(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
       void:
         specifier: 0.10.12
-        version: 0.10.12(arktype@2.2.3)(kysely@0.29.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.14)(valibot@1.4.2(typescript@7.0.2))(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vitest@4.1.10)(zod@4.4.3)
+        version: 0.10.12(patch_hash=6e4b06ee86b1a46a87d9279365ee87a71edf67d7189eba0977f34171eb7b4ea2)(arktype@2.2.3)(kysely@0.29.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.14)(valibot@1.4.2(typescript@7.0.2))(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vitest@4.1.10)(zod@4.4.3)
 
   packages/ui:
     dependencies:
@@ -8122,7 +8125,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  void@0.10.12(arktype@2.2.3)(kysely@0.29.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.14)(valibot@1.4.2(typescript@7.0.2))(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vitest@4.1.10)(zod@4.4.3):
+  void@0.10.12(patch_hash=6e4b06ee86b1a46a87d9279365ee87a71edf67d7189eba0977f34171eb7b4ea2)(arktype@2.2.3)(kysely@0.29.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(solid-js@1.9.14)(valibot@1.4.2(typescript@7.0.2))(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(vitest@4.1.10)(zod@4.4.3):
     dependencies:
       '@cloudflare/sandbox': 0.12.5
       '@cloudflare/vite-plugin': 1.51.3(vite@8.0.16(@types/node@26.2.0)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(wrangler@4.121.0(@cloudflare/workers-types@4.20260702.1))

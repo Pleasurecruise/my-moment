@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "my-moment",
+  "account_id": "fb71c4eceaf623ae1b19b8b37d7a38cf",
   "compatibility_date": "2026-08-01",
   "upload_source_maps": true,
   "workers_dev": false,
@@ -10,9 +11,6 @@
       "custom_domain": true
     }
   ],
-  "vars": {
-    "CF_ACCOUNT_ID": "fb71c4eceaf623ae1b19b8b37d7a38cf"
-  },
   "d1_databases": [
     {
       "binding": "DB",
