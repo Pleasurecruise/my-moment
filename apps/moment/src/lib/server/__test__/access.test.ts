@@ -4,9 +4,7 @@ import type { WorkerBindings } from "~/types";
 
 const getSession = vi.hoisted(() => vi.fn());
 
-vi.mock("~/lib/auth", () => ({
-  getAuth: () => ({ api: { getSession } }),
-}));
+vi.mock("void/auth", () => ({ getSession }));
 
 import { createOwnerGuard, type WorkerEnv } from "../access";
 
@@ -39,7 +37,7 @@ describe("createOwnerGuard", () => {
   });
 
   it("returns 401 when there is no signed-in user", async () => {
-    getSession.mockResolvedValue(null);
+    getSession.mockReturnValue(null);
 
     const response = await createApp().request("/private", undefined, env);
 
@@ -48,7 +46,7 @@ describe("createOwnerGuard", () => {
   });
 
   it("returns 403 when the signed-in user is not the owner", async () => {
-    getSession.mockResolvedValue({ user: { id: "guest-id", email: "guest@example.com" } });
+    getSession.mockReturnValue({ user: { id: "guest-id", email: "guest@example.com" } });
 
     const response = await createApp().request("/private", undefined, env);
 
@@ -57,7 +55,7 @@ describe("createOwnerGuard", () => {
   });
 
   it("passes the owner id to protected handlers", async () => {
-    getSession.mockResolvedValue({ user: { id: "owner-id", email: ownerEmail } });
+    getSession.mockReturnValue({ user: { id: "owner-id", email: ownerEmail } });
 
     const response = await createApp().request("/private", undefined, env);
 

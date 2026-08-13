@@ -1,5 +1,5 @@
-import { createAuthClient } from "better-auth/solid";
+import { auth } from "void/client/solid";
 
-export const authClient = createAuthClient();
+export const authClient = auth;
 
 export const { signIn, signOut, useSession } = authClient;

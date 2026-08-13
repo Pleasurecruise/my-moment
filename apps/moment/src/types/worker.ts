@@ -2,10 +2,6 @@ export interface WorkerBindings {
   DB: D1Database;
   MOMENT_BUCKET: R2Bucket;
   MOMENT_CACHE: KVNamespace;
-  BETTER_AUTH_SECRET: string;
-  BETTER_AUTH_URL: string;
-  GOOGLE_CLIENT_ID: string;
-  GOOGLE_CLIENT_SECRET: string;
   ALLOWED_EMAIL?: string;
   CF_ACCOUNT_ID: string;
   CF_GATEWAY_NAME: string;

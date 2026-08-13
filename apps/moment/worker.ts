@@ -1,12 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { getAuth } from "~/lib/auth";
-import {
-  createOwnerGuard,
-  getRequestSession,
-  requestIsOwner,
-  type WorkerEnv,
-} from "~/lib/server/access";
+import { getSession } from "void/auth";
+import { createOwnerGuard, requestIsOwner, type WorkerEnv } from "~/lib/server/access";
 import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
   createPhotoFromUpload,
@@ -45,7 +40,6 @@ import {
   updateMessage,
 } from "~/lib/server/messages/repository";
 import type { MessageCursor, WorkerBindings } from "~/types";
-import { HOST_DISPLAY_NAME } from "~/lib/identity";
 import { PUBLIC_PAGE_META, SITE_NAME, type PublicPageKey } from "~/lib/seo";
 
 const app = new Hono<WorkerEnv>();
@@ -211,29 +205,6 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
   };
 }
 
-app.all("/api/auth/*", async (c) => {
-  const auth = getAuth(c.env);
-  const response = await auth.handler(c.req.raw);
-  if (c.req.path !== "/api/auth/get-session" || !response.ok || !c.env.ALLOWED_EMAIL) {
-    return response;
-  }
-
-  const payload = (await response
-    .clone()
-    .json()
-    .catch(() => null)) as { user?: { email?: string; name?: string } } | null;
-  if (payload?.user?.email !== c.env.ALLOWED_EMAIL) return response;
-
-  payload.user.name = HOST_DISPLAY_NAME;
-  const headers = new Headers(response.headers);
-  headers.delete("content-length");
-  return new Response(JSON.stringify(payload), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-});
-
 app.get("/api/health", (c) =>
   c.json({
     ok: true,
@@ -245,7 +216,7 @@ app.get("/api/health", (c) =>
 app.get("/api/messages", async (c) => {
   const query = messageListQuerySchema.safeParse(c.req.query());
   if (!query.success) return c.json({ error: query.error.issues[0]?.message }, 400);
-  const session = await getRequestSession(c);
+  const session = getSession();
   const result = await listMessages(
     c.env.DB,
     session?.user?.id ?? null,
@@ -258,7 +229,7 @@ app.get("/api/messages", async (c) => {
 });
 
 app.post("/api/messages", async (c) => {
-  const session = await getRequestSession(c);
+  const session = getSession();
   if (!session?.user) return c.json({ ok: false, error: "Sign in to leave a message" }, 401);
   const parsed = messageCreateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
@@ -287,7 +258,7 @@ app.post("/api/messages", async (c) => {
 });
 
 app.patch("/api/messages/:id", async (c) => {
-  const session = await getRequestSession(c);
+  const session = getSession();
   if (!session?.user) return c.json({ ok: false, error: "Sign in to edit a message" }, 401);
   const parsed = messageUpdateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
@@ -313,7 +284,7 @@ app.patch("/api/messages/:id", async (c) => {
 });
 
 app.delete("/api/messages/:id", async (c) => {
-  const session = await getRequestSession(c);
+  const session = getSession();
   if (!session?.user) return c.json({ error: "Unauthorized" }, 401);
   const owner = await getMessageOwner(c.env.DB, c.req.param("id"));
   if (!owner) return c.json({ error: "Message not found" }, 404);
