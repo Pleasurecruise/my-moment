@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  parseExif: vi.fn(),
+  extractExifMetadata: vi.fn(),
   isHeic: vi.fn(),
   heicTo: vi.fn(),
 }));
 
-vi.mock("exifr", () => ({ default: { parse: mocks.parseExif } }));
+vi.mock("../exif", () => ({ extractExifMetadata: mocks.extractExifMetadata }));
 vi.mock("heic-to", () => ({ isHeic: mocks.isHeic, heicTo: mocks.heicTo }));
 vi.mock("thumbhash", () => ({ rgbaToThumbHash: () => new Uint8Array([1, 2, 3]) }));
 
@@ -44,6 +44,7 @@ describe("image processing", () => {
     objectUrlCount = 0;
     mocks.isHeic.mockResolvedValue(true);
     mocks.heicTo.mockResolvedValue(new Blob(["jpeg"], { type: "image/jpeg" }));
+    mocks.extractExifMetadata.mockResolvedValue({ date: null, geo: null });
 
     vi.stubGlobal("URL", {
       createObjectURL: vi.fn(() => (objectUrlCount++ === 0 ? "blob:original" : "blob:converted")),
@@ -97,7 +98,7 @@ describe("image processing", () => {
 
   it("continues after optional EXIF parsing rejects a decoded HEIC file", async () => {
     const exifError = new Error("Unknown file format");
-    mocks.parseExif.mockRejectedValue(exifError);
+    mocks.extractExifMetadata.mockRejectedValue(exifError);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const heic = Object.assign(new Blob(["heic"], { type: "image/heic" }), {
       name: "IMG_0252.HEIC",
@@ -121,12 +122,9 @@ describe("image processing", () => {
   });
 
   it("uses normalized EXIF date and GPS coordinates", async () => {
-    mocks.parseExif.mockResolvedValue({
-      DateTimeOriginal: new Date("2026-08-02T12:34:56.000Z"),
-      GPSLatitude: [31, 13, 45],
-      GPSLongitude: [121, 28, 30],
-      latitude: 31.229167,
-      longitude: 121.475,
+    mocks.extractExifMetadata.mockResolvedValue({
+      date: "2026-08-02T12:34:56.000Z",
+      geo: { lat: 31.229167, lng: 121.475 },
     });
     const heic = Object.assign(new Blob(["heic"], { type: "image/heic" }), {
       name: "IMG_0252.HEIC",

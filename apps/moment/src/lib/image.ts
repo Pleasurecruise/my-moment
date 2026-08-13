@@ -1,4 +1,5 @@
 import { rgbaToThumbHash } from "thumbhash";
+import { extractExifMetadata } from "./exif";
 
 const THUMBNAIL_WIDTH = 600;
 const THUMBNAIL_QUALITY = 1.0;
@@ -113,24 +114,15 @@ export async function processImage(file: File): Promise<ImageProcessResult> {
     const height = img.naturalHeight;
     const aspectRatio = width / height;
 
-    // EXIF extraction
-    const { default: exifr } = await import("exifr");
-    let exif = null;
+    let exifDate: string | null = null;
+    let exifGeo: { lat: number; lng: number } | null = null;
     try {
-      exif = await exifr.parse(file, {
-        pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "GPSLatitude", "GPSLongitude"],
-        gps: true,
-      });
+      const metadata = await extractExifMetadata(file);
+      exifDate = metadata.date;
+      exifGeo = metadata.geo;
     } catch (error) {
       console.warn("Failed to read optional EXIF metadata", error);
     }
-
-    const d = exif?.DateTimeOriginal ?? exif?.CreateDate ?? exif?.ModifyDate;
-    const exifDate = d instanceof Date && !isNaN(d.getTime()) ? d.toISOString() : null;
-
-    const lat = exif?.latitude;
-    const lng = exif?.longitude;
-    const exifGeo = typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
 
     // Full-size image
     const imageCtx = drawToCanvas(img, width, height);

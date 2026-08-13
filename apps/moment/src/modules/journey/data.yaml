@@ -22,11 +22,17 @@
     - label: Qinghai Lake
       coords: [100.264, 36.9001]
       size: 0.08
+    - label: Xining
+      coords: [101.7782, 36.6171]
+      size: 0.08
     - label: Hohhot
       coords: [111.7492, 40.8426]
       size: 0.08
     - label: Xi'an
       coords: [108.9398, 34.3416]
+      size: 0.08
+    - label: Hangzhou
+      coords: [120.1551, 30.2741]
       size: 0.08
     - label: Lincoln
       coords: [-0.5406, 53.2307]
@@ -61,8 +67,8 @@
     - label: Shanghai
       coords: [121.4737, 31.2304]
       size: 0.1
-    - label: Hangzhou
-      coords: [120.1551, 30.2741]
+    - label: Hangzhou Bay
+      coords: [121.2, 30.3]
       size: 0.08
 - label: Residence
   color: "#f59e0b"
@@ -79,6 +85,9 @@
       size: 0.08
     - label: Chengdu
       coords: [104.0668, 30.5728]
+      size: 0.08
+    - label: Guangzhou
+      coords: [113.2644, 23.1291]
       size: 0.08
 - label: Wishlist
   color: "#f43f5e"
@@ -100,9 +109,6 @@
       size: 0.08
     - label: Shenzhen
       coords: [114.0579, 22.5431]
-      size: 0.08
-    - label: Guangzhou
-      coords: [113.2644, 23.1291]
       size: 0.08
     - label: Singapore
       coords: [103.8198, 1.3521]

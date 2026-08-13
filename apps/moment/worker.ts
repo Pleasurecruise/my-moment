@@ -384,6 +384,7 @@ app.patch("/api/photos/:id/tags", ownerOnly, async (c) => {
 
 app.get("/api/og/:section", async (c) => {
   const section = c.req.param("section");
+  const preview = c.req.query("preview") === "1";
   const domain = new URL(c.req.url).hostname;
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
@@ -456,13 +457,17 @@ app.get("/api/og/:section", async (c) => {
 
   const pngHeaders = {
     "Content-Type": "image/png",
-    "Cache-Control": "public, max-age=86400, s-maxage=86400",
+    "Cache-Control": preview
+      ? "no-store, no-cache, must-revalidate"
+      : "public, max-age=86400, s-maxage=86400",
   };
 
   const imageVersion = getOgImageVersion();
-  const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion);
-  if (cached) {
-    return new Response(cached, { headers: pngHeaders });
+  if (!preview) {
+    const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion);
+    if (cached) {
+      return new Response(cached, { headers: pngHeaders });
+    }
   }
 
   const logoResponse = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
@@ -471,7 +476,9 @@ app.get("/api/og/:section", async (c) => {
     : undefined;
   const svg = renderOgImage({ ...options, logoDataUrl });
   const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
-  await writeOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion, png);
+  if (!preview) {
+    await writeOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion, png);
+  }
   return new Response(png, { headers: pngHeaders });
 });
 
@@ -736,6 +743,8 @@ app.get("*", async (c) => {
   };
   if (page.image) {
     ogTags["og:image"] = page.image;
+    ogTags["og:image:secure_url"] = page.image;
+    ogTags["og:image:type"] = "image/png";
     ogTags["og:image:alt"] = page.title;
     ogTags["twitter:image"] = page.image;
     ogTags["twitter:image:alt"] = page.title;

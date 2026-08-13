@@ -1,4 +1,5 @@
 export const SITE_NAME = "My Moment";
+export const SITE_ORIGIN = "https://moment.you-find.me";
 
 export const PUBLIC_PAGE_META = {
   gallery: {
@@ -50,10 +51,20 @@ interface SocialMetaOptions {
 }
 
 export function socialMeta(options: SocialMetaOptions) {
-  const image = options.image
+  const pageUrl = new URL(options.path, SITE_ORIGIN).href;
+  const imageUrl = options.image ? new URL(options.image, SITE_ORIGIN) : null;
+  if (imageUrl) imageUrl.searchParams.set("v", new Date().toISOString().slice(0, 10));
+
+  const image = imageUrl
     ? [
-        { property: "og:image", content: options.image },
-        { name: "twitter:image", content: options.image },
+        { property: "og:image", content: imageUrl.href },
+        { property: "og:image:secure_url", content: imageUrl.href },
+        { property: "og:image:type", content: "image/png" },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { property: "og:image:alt", content: options.title },
+        { name: "twitter:image", content: imageUrl.href },
+        { name: "twitter:image:alt", content: options.title },
       ]
     : [];
 
@@ -62,8 +73,9 @@ export function socialMeta(options: SocialMetaOptions) {
     { name: "description", content: options.description },
     { property: "og:title", content: options.title },
     { property: "og:description", content: options.description },
-    { property: "og:url", content: options.path },
+    { property: "og:url", content: pageUrl },
     { property: "og:type", content: options.type ?? "website" },
+    { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: options.title },
     { name: "twitter:description", content: options.description },
     ...image,
