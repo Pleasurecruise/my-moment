@@ -1,13 +1,15 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { Tooltip as KobalteTooltip } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { Tooltip as KobalteTooltip } from "@kobalte/core/tooltip";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
-export const Tooltip = KobalteTooltip.Root;
+export const Tooltip = KobalteTooltip;
 
 export const TooltipTrigger = KobalteTooltip.Trigger;
 
 export function TooltipContent(props: ComponentProps<typeof KobalteTooltip.Content>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteTooltip.Portal>
       <KobalteTooltip.Content

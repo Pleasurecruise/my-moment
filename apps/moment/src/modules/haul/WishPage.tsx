@@ -1,13 +1,5 @@
-import {
-  Show,
-  For,
-  Match,
-  Switch,
-  createSignal,
-  createEffect,
-  type Resource,
-  type JSX,
-} from "solid-js";
+import { Show, For, Match, Switch, createSignal, createEffect, type Accessor } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +13,6 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
-  Spinner,
   toast,
 } from "@my-moment/ui";
 import { Plus, Pencil, Trash2, Share2, ShoppingBag } from "lucide-solid";
@@ -35,7 +26,7 @@ import type { WishItem } from "~/types";
 import { formatPrice } from "./utils";
 
 interface WishPageProps {
-  wishes: Resource<{ items: WishItem[] } | undefined>;
+  wishes: Accessor<{ items: WishItem[] }>;
   onRetry: () => void;
   initialOpenItem?: string;
   viewSwitcher?: JSX.Element;
@@ -65,15 +56,17 @@ export function WishPage(props: WishPageProps) {
       title: name,
     });
 
-  createEffect(() => {
-    const data = wishItems();
-    if (!data || !props.initialOpenItem) return;
-    const target = data.find((i) => i.id === props.initialOpenItem);
-    if (target) {
-      setSelectedWish(target);
-      setShowWishDetail(true);
-    }
-  });
+  createEffect(
+    () => ({ data: wishItems(), initialOpenItem: props.initialOpenItem }),
+    ({ data, initialOpenItem }) => {
+      if (!data || !initialOpenItem) return;
+      const target = data.find((item) => item.id === initialOpenItem);
+      if (target) {
+        setSelectedWish(target);
+        setShowWishDetail(true);
+      }
+    },
+  );
 
   const handleWishDelete = async () => {
     const item = deletingWish();
@@ -132,23 +125,6 @@ export function WishPage(props: WishPageProps) {
       />
 
       <Switch>
-        <Match when={props.wishes.error}>
-          <EmptyState
-            title="Could not load wishes"
-            description="The wishlist is temporarily unavailable."
-            action={
-              <Button variant="link" size="sm" onClick={props.onRetry}>
-                Retry
-              </Button>
-            }
-          />
-        </Match>
-        <Match when={props.wishes.loading && !wishItems()}>
-          <div class="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-            <Spinner size="sm" />
-            <p class="text-sm">Loading...</p>
-          </div>
-        </Match>
         <Match when={wishItems()}>
           {(data) => (
             <Show

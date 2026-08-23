@@ -1,5 +1,6 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 const badgeVariants = {
   default: "bg-primary text-primary-foreground",
@@ -16,7 +17,8 @@ export interface BadgeProps extends ComponentProps<"div"> {
 }
 
 export function Badge(props: BadgeProps) {
-  const [local, rest] = splitProps(props, ["class", "variant", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "variant", "children");
 
   return (
     <div

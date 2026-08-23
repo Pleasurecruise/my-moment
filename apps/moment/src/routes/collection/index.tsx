@@ -1,15 +1,20 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
-import { Match, Switch, createResource } from "solid-js";
+import { Errored, Loading, Match, Switch, createMemo, refresh } from "solid-js";
 import { z } from "zod";
-import { Segment } from "~/components/Segment";
+import { Button, Spinner } from "@my-moment/ui";
+import { Segment, type SegmentOption } from "~/components/Segment";
+import { EmptyState } from "~/components/EmptyState";
 import { HaulPage, WishPage } from "~/modules/haul";
 import type { CollectionResponse, GoodsItem, WishItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
+const collectionViewSchema = z.enum(["haul", "wishlist"]);
+type CollectionView = z.infer<typeof collectionViewSchema>;
+
 export const Route = createFileRoute("/collection/")({
   component: CollectionPage,
   validateSearch: z.object({
-    view: z.enum(["haul", "wishlist"]).catch("haul"),
+    view: collectionViewSchema.catch("haul"),
     item: z.string().optional(),
   }),
   head: () => ({
@@ -20,20 +25,20 @@ export const Route = createFileRoute("/collection/")({
 function CollectionPage() {
   const search = useSearch({ from: "/collection/" });
   const navigate = useNavigate({ from: "/collection/" });
-  const [haul, haulActions] = createResource<CollectionResponse<GoodsItem>>(async () => {
+  const haul = createMemo<CollectionResponse<GoodsItem>>(async () => {
     const response = await fetch("/api/haul");
     if (!response.ok) throw new Error("Failed to load haul");
     return response.json();
   });
-  const [wishes, wishActions] = createResource<CollectionResponse<WishItem>>(async () => {
+  const wishes = createMemo<CollectionResponse<WishItem>>(async () => {
     const response = await fetch("/api/wish");
     if (!response.ok) throw new Error("Failed to load wishlist");
     return response.json();
   });
 
-  const options = () => [
-    { value: "haul" as const, label: `Haul ${haul()?.items.length ?? "—"}` },
-    { value: "wishlist" as const, label: `Wishlist ${wishes()?.items.length ?? "—"}` },
+  const options = (): SegmentOption<CollectionView>[] => [
+    { value: "haul", label: `Haul ${haul()?.items.length ?? "—"}` },
+    { value: "wishlist", label: `Wishlist ${wishes()?.items.length ?? "—"}` },
   ];
   const viewSwitcher = () => (
     <Segment
@@ -44,25 +49,48 @@ function CollectionPage() {
   );
 
   return (
-    <main class="pb-10">
-      <Switch>
-        <Match when={search().view === "haul"}>
-          <HaulPage
-            haul={haul}
-            onRetry={() => haulActions.refetch()}
-            initialOpenItem={search().item}
-            viewSwitcher={viewSwitcher()}
-          />
-        </Match>
-        <Match when={search().view === "wishlist"}>
-          <WishPage
-            wishes={wishes}
-            onRetry={() => wishActions.refetch()}
-            initialOpenItem={search().item}
-            viewSwitcher={viewSwitcher()}
-          />
-        </Match>
-      </Switch>
-    </main>
+    <Errored
+      fallback={(_, reset) => (
+        <EmptyState
+          title="Could not load collection"
+          description="The collection is temporarily unavailable."
+          action={
+            <Button variant="link" size="sm" onClick={reset}>
+              Retry
+            </Button>
+          }
+        />
+      )}
+    >
+      <Loading
+        fallback={
+          <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+            <Spinner size="sm" />
+            <p class="text-sm">Loading...</p>
+          </div>
+        }
+      >
+        <main class="pb-10">
+          <Switch>
+            <Match when={search().view === "haul"}>
+              <HaulPage
+                haul={haul}
+                onRetry={() => refresh(haul)}
+                initialOpenItem={search().item}
+                viewSwitcher={viewSwitcher()}
+              />
+            </Match>
+            <Match when={search().view === "wishlist"}>
+              <WishPage
+                wishes={wishes}
+                onRetry={() => refresh(wishes)}
+                initialOpenItem={search().item}
+                viewSwitcher={viewSwitcher()}
+              />
+            </Match>
+          </Switch>
+        </main>
+      </Loading>
+    </Errored>
   );
 }

@@ -1,4 +1,5 @@
-import { Show, createSignal, onCleanup, type JSX } from "solid-js";
+import { Show, createSignal, onCleanup } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Button, Input, Textarea, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Star, ExternalLink, Link, Upload, X } from "lucide-solid";
 import { processImage } from "~/lib/image";
@@ -161,7 +162,7 @@ export function GoodsForm(props: GoodsFormProps) {
             value={form().name}
             onInput={(e) => updateField("name", e.currentTarget.value)}
             placeholder="e.g. AirPods Pro 2"
-            maxLength={100}
+            maxlength={100}
           />
         </div>
 
@@ -173,7 +174,7 @@ export function GoodsForm(props: GoodsFormProps) {
               value={form().brand}
               onInput={(e) => updateField("brand", e.currentTarget.value)}
               placeholder="Apple"
-              maxLength={50}
+              maxlength={50}
             />
           </div>
           <div>
@@ -308,7 +309,7 @@ export function GoodsForm(props: GoodsFormProps) {
             onInput={(e) => updateField("comment", e.currentTarget.value)}
             placeholder='e.g. "Noise canceling is amazing, finally quiet on the subway"'
             rows={2}
-            maxLength={200}
+            maxlength={200}
             class="resize-none"
           />
           <p class="mt-0.5 text-[11px] text-muted-foreground text-right">

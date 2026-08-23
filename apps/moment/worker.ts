@@ -41,6 +41,9 @@ import {
 } from "~/lib/server/messages/repository";
 import type { MessageCursor, WorkerBindings } from "~/types";
 import { PUBLIC_PAGE_META, SITE_NAME, type PublicPageKey } from "~/lib/seo";
+import { generateApiKey, getApiKeyStatus, verifyApiKey } from "~/lib/server/apikey";
+import { photoApi, tagApi } from "~/lib/server/api";
+import { createMomentMcpHandler } from "~/lib/server/mcp";
 
 const app = new Hono<WorkerEnv>();
 const ownerOnly = createOwnerGuard();
@@ -146,8 +149,8 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
         ),
         canonical: absoluteUrl(url.origin, `/photos/${photo.id}`),
         image: absoluteUrl(url.origin, photo.url),
-        imageWidth: photo.width || undefined,
-        imageHeight: photo.height || undefined,
+        ...(photo.width > 0 ? { imageWidth: photo.width } : {}),
+        ...(photo.height > 0 ? { imageHeight: photo.height } : {}),
         type: "article",
       };
     }
@@ -212,6 +215,35 @@ app.get("/api/health", (c) =>
     runtime: "cloudflare-worker",
   }),
 );
+
+app.get("/api/settings/api-key", ownerOnly, async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await getApiKeyStatus(c.env.API_KEY));
+});
+
+app.post("/api/settings/api-key", ownerOnly, async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await generateApiKey(c.env.API_KEY));
+});
+
+app.put("/api/settings/api-key", ownerOnly, async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json(await generateApiKey(c.env.API_KEY));
+});
+
+app.post("/api/mcp", async (c) => {
+  if (c.req.header("mcp-session-id")) {
+    return c.json({ error: "MCP sessions are not supported." }, 400);
+  }
+  if (!(await verifyApiKey(c.req.raw, c.env.API_KEY))) {
+    c.header("WWW-Authenticate", "Bearer");
+    return c.json({ error: "Unauthorized." }, 401);
+  }
+  return createMomentMcpHandler(c.env).fetch(c.req.raw);
+});
+
+app.route("/api/v1/photos", photoApi);
+app.route("/api/v1/tags", tagApi);
 
 app.get("/api/messages", async (c) => {
   const query = messageListQuerySchema.safeParse(c.req.query());
@@ -442,10 +474,12 @@ app.get("/api/og/:section", async (c) => {
   }
 
   const logoResponse = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
-  const logoDataUrl = logoResponse.ok
-    ? `data:${logoResponse.headers.get("Content-Type") || "image/png"};base64,${arrayBufferToBase64(await logoResponse.arrayBuffer())}`
-    : undefined;
-  const svg = renderOgImage({ ...options, logoDataUrl });
+  const svg = logoResponse.ok
+    ? renderOgImage({
+        ...options,
+        logoDataUrl: `data:${logoResponse.headers.get("Content-Type") || "image/png"};base64,${arrayBufferToBase64(await logoResponse.arrayBuffer())}`,
+      })
+    : renderOgImage(options);
   const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
   if (!preview) {
     await writeOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion, png);

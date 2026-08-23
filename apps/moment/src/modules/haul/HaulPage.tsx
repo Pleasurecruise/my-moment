@@ -6,9 +6,9 @@ import {
   createSignal,
   createMemo,
   createEffect,
-  type Resource,
-  type JSX,
+  type Accessor,
 } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,6 @@ import {
   AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
-  Spinner,
   toast,
 } from "@my-moment/ui";
 import { Plus, SlidersHorizontal, Pencil, Trash2, Share2 } from "lucide-solid";
@@ -37,7 +36,7 @@ import type { FilterState, GoodsItem, Rating } from "~/types";
 import { formatPrice } from "./utils";
 
 interface HaulPageProps {
-  haul: Resource<{ items: GoodsItem[] } | undefined>;
+  haul: Accessor<{ items: GoodsItem[] }>;
   onRetry: () => void;
   initialOpenItem?: string;
   viewSwitcher?: JSX.Element;
@@ -143,15 +142,17 @@ export function HaulPage(props: HaulPageProps) {
       title: name,
     });
 
-  createEffect(() => {
-    const data = items();
-    if (!data || !props.initialOpenItem) return;
-    const target = data.find((i) => i.id === props.initialOpenItem);
-    if (target) {
-      setSelectedItem(target);
-      setShowDetail(true);
-    }
-  });
+  createEffect(
+    () => ({ data: items(), initialOpenItem: props.initialOpenItem }),
+    ({ data, initialOpenItem }) => {
+      if (!data || !initialOpenItem) return;
+      const target = data.find((item) => item.id === initialOpenItem);
+      if (target) {
+        setSelectedItem(target);
+        setShowDetail(true);
+      }
+    },
+  );
 
   const handleDelete = async () => {
     const item = deletingItem();
@@ -238,23 +239,6 @@ export function HaulPage(props: HaulPageProps) {
       </Show>
 
       <Switch>
-        <Match when={props.haul.error}>
-          <EmptyState
-            title="Could not load items"
-            description="The collection is temporarily unavailable."
-            action={
-              <Button variant="link" size="sm" onClick={props.onRetry}>
-                Retry
-              </Button>
-            }
-          />
-        </Match>
-        <Match when={props.haul.loading && !items()}>
-          <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-            <Spinner size="sm" />
-            <p class="text-sm">Loading...</p>
-          </div>
-        </Match>
         <Match when={items()}>
           {(data) => (
             <>

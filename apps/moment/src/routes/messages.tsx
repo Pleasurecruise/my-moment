@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { For, Show, createEffect, createSignal, onCleanup, onMount, type JSX } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, onSettled } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { ChevronDown, CornerDownRight, Pencil, Plus, Reply, Send, Trash2 } from "lucide-solid";
 import {
   AlertDialog,
@@ -110,20 +111,20 @@ function MessagesPage() {
     infiniteScrollObserver.observe(element);
   };
 
-  onMount(() => void load());
+  onSettled(() => void load());
   onCleanup(() => infiniteScrollObserver?.disconnect());
-  createEffect(() => {
-    const element = loadMoreElement();
-    const nextCursor = cursor();
-    infiniteScrollObserver?.disconnect();
-    if (element && nextCursor) observeLoadMore(element);
-  });
-  let previousUser: string | null | undefined;
-  createEffect(() => {
-    const id = user()?.id ?? null;
-    if (previousUser !== undefined && previousUser !== id) void load();
-    previousUser = id;
-  });
+  createEffect(
+    () => ({ element: loadMoreElement(), nextCursor: cursor() }),
+    ({ element, nextCursor }) => {
+      infiniteScrollObserver?.disconnect();
+      if (element && nextCursor) observeLoadMore(element);
+    },
+  );
+  createEffect(
+    () => user()?.id ?? null,
+    () => void load(),
+    { defer: true },
+  );
 
   const startSignIn = () => signIn.social({ provider: "google", callbackURL: "/messages" });
 
@@ -269,7 +270,7 @@ function MessagesPage() {
             onClick={toggleComposer}
             class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={composerOpen() ? "Close guestbook composer" : "Write in the guestbook"}
-            aria-expanded={composerOpen()}
+            aria-expanded={composerOpen() ? "true" : "false"}
             aria-controls="message-composer"
             title={composerOpen() ? "Close composer" : "Write in the guestbook"}
           >
@@ -316,7 +317,7 @@ function MessagesPage() {
                   onInput={(event) => setContent(event.currentTarget.value)}
                   placeholder="Write something worth keeping…"
                   rows={3}
-                  maxLength={1000}
+                  maxlength={1000}
                   aria-label={
                     replyingTo() ? `Reply to ${replyingTo()!.author.name}` : "Guestbook note"
                   }
@@ -562,7 +563,7 @@ function MessageRow(props: MessageRowProps) {
           </Show>
           <time
             class="font-mono text-[10px] text-muted-foreground"
-            dateTime={props.message.createdAt}
+            datetime={props.message.createdAt}
           >
             {relativeTime(props.message.createdAt)}
           </time>
@@ -575,7 +576,7 @@ function MessageRow(props: MessageRowProps) {
                 value={editContent()}
                 onInput={(event) => setEditContent(event.currentTarget.value)}
                 rows={props.compact ? 2 : 3}
-                maxLength={1000}
+                maxlength={1000}
                 aria-label={props.compact ? "Edit reply" : "Edit guestbook note"}
                 class="min-h-0 resize-y border-0 bg-transparent px-1 py-1 text-sm leading-6 shadow-none focus-visible:ring-0"
               />
@@ -627,7 +628,7 @@ function MessageRow(props: MessageRowProps) {
                     type="button"
                     class="inline-flex items-center gap-1 rounded px-1.5 py-1 transition-colors hover:bg-muted hover:text-foreground"
                     onClick={controls().toggle}
-                    aria-expanded={controls().expanded}
+                    aria-expanded={controls().expanded ? "true" : "false"}
                   >
                     {controls().expanded ? "Hide" : "Show"} replies ({controls().count})
                     <ChevronDown
@@ -678,7 +679,7 @@ function renderGuestbookContent(content: string): JSX.Element {
             href={part.value}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            referrerPolicy="no-referrer"
+            referrerpolicy="no-referrer"
             class="break-all text-primary underline decoration-primary/35 underline-offset-2 transition-colors hover:decoration-primary"
           >
             {part.value}
@@ -705,7 +706,7 @@ function renderImageEmojis(content: string): JSX.Element[] {
           title={emoji.name}
           loading="lazy"
           decoding="async"
-          referrerPolicy="no-referrer"
+          referrerpolicy="no-referrer"
           class={
             emoji.display === "sticker"
               ? "mx-1 inline-block max-h-24 max-w-24 object-contain align-middle"

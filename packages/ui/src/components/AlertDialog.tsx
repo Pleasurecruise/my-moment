@@ -1,8 +1,9 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { AlertDialog as KobalteAlertDialog } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { omit } from "solid-js";
+import { AlertDialog as KobalteAlertDialog } from "@kobalte/core/alert-dialog";
 import { cn } from "../lib/utils";
 
-export const AlertDialog = KobalteAlertDialog.Root;
+export const AlertDialog = KobalteAlertDialog;
 
 export const AlertDialogTrigger = KobalteAlertDialog.Trigger;
 
@@ -43,14 +44,16 @@ export function AlertDialogContent(props: ComponentProps<typeof KobalteAlertDial
 }
 
 export function AlertDialogHeader(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div {...rest} class={cn("flex flex-col space-y-2 text-center sm:text-left", local.class)} />
   );
 }
 
 export function AlertDialogFooter(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div
       {...rest}

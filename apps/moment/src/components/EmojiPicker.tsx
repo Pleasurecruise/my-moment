@@ -60,7 +60,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
                           alt=""
                           loading="lazy"
                           decoding="async"
-                          referrerPolicy="no-referrer"
+                          referrerpolicy="no-referrer"
                           class={
                             pack().display === "sticker"
                               ? "size-16 object-contain sm:size-[4.5rem]"

@@ -1,12 +1,14 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface SeparatorProps extends ComponentProps<"div"> {
   orientation?: "horizontal" | "vertical";
 }
 
 export function Separator(props: SeparatorProps) {
-  const [local, rest] = splitProps(props, ["class", "orientation"]);
+  const local = props;
+  const rest = omit(props, "class", "orientation");
 
   return (
     <div

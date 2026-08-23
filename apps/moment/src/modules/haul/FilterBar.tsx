@@ -86,7 +86,7 @@ export function FilterBar(props: FilterBarProps) {
           <button
             type="button"
             onClick={() => setExpanded(!expanded())}
-            aria-expanded={expanded()}
+            aria-expanded={expanded() ? "true" : "false"}
             aria-label="Toggle collection filters"
             class={cn(
               "relative flex h-full w-11 items-center justify-center border-l border-border/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
@@ -123,7 +123,7 @@ export function FilterBar(props: FilterBarProps) {
                           ? "border-foreground bg-foreground text-background shadow-sm"
                           : "border-border/80 bg-background/40 text-muted-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground",
                       )}
-                      aria-pressed={isActive()}
+                      aria-pressed={isActive() ? "true" : "false"}
                     >
                       {config.label}
                     </button>
@@ -150,7 +150,7 @@ export function FilterBar(props: FilterBarProps) {
                         "rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive() ? "opacity-100" : "opacity-45 hover:opacity-75",
                       )}
-                      aria-pressed={isActive()}
+                      aria-pressed={isActive() ? "true" : "false"}
                     >
                       <Badge
                         variant="outline"
@@ -184,7 +184,7 @@ export function FilterBar(props: FilterBarProps) {
                           ? "border-foreground bg-foreground text-background shadow-sm"
                           : "border-border/80 bg-background/40 text-muted-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground",
                       )}
-                      aria-pressed={isActive()}
+                      aria-pressed={isActive() ? "true" : "false"}
                     >
                       <opt.icon size={12} />
                       {opt.label}

@@ -1,8 +1,10 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export function Card(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div
       {...rest}
@@ -17,7 +19,8 @@ export function Card(props: ComponentProps<"div">) {
 }
 
 export function CardHeader(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div {...rest} class={cn("flex flex-col space-y-1.5 p-6", local.class)}>
       {local.children}
@@ -26,7 +29,8 @@ export function CardHeader(props: ComponentProps<"div">) {
 }
 
 export function CardTitle(props: ComponentProps<"h3">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <h3 {...rest} class={cn("text-2xl font-semibold leading-none tracking-tight", local.class)}>
       {local.children}
@@ -35,7 +39,8 @@ export function CardTitle(props: ComponentProps<"h3">) {
 }
 
 export function CardDescription(props: ComponentProps<"p">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <p {...rest} class={cn("text-sm text-muted-foreground", local.class)}>
       {local.children}
@@ -44,7 +49,8 @@ export function CardDescription(props: ComponentProps<"p">) {
 }
 
 export function CardContent(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div {...rest} class={cn("p-6 pt-0", local.class)}>
       {local.children}
@@ -53,7 +59,8 @@ export function CardContent(props: ComponentProps<"div">) {
 }
 
 export function CardFooter(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <div {...rest} class={cn("flex items-center p-6 pt-0", local.class)}>
       {local.children}

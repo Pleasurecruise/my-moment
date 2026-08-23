@@ -1,6 +1,8 @@
-import { createSignal, splitProps, type ComponentProps, For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { Tag } from "./Tag";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export type TagInputVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -15,7 +17,9 @@ export interface TagInputProps extends Omit<ComponentProps<"div">, "onChange"> {
 }
 
 export function TagInput(props: TagInputProps) {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "class",
     "value",
     "onChange",
@@ -24,7 +28,7 @@ export function TagInput(props: TagInputProps) {
     "maxTags",
     "tagVariant",
     "error",
-  ]);
+  );
 
   const [inputValue, setInputValue] = createSignal("");
 

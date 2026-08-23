@@ -9,6 +9,8 @@ export default defineConfig(({ command }) => ({
   envDir: command === "build" ? ".void/build-env" : ".",
   resolve: {
     alias: {
+      "solid-js/store": "solid-js",
+      "solid-js/web": "@solidjs/web",
       "~": resolve(import.meta.dirname, "src"),
     },
   },

@@ -1,15 +1,17 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { Switch as KobalteSwitch } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { Switch as KobalteSwitch } from "@kobalte/core/switch";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
-export const Switch = KobalteSwitch.Root;
+export const Switch = KobalteSwitch;
 
 export function SwitchInput(props: ComponentProps<typeof KobalteSwitch.Input>) {
   return <KobalteSwitch.Input {...props} />;
 }
 
 export function SwitchControl(props: ComponentProps<typeof KobalteSwitch.Control>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSwitch.Control
       {...rest}
@@ -26,7 +28,8 @@ export function SwitchControl(props: ComponentProps<typeof KobalteSwitch.Control
 }
 
 export function SwitchThumb(props: ComponentProps<typeof KobalteSwitch.Thumb>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSwitch.Thumb
       {...rest}
@@ -41,7 +44,8 @@ export function SwitchThumb(props: ComponentProps<typeof KobalteSwitch.Thumb>) {
 }
 
 export function SwitchLabel(props: ComponentProps<typeof KobalteSwitch.Label>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSwitch.Label
       {...rest}
@@ -55,14 +59,16 @@ export function SwitchLabel(props: ComponentProps<typeof KobalteSwitch.Label>) {
 }
 
 export function SwitchDescription(props: ComponentProps<typeof KobalteSwitch.Description>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSwitch.Description {...rest} class={cn("text-xs text-muted-foreground", local.class)} />
   );
 }
 
 export function SwitchErrorMessage(props: ComponentProps<typeof KobalteSwitch.ErrorMessage>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSwitch.ErrorMessage {...rest} class={cn("text-xs text-destructive", local.class)} />
   );

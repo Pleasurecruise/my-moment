@@ -1,6 +1,8 @@
-import { Show, splitProps, type ComponentProps, type JSX } from "solid-js";
-import { Toast as KobalteToast, toaster } from "@kobalte/core";
+import { Show } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { Toast as KobalteToast, toaster } from "@kobalte/core/toast";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from "lucide-solid";
 
 export { toaster };
@@ -46,11 +48,13 @@ export function Toaster() {
   );
 }
 
-export function ToastRoot(props: ComponentProps<typeof KobalteToast.Root>) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+export function ToastRoot(props: ComponentProps<typeof KobalteToast>) {
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
-    <KobalteToast.Root
+    <KobalteToast
       {...rest}
+      toastId={props.toastId}
       class={cn(
         "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-lg border p-4",
         "shadow-lg transition-all",
@@ -63,7 +67,7 @@ export function ToastRoot(props: ComponentProps<typeof KobalteToast.Root>) {
       )}
     >
       {local.children}
-    </KobalteToast.Root>
+    </KobalteToast>
   );
 }
 
@@ -72,7 +76,8 @@ export function ToastContent(props: { class?: string; children: JSX.Element }) {
 }
 
 export function ToastTitle(props: ComponentProps<typeof KobalteToast.Title>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteToast.Title
       {...rest}
@@ -82,12 +87,14 @@ export function ToastTitle(props: ComponentProps<typeof KobalteToast.Title>) {
 }
 
 export function ToastDescription(props: ComponentProps<typeof KobalteToast.Description>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <KobalteToast.Description {...rest} class={cn("text-sm opacity-90", local.class)} />;
 }
 
 export function ToastClose(props: ComponentProps<typeof KobalteToast.CloseButton>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteToast.CloseButton
       {...rest}
@@ -106,7 +113,8 @@ export function ToastClose(props: ComponentProps<typeof KobalteToast.CloseButton
 }
 
 export function ToastProgress(props: ComponentProps<typeof KobalteToast.ProgressTrack>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteToast.ProgressTrack
       {...rest}

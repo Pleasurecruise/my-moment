@@ -4,7 +4,7 @@ Personal moments — [moment.you-find.me](https://moment.you-find.me)
 
 ## Stack
 
-Vite+ · Void · SolidJS · TypeScript · TailwindCSS v4 · Hono · TanStack Router · Better Auth · Cloudflare Workers · D1 · R2 · KV · Mapbox
+Vite+ · Void · SolidJS · TypeScript · TailwindCSS v4 · Hono · TanStack Router · Better Auth · Cloudflare Workers · D1 · R2 · KV · Durable Objects · Mapbox
 
 ## Features
 
@@ -12,6 +12,19 @@ Vite+ · Void · SolidJS · TypeScript · TailwindCSS v4 · Hono · TanStack Rou
 - **Journey** — personal places displayed on an interactive map
 - **Guestbook** — authenticated guestbook with replies and infinite scrolling
 - **Collection** — haul and wishlist tracking
+
+## API
+
+The owner can generate or rotate a one-time-view API key from the site header. Send it as a bearer
+token to `/api/v1/photos`, `/api/v1/tags`, or the stateless MCP endpoint at `/api/mcp`.
+
+```sh
+curl -H "Authorization: Bearer $MOMENT_API_KEY" \
+  https://moment.you-find.me/api/v1/photos
+```
+
+`API_KEY` uses the `ApiKeyDurableObject` exported by `my-knowledge`. Photo creation expects the
+original and thumbnail to exist in R2 before their metadata is submitted.
 
 ## References
 

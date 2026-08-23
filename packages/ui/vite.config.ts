@@ -6,12 +6,14 @@ export default defineConfig({
   plugins: [solid()],
   resolve: {
     alias: {
+      "solid-js/store": "solid-js",
+      "solid-js/web": "@solidjs/web",
       "@": resolve(__dirname, "src"),
     },
   },
   build: {
     rollupOptions: {
-      external: ["solid-js", "solid-js/web"],
+      external: ["solid-js", "@solidjs/web"],
     },
   },
 });

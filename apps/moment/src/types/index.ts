@@ -1,6 +1,13 @@
 export type { CollectionResponse } from "./collection";
 export type { GallerySettings, SortOrder, TagFilterMode } from "./gallery";
-export { CATEGORY_CONFIG, goodsFormSchema, RATING_CONFIG, wishFormSchema } from "./haul";
+export {
+  CATEGORY_CONFIG,
+  goodsFormSchema,
+  goodsItemSchema,
+  RATING_CONFIG,
+  wishFormSchema,
+  wishItemSchema,
+} from "./haul";
 export type {
   Category,
   FilterState,
@@ -29,6 +36,7 @@ export type {
   MessageTimestampRecord,
 } from "./messages";
 export { messageMutationResponseSchema, messagesResponseSchema } from "./messages";
+export { photoItemSchema } from "./photo";
 export type { PhotoItem } from "./photo";
 export type {
   EmptyStateProps,

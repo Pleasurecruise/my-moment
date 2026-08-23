@@ -2,14 +2,20 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, desc, inArray } from "drizzle-orm";
 import { photos, tags, photoTags, type PhotoRow } from "../db/schema";
 import type { PhotoItem } from "~/types";
+import { photoObjectKeyFromUrl } from "./storage";
 
 export type { PhotoItem };
 
 function rowToItem(row: PhotoRow, tagNames: string[]): PhotoItem {
+  const r2Key = photoObjectKeyFromUrl(row.url);
+  const thumbnailR2Key = photoObjectKeyFromUrl(row.thumbnailUrl);
+  if (!r2Key || !thumbnailR2Key) throw new Error("Photo has invalid R2 object URLs");
   return {
     id: row.id,
     url: row.url,
     thumbnailUrl: row.thumbnailUrl,
+    r2Key,
+    thumbnailR2Key,
     thumbHash: row.thumbHash ?? undefined,
     title: row.title,
     width: row.width,
@@ -92,6 +98,9 @@ export async function createPhoto(
   const db = drizzle(d1);
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
+  const r2Key = photoObjectKeyFromUrl(data.url);
+  const thumbnailR2Key = photoObjectKeyFromUrl(data.thumbnailUrl);
+  if (!r2Key || !thumbnailR2Key) throw new Error("Photo has invalid R2 object URLs");
 
   await db.insert(photos).values({
     id,
@@ -122,10 +131,12 @@ export async function createPhoto(
     id,
     url: data.url,
     thumbnailUrl: data.thumbnailUrl,
+    r2Key,
+    thumbnailR2Key,
     thumbHash: data.thumbHash,
-    title: data.title ?? "",
-    width: data.width ?? 0,
-    height: data.height ?? 0,
+    title: data.title,
+    width: data.width,
+    height: data.height,
     aspectRatio: data.aspectRatio,
     tags: data.tags,
     date: data.date,

@@ -1,6 +1,8 @@
-import { createSignal, Show, splitProps, type JSX } from "solid-js";
+import { createSignal, Show } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { createVisibilityObserver } from "@solid-primitives/intersection-observer";
 import { cn } from "@my-moment/ui";
+import { omit } from "solid-js";
 import { Thumbhash } from "./Thumbhash";
 
 export interface LazyImageProps extends JSX.ImgHTMLAttributes<HTMLImageElement> {
@@ -10,23 +12,18 @@ export interface LazyImageProps extends JSX.ImgHTMLAttributes<HTMLImageElement> 
 }
 
 export function LazyImage(props: LazyImageProps) {
-  const [local, rest] = splitProps(props, [
-    "thumbHash",
-    "rootMargin",
-    "threshold",
-    "class",
-    "style",
-  ]);
+  const local = props;
+  const rest = omit(props, "thumbHash", "rootMargin", "threshold", "class", "style");
 
   const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
   const [isLoaded, setIsLoaded] = createSignal(false);
   const [hasError, setHasError] = createSignal(false);
 
-  const useVisibility = createVisibilityObserver({
+  const isVisible = createVisibilityObserver(containerRef, {
     rootMargin: local.rootMargin ?? "200px",
     threshold: local.threshold ?? 0,
+    initialValue: false,
   });
-  const isVisible = useVisibility(containerRef);
 
   return (
     <div

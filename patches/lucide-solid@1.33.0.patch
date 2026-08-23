@@ -1,0 +1,76 @@
+diff --git a/dist/source/Icon.jsx b/dist/source/Icon.jsx
+index 6c18291d7bc23a0b40328627ac17f42a59f95f88..48095d1c994fed3146a044caedc3ea8b12baa619 100644
+--- a/dist/source/Icon.jsx
++++ b/dist/source/Icon.jsx
+@@ -6,7 +6,7 @@
+ */
+ 
+ // src/Icon.tsx
+-import { For, splitProps, useContext } from "solid-js";
+-import { Dynamic } from "solid-js/web";
++import { For, omit, useContext } from "solid-js";
++import { Dynamic } from "@solidjs/web";
+ import defaultAttributes from "./defaultAttributes";
+ import { LucideContext } from "./context";
+@@ -43,7 +43,9 @@ var toPascalCase = (string) => {
+ 
+ // src/Icon.tsx
+ var Icon = (props) => {
+-  const [localProps, rest] = splitProps(props, [
++  const localProps = props;
++  const rest = omit(
++    props,
+     "color",
+     "size",
+     "strokeWidth",
+@@ -52,7 +54,7 @@ var Icon = (props) => {
+     "name",
+     "iconNode",
+     "absoluteStrokeWidth"
+-  ]);
++  );
+   const globalProps = useContext(LucideContext);
+   return <svg
+     {...defaultAttributes}
+diff --git a/dist/source/context.jsx b/dist/source/context.jsx
+index a92719c9ba161e544d83586f9a6ccdef04eba151..718cd9099a9928a319b00a91d6daa30f7be0c563 100644
+--- a/dist/source/context.jsx
++++ b/dist/source/context.jsx
+@@ -6,7 +6,7 @@
+ */
+ 
+ // src/context.tsx
+-import { createContext, splitProps } from "solid-js";
++import { createContext, omit } from "solid-js";
+ var LucideContext = createContext({
+   size: 24,
+   color: "currentColor",
+@@ -15,12 +15,6 @@ var LucideContext = createContext({
+   class: ""
+ });
+ function LucideProvider(props) {
+-  const [value, rest] = splitProps(props, [
+-    "size",
+-    "color",
+-    "strokeWidth",
+-    "absoluteStrokeWidth",
+-    "class"
+-  ]);
+-  return <LucideContext.Provider value={value}>{rest.children}</LucideContext.Provider>;
++  const value = omit(props, "children");
++  return <LucideContext value={value}>{props.children}</LucideContext>;
+ }
+diff --git a/package.json b/package.json
+--- a/package.json
++++ b/package.json
+@@ -73,8 +73,9 @@
+     "@lucide/rollup-plugins": "1.0.0",
+     "@lucide/shared": "1.0.0"
+   },
+   "peerDependencies": {
+-    "solid-js": "^1.4.7"
++    "@solidjs/web": "^2.0.0-rc.0",
++    "solid-js": "^2.0.0-rc.0"
+   },
+   "scripts": {
+     "build": "pnpm clean && pnpm copy:license && pnpm build:icons && pnpm build:bundle",

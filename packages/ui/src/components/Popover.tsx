@@ -1,15 +1,17 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { Popover as KobaltePopover } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { Popover as KobaltePopover } from "@kobalte/core/popover";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
-export const Popover = KobaltePopover.Root;
+export const Popover = KobaltePopover;
 
 export const PopoverTrigger = KobaltePopover.Trigger;
 
 export const PopoverAnchor = KobaltePopover.Anchor;
 
 export function PopoverContent(props: ComponentProps<typeof KobaltePopover.Content>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobaltePopover.Portal>
       <KobaltePopover.Content
@@ -34,7 +36,8 @@ export function PopoverClose(props: ComponentProps<typeof KobaltePopover.CloseBu
 }
 
 export function PopoverDescription(props: ComponentProps<typeof KobaltePopover.Description>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobaltePopover.Description
       {...rest}

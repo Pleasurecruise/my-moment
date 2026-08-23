@@ -1,5 +1,7 @@
-import { splitProps, type ComponentProps, Show } from "solid-js";
+import { Show } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface AvatarProps extends ComponentProps<"div"> {
   src?: string | null;
@@ -15,7 +17,8 @@ const sizeClasses = {
 } as const;
 
 export function Avatar(props: AvatarProps) {
-  const [local, rest] = splitProps(props, ["class", "src", "alt", "fallback", "size"]);
+  const local = props;
+  const rest = omit(props, "class", "src", "alt", "fallback", "size");
 
   return (
     <div

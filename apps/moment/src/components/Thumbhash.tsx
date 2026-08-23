@@ -1,6 +1,8 @@
-import { createMemo, splitProps, type ComponentProps } from "solid-js";
+import { createMemo } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { thumbHashToDataURL } from "thumbhash";
 import { cn } from "@my-moment/ui";
+import { omit } from "solid-js";
 import { decompressUint8Array } from "~/lib/thumbhash";
 
 export interface ThumbhashProps extends ComponentProps<"img"> {
@@ -8,7 +10,8 @@ export interface ThumbhashProps extends ComponentProps<"img"> {
 }
 
 export function Thumbhash(props: ThumbhashProps) {
-  const [local, rest] = splitProps(props, ["thumbHash", "class"]);
+  const local = props;
+  const rest = omit(props, "thumbHash", "class");
 
   const dataURL = createMemo(() => {
     const hash = local.thumbHash;

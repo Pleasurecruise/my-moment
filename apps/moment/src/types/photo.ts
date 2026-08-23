@@ -32,19 +32,23 @@ export const photoUploadSchema = z.object({
   aspectRatio: z.coerce.number().positive().optional(),
 });
 
-export interface PhotoItem {
-  id: string;
-  url: string;
-  thumbnailUrl: string;
-  thumbHash?: string;
-  title: string;
-  width: number;
-  height: number;
-  aspectRatio?: number;
-  tags: string[];
-  date?: string;
-  description?: string;
-  size?: number;
-  format?: string;
-  geo?: { lat: number; lng: number };
-}
+export const photoItemSchema = z.object({
+  id: z.string(),
+  url: z.string(),
+  thumbnailUrl: z.string(),
+  r2Key: z.string(),
+  thumbnailR2Key: z.string(),
+  thumbHash: z.string().optional(),
+  title: z.string(),
+  width: z.number(),
+  height: z.number(),
+  aspectRatio: z.number().optional(),
+  tags: z.array(z.string()),
+  date: z.string().optional(),
+  description: z.string().optional(),
+  size: z.number().optional(),
+  format: z.string().optional(),
+  geo: geoSchema.optional(),
+});
+
+export type PhotoItem = z.infer<typeof photoItemSchema>;

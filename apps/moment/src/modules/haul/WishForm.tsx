@@ -1,4 +1,5 @@
-import { Show, createSignal, onCleanup, type JSX } from "solid-js";
+import { Show, createSignal, onCleanup } from "solid-js";
+import type { JSX } from "@solidjs/web";
 import { Button, Input, Label, toast, cn } from "@my-moment/ui";
 import { PenLine, Upload, X } from "lucide-solid";
 import { processImage } from "~/lib/image";
@@ -138,7 +139,7 @@ export function WishForm(props: WishFormProps) {
             value={form().name}
             onInput={(e) => updateField("name", e.currentTarget.value)}
             placeholder="e.g. Sony WH-1000XM5"
-            maxLength={100}
+            maxlength={100}
           />
         </div>
 
@@ -150,7 +151,7 @@ export function WishForm(props: WishFormProps) {
               value={form().brand}
               onInput={(e) => updateField("brand", e.currentTarget.value)}
               placeholder="Sony"
-              maxLength={50}
+              maxlength={50}
             />
           </div>
           <div>

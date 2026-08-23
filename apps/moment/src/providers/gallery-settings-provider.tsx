@@ -20,16 +20,12 @@ export function GallerySettingsProvider(props: ParentProps) {
   };
 
   return (
-    <GallerySettingsContext.Provider value={{ settings, updateSettings, resetSettings }}>
+    <GallerySettingsContext value={{ settings, updateSettings, resetSettings }}>
       {props.children}
-    </GallerySettingsContext.Provider>
+    </GallerySettingsContext>
   );
 }
 
 export function useGallerySettings() {
-  const context = useContext(GallerySettingsContext);
-  if (!context) {
-    throw new Error("useGallerySettings must be used within GallerySettingsProvider");
-  }
-  return context;
+  return useContext(GallerySettingsContext);
 }

@@ -1,5 +1,6 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface SpinnerProps extends ComponentProps<"div"> {
   size?: "sm" | "default" | "lg";
@@ -12,7 +13,8 @@ const sizeClasses = {
 } as const;
 
 export function Spinner(props: SpinnerProps) {
-  const [local, rest] = splitProps(props, ["class", "size"]);
+  const local = props;
+  const rest = omit(props, "class", "size");
 
   return (
     <div

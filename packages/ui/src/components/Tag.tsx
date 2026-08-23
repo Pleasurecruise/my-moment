@@ -1,6 +1,8 @@
-import { splitProps, type ComponentProps, Show } from "solid-js";
+import { Show } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { X } from "lucide-solid";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export type TagVariant = "default" | "secondary" | "destructive" | "outline";
 
@@ -18,13 +20,8 @@ const tagVariants: Record<TagVariant, string> = {
 };
 
 export function Tag(props: TagProps) {
-  const [local, rest] = splitProps(props, [
-    "class",
-    "variant",
-    "removable",
-    "onRemove",
-    "children",
-  ]);
+  const local = props;
+  const rest = omit(props, "class", "variant", "removable", "onRemove", "children");
 
   return (
     <span

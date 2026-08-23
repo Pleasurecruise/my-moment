@@ -1,5 +1,4 @@
-import { createVirtualizer } from "@tanstack/solid-virtual";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { Card, Badge } from "@my-moment/ui";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
 import type { PhotoItem } from "~/types";
@@ -13,18 +12,6 @@ interface ListViewProps {
 export function ListView(props: ListViewProps) {
   const photos = () => props.photos;
 
-  const gap = 8;
-  const desktopHeight = 176 + gap;
-
-  const virtualizer = createVirtualizer({
-    count: photos().length,
-    getScrollElement: () => document.getElementById("app-scroll-container"),
-    estimateSize: () => desktopHeight,
-    overscan: 5,
-  });
-
-  const totalSize = createMemo(() => virtualizer.getTotalSize());
-
   return (
     <Show
       when={photos().length > 0}
@@ -35,34 +22,13 @@ export function ListView(props: ListViewProps) {
         />
       }
     >
-      <div class="relative" style={{ height: `${totalSize()}px`, width: "100%" }}>
-        <For each={virtualizer.getVirtualItems()}>
-          {(virtualItem) => {
-            const photo = () => photos()[virtualItem.index]!;
-            const isLast = () => virtualItem.index === photos().length - 1;
-
-            return (
-              <div
-                data-index={virtualItem.index}
-                ref={(el) => {
-                  if (el) virtualizer.measureElement(el);
-                }}
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  transform: `translateY(${virtualItem.start}px)`,
-                  "padding-bottom": isLast() ? "0px" : `${gap}px`,
-                }}
-              >
-                <PhotoCard
-                  photo={photo()}
-                  onClick={() => props.onPhotoClick?.(virtualItem.index)}
-                />
-              </div>
-            );
-          }}
+      <div class="space-y-2">
+        <For each={photos()}>
+          {(photo, index) => (
+            <div style={{ "content-visibility": "auto", "contain-intrinsic-size": "176px" }}>
+              <PhotoCard photo={photo} onClick={() => props.onPhotoClick?.(index())} />
+            </div>
+          )}
         </For>
       </div>
     </Show>
@@ -99,7 +65,7 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
     <Card
       class="group flex flex-col gap-2 p-3 backdrop-blur-sm transition-colors hover:border-border/80 sm:h-44 sm:flex-row sm:gap-3"
       role="button"
-      tabIndex={0}
+      tabindex={0}
       onClick={() => props.onClick?.()}
     >
       <div class="relative w-full shrink-0 overflow-hidden rounded sm:h-full sm:w-56">

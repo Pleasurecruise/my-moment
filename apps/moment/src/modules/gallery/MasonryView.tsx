@@ -1,4 +1,4 @@
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onSettled, Show } from "solid-js";
 import type { PhotoItem } from "~/types";
 import { EmptyState } from "~/components/EmptyState";
 import { MasonryPhotoItem } from "./MasonryPhotoItem";
@@ -31,7 +31,7 @@ export function MasonryView(props: MasonryViewProps) {
     }
   };
 
-  onMount(() => {
+  onSettled(() => {
     updateColumnCount();
     updateContainerWidth();
     const handleResize = () => {
@@ -39,7 +39,7 @@ export function MasonryView(props: MasonryViewProps) {
       updateContainerWidth();
     };
     window.addEventListener("resize", handleResize);
-    onCleanup(() => window.removeEventListener("resize", handleResize));
+    return () => window.removeEventListener("resize", handleResize);
   });
 
   const columnWidth = createMemo(() => {

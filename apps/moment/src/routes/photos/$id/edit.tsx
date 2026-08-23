@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
-import type { PhotoItem } from "~/types";
+import { photoItemSchema } from "~/types";
 import { privatePageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/photos/$id/edit")({
@@ -15,14 +15,12 @@ function PhotoEditPage() {
   const params = Route.useParams();
   const navigate = useNavigate();
 
-  const [photo] = createResource(
-    () => params().id,
-    async (photoId) => {
-      const res = await fetch(`/api/photos/${photoId}`);
-      if (!res.ok) return null;
-      return (await res.json()) as PhotoItem;
-    },
-  );
+  const photo = createMemo(async () => {
+    const photoId = params().id;
+    const res = await fetch(`/api/photos/${photoId}`);
+    if (!res.ok) return null;
+    return photoItemSchema.parse(await res.json());
+  });
 
   const [title, setTitle] = createSignal("");
   const [description, setDescription] = createSignal("");
@@ -32,10 +30,8 @@ function PhotoEditPage() {
   const [geoLng, setGeoLng] = createSignal("");
   const [saving, setSaving] = createSignal(false);
 
-  createEffect(() => {
-    const p = photo();
+  createEffect(photo, (p) => {
     if (!p) return;
-
     setTitle(p.title);
     setDescription(p.description || "");
     setTags([...p.tags]);

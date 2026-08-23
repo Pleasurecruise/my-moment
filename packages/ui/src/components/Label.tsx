@@ -1,5 +1,7 @@
-import { splitProps, Show, type ComponentProps } from "solid-js";
+import { Show } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface LabelProps extends ComponentProps<"label"> {
   required?: boolean;
@@ -7,7 +9,8 @@ export interface LabelProps extends ComponentProps<"label"> {
 }
 
 export function Label(props: LabelProps) {
-  const [local, rest] = splitProps(props, ["class", "required", "error", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "required", "error", "children");
 
   return (
     <label

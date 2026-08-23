@@ -1,5 +1,7 @@
 import { photoUploadSchema } from "~/types/photo";
-import type { PhotoItem } from "~/types";
+import type { PhotoItem, WorkerBindings } from "~/types";
+import type { CreatePhotoFromR2Input, PhotoListInput, PhotoSearchInput } from "./types";
+import { PhotoDomainError } from "./errors";
 import { deletePhotoObjects, storePhotoObjects } from "./storage";
 import {
   createPhoto,
@@ -82,6 +84,82 @@ export async function createPhotoFromUpload(
     await deletePhotoObjects(bucket, stored);
     throw error;
   }
+}
+
+export async function listPhotoMetadata(
+  d1: D1Database,
+  input: PhotoListInput,
+): Promise<PhotoItem[]> {
+  const photos = await listPhotos(d1);
+  return photos
+    .filter((photo) => !input.fromDate || (photo.date && photo.date >= input.fromDate))
+    .filter((photo) => !input.toDate || (photo.date && photo.date <= input.toDate))
+    .filter((photo) => !input.tags?.length || input.tags.every((tag) => photo.tags.includes(tag)))
+    .slice(0, input.limit);
+}
+
+export async function searchPhotoMetadata(
+  d1: D1Database,
+  input: PhotoSearchInput,
+): Promise<PhotoItem[]> {
+  const query = input.query.toLowerCase();
+  const photos = await listPhotos(d1);
+  return photos
+    .filter(
+      (photo) =>
+        photo.title.toLowerCase().includes(query) ||
+        (photo.description && photo.description.toLowerCase().includes(query)) ||
+        photo.tags.some((tag) => tag.toLowerCase().includes(query)),
+    )
+    .slice(0, input.limit);
+}
+
+export async function createPhotoFromR2(
+  d1: D1Database,
+  bucket: R2Bucket,
+  allowedEmail: WorkerBindings["ALLOWED_EMAIL"],
+  input: CreatePhotoFromR2Input,
+): Promise<PhotoItem> {
+  if (!allowedEmail) {
+    throw new PhotoDomainError("OWNER_NOT_CONFIGURED", "Owner access is not configured.", 503);
+  }
+
+  const owner = await d1
+    .prepare(`SELECT id FROM user WHERE email = ? LIMIT 1`)
+    .bind(allowedEmail)
+    .first<{ id: string }>();
+  if (!owner) throw new PhotoDomainError("OWNER_NOT_FOUND", "Owner account not found.", 503);
+
+  const [original, thumbnail] = await Promise.all([
+    bucket.head(input.r2Key),
+    bucket.head(input.thumbnailR2Key),
+  ]);
+  if (!original) {
+    throw new PhotoDomainError("R2_OBJECT_NOT_FOUND", `R2 object not found: ${input.r2Key}`, 404);
+  }
+  if (!thumbnail) {
+    throw new PhotoDomainError(
+      "R2_OBJECT_NOT_FOUND",
+      `R2 object not found: ${input.thumbnailR2Key}`,
+      404,
+    );
+  }
+
+  return createPhoto(d1, owner.id, {
+    title: input.title,
+    description: input.description,
+    tags: input.tags,
+    date: input.date,
+    geo: input.geo,
+    thumbHash: input.thumbHash,
+    width: input.width,
+    height: input.height,
+    aspectRatio: input.aspectRatio,
+    format: input.format,
+    size: original.size,
+    url: `/api/photos/${input.r2Key}`,
+    thumbnailUrl: `/api/photos/${input.thumbnailR2Key}`,
+  });
 }
 
 export async function deletePhoto(d1: D1Database, bucket: R2Bucket, id: string): Promise<boolean> {

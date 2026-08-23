@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createSignal, onCleanup, onSettled } from "solid-js";
 import mapboxgl from "mapbox-gl";
 import MapboxLanguage from "@mapbox/mapbox-gl-language";
 import { parse } from "yaml";
@@ -109,7 +109,7 @@ export function JourneyMap() {
     );
   };
 
-  onMount(() => {
+  onSettled(() => {
     const saved = localStorage.getItem(PROJECTION_KEY);
     const initialProjection: JourneyProjection = saved === "mercator" ? "mercator" : "globe";
     setProjection(initialProjection);
@@ -316,7 +316,7 @@ export function JourneyMap() {
               {(group) => (
                 <button
                   type="button"
-                  aria-pressed={enabled().has(group.label)}
+                  aria-pressed={enabled().has(group.label) ? "true" : "false"}
                   onClick={() => toggleGroup(group.label)}
                   class={cn(
                     "flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity",

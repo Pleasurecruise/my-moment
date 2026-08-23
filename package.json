@@ -18,14 +18,15 @@
     "format": "vp fmt"
   },
   "devDependencies": {
+    "@solidjs/web": "2.0.0-rc.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.2.0",
-    "solid-js": "1.9.14",
+    "solid-js": "2.0.0-rc.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
-    "vite-plugin-solid": "2.11.14",
+    "vite-plugin-solid": "3.0.0-next.27",
     "vite-plus": "0.2.9",
-    "wrangler": "4.121.0"
+    "wrangler": "4.125.0"
   },
-  "packageManager": "pnpm@11.21.0"
+  "packageManager": "pnpm@11.22.0"
 }

@@ -1,10 +1,17 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
-import { Match, Show, Switch, createMemo, createResource } from "solid-js";
+import { Errored, Loading, Show, createMemo } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, Heart, ShoppingBag } from "lucide-solid";
 import { Button, Spinner, toast } from "@my-moment/ui";
 import { GoodsForm, WishForm } from "~/modules/haul";
-import type { GoodsFormInput, GoodsItem, WishFormInput, WishItem } from "~/types";
+import {
+  goodsItemSchema,
+  wishItemSchema,
+  type GoodsFormInput,
+  type GoodsItem,
+  type WishFormInput,
+  type WishItem,
+} from "~/types";
 import { privatePageMeta } from "~/lib/seo";
 
 const collectionFormSearchSchema = z
@@ -35,6 +42,12 @@ interface SourceRequest {
   kind: "haul" | "wishlist";
 }
 
+type SourceState =
+  | { status: "create"; item: null }
+  | { status: "missing"; item: null }
+  | { status: "haul"; item: GoodsItem }
+  | { status: "wishlist"; item: WishItem };
+
 export const Route = createFileRoute("/collection/add")({
   component: CollectionFormPage,
   validateSearch: collectionFormSearchSchema,
@@ -50,29 +63,33 @@ function CollectionFormPage() {
     if (current.edit) return { id: current.edit, kind: current.view };
     return null;
   });
-  const [source, { refetch }] = createResource(sourceRequest, async (request) => {
+  const source = createMemo<SourceState>(async () => {
+    const request = sourceRequest();
+    if (!request) return { status: "create", item: null };
     const endpoint = request.kind === "wishlist" ? "/api/wish" : "/api/haul";
     const response = await fetch(`${endpoint}/${request.id}`);
-    if (response.status === 404) return null;
+    if (response.status === 404) return { status: "missing", item: null };
     if (response.status === 401 || response.status === 403) {
       throw new Error("You do not have permission to load this item.");
     }
     if (!response.ok) throw new Error(`Could not load this item (${response.status}).`);
-    return response.json() as Promise<GoodsItem | WishItem>;
+    const payload = await response.json();
+    return request.kind === "wishlist"
+      ? { status: "wishlist", item: wishItemSchema.parse(payload) }
+      : { status: "haul", item: goodsItemSchema.parse(payload) };
   });
   const converting = () => Boolean(search().convert);
   const haulInitial = createMemo<GoodsItem | undefined>(() => {
-    const item = source();
-    if (!item || !converting()) return item as GoodsItem | undefined;
-    const wish = item as WishItem;
+    const current = source();
+    if (current.status === "haul") return current.item;
+    if (current.status !== "wishlist" || !converting()) return;
     return {
-      ...wish,
+      ...current.item,
       rating: "great",
       purchaseDate: new Date().toISOString().slice(0, 10),
       comment: "",
     };
   });
-
   const back = () => navigate({ to: "/collection", search: { view: search().view } });
   const saveHaul = async (data: GoodsFormInput) => {
     const id = search().edit;
@@ -91,7 +108,7 @@ function CollectionFormPage() {
       return null;
     }
     toast.success(converting() ? "Moved to your haul" : id ? "Item updated" : "Item added");
-    return response.json() as Promise<GoodsItem>;
+    return goodsItemSchema.parse(await response.json());
   };
   const saveWish = async (data: WishFormInput) => {
     const id = search().edit;
@@ -105,7 +122,7 @@ function CollectionFormPage() {
       return null;
     }
     toast.success(id ? "Wish updated" : "Added to wishlist");
-    return response.json() as Promise<WishItem>;
+    return wishItemSchema.parse(await response.json());
   };
 
   return (
@@ -132,40 +149,12 @@ function CollectionFormPage() {
           </h1>
         </div>
       </div>
-      <Switch
-        fallback={
-          <Show
-            when={search().view === "haul"}
-            fallback={
-              <WishForm
-                addItem={saveWish}
-                editItem={source() as WishItem | undefined}
-                onSuccess={back}
-                onCancel={back}
-              />
-            }
-          >
-            <GoodsForm
-              addItem={saveHaul}
-              editItem={haulInitial()}
-              onSuccess={back}
-              onCancel={back}
-            />
-          </Show>
-        }
-      >
-        <Match when={sourceRequest() && source.loading}>
-          <div class="flex justify-center py-12">
-            <Spinner size="sm" />
-          </div>
-        </Match>
-        <Match when={sourceRequest() && source.error}>
+      <Errored
+        fallback={(error, reset) => (
           <div class="flex flex-col items-center gap-3 py-12 text-center">
-            <p class="text-sm text-destructive">
-              {source.error instanceof Error ? source.error.message : "Could not load this item."}
-            </p>
+            <p class="text-sm text-destructive">{String(error())}</p>
             <div class="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+              <Button variant="outline" size="sm" onClick={reset}>
                 Try again
               </Button>
               <Button variant="ghost" size="sm" onClick={back}>
@@ -173,16 +162,54 @@ function CollectionFormPage() {
               </Button>
             </div>
           </div>
-        </Match>
-        <Match when={sourceRequest() && source() === null}>
-          <div class="flex flex-col items-center gap-3 py-12 text-center">
-            <p class="text-sm text-muted-foreground">This item no longer exists.</p>
-            <Button variant="outline" size="sm" onClick={back}>
-              Back to collection
-            </Button>
-          </div>
-        </Match>
-      </Switch>
+        )}
+      >
+        <Loading
+          fallback={
+            <div class="flex justify-center py-12">
+              <Spinner size="sm" />
+            </div>
+          }
+        >
+          <Show
+            when={source().status !== "missing"}
+            fallback={
+              <div class="flex flex-col items-center gap-3 py-12 text-center">
+                <p class="text-sm text-muted-foreground">This item no longer exists.</p>
+                <Button variant="outline" size="sm" onClick={back}>
+                  Back to collection
+                </Button>
+              </div>
+            }
+          >
+            <Show
+              when={search().view === "haul"}
+              fallback={
+                <Show
+                  when={source().status === "wishlist" ? source().item : null}
+                  fallback={<WishForm addItem={saveWish} onSuccess={back} onCancel={back} />}
+                >
+                  {(item) => (
+                    <WishForm
+                      addItem={saveWish}
+                      editItem={item()}
+                      onSuccess={back}
+                      onCancel={back}
+                    />
+                  )}
+                </Show>
+              }
+            >
+              <GoodsForm
+                addItem={saveHaul}
+                editItem={haulInitial()}
+                onSuccess={back}
+                onCancel={back}
+              />
+            </Show>
+          </Show>
+        </Loading>
+      </Errored>
     </main>
   );
 }

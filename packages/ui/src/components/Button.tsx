@@ -1,5 +1,6 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 const variants = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
@@ -23,7 +24,8 @@ export interface ButtonProps extends ComponentProps<"button"> {
 }
 
 export function Button(props: ButtonProps) {
-  const [local, rest] = splitProps(props, ["class", "variant", "size", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "variant", "size", "children");
 
   return (
     <button

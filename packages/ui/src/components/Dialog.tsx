@@ -1,9 +1,10 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { Dialog as KobalteDialog } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { Dialog as KobalteDialog } from "@kobalte/core/dialog";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 import { X } from "lucide-solid";
 
-export const Dialog = KobalteDialog.Root;
+export const Dialog = KobalteDialog;
 
 export const DialogTrigger = KobalteDialog.Trigger;
 
@@ -59,14 +60,16 @@ export function DialogContent(props: ComponentProps<typeof KobalteDialog.Content
 }
 
 export function DialogHeader(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div {...rest} class={cn("flex flex-col space-y-1.5 text-center sm:text-left", local.class)} />
   );
 }
 
 export function DialogFooter(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <div
       {...rest}
@@ -94,6 +97,7 @@ export function DialogDescription(props: ComponentProps<typeof KobalteDialog.Des
 }
 
 export function DialogBody(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div {...rest} class={cn("p-6", local.class)} />;
 }

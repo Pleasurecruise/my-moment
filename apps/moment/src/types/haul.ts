@@ -1,6 +1,22 @@
 import { z } from "zod";
 
-export type Rating = "worth" | "great" | "amazing" | "godtier";
+const categorySchema = z.enum([
+  "digital",
+  "audio",
+  "home",
+  "kitchen",
+  "wear",
+  "travel",
+  "health",
+  "stationery",
+  "gaming",
+  "other",
+]);
+
+const ratingSchema = z.enum(["worth", "great", "amazing", "godtier"]);
+
+export type Category = z.infer<typeof categorySchema>;
+export type Rating = z.infer<typeof ratingSchema>;
 
 export const RATING_CONFIG: Record<Rating, { label: string; color: string; description: string }> =
   {
@@ -26,18 +42,6 @@ export const RATING_CONFIG: Record<Rating, { label: string; color: string; descr
     },
   };
 
-export type Category =
-  | "digital"
-  | "audio"
-  | "home"
-  | "kitchen"
-  | "wear"
-  | "travel"
-  | "health"
-  | "stationery"
-  | "gaming"
-  | "other";
-
 export const CATEGORY_CONFIG: Record<Category, { label: string }> = {
   digital: { label: "Digital" },
   audio: { label: "Audio" },
@@ -51,20 +55,22 @@ export const CATEGORY_CONFIG: Record<Category, { label: string }> = {
   other: { label: "Other" },
 };
 
-export interface GoodsItem {
-  id: string;
-  name: string;
-  brand?: string;
-  price: number;
-  category: Category;
-  rating: Rating;
-  purchaseDate: string;
-  comment: string;
-  imageUrl?: string;
-  purchaseLink?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export const goodsItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  brand: z.string().optional(),
+  price: z.number(),
+  category: categorySchema,
+  rating: ratingSchema,
+  purchaseDate: z.string(),
+  comment: z.string(),
+  imageUrl: z.string().optional(),
+  purchaseLink: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type GoodsItem = z.infer<typeof goodsItemSchema>;
 
 const priceSchema = z
   .string()
@@ -77,19 +83,8 @@ export const goodsFormSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
   brand: z.string().trim(),
   price: priceSchema,
-  category: z.enum([
-    "digital",
-    "audio",
-    "home",
-    "kitchen",
-    "wear",
-    "travel",
-    "health",
-    "stationery",
-    "gaming",
-    "other",
-  ]),
-  rating: z.enum(["worth", "great", "amazing", "godtier"]),
+  category: categorySchema,
+  rating: ratingSchema,
   purchaseDate: z.string(),
   comment: z.string().trim().min(1, "comment is required"),
   imageUrl: z.string().optional(),
@@ -100,18 +95,7 @@ export const wishFormSchema = z.object({
   name: z.string().trim().min(1, "name is required"),
   brand: z.string().trim(),
   price: priceSchema,
-  category: z.enum([
-    "digital",
-    "audio",
-    "home",
-    "kitchen",
-    "wear",
-    "travel",
-    "health",
-    "stationery",
-    "gaming",
-    "other",
-  ]),
+  category: categorySchema,
   imageUrl: z.string().optional(),
 });
 
@@ -127,16 +111,18 @@ export interface FilterState {
   sortBy: "newest" | "price-asc" | "price-desc" | "rating";
 }
 
-export interface WishItem {
-  id: string;
-  name: string;
-  brand?: string;
-  price: number;
-  category: Category;
-  imageUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export const wishItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  brand: z.string().optional(),
+  price: z.number(),
+  category: categorySchema,
+  imageUrl: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type WishItem = z.infer<typeof wishItemSchema>;
 
 export interface WishFilterState {
   search: string;

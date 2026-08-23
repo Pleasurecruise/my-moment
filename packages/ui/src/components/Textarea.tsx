@@ -1,5 +1,6 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface TextareaProps extends ComponentProps<"textarea"> {
   error?: boolean;
@@ -7,7 +8,8 @@ export interface TextareaProps extends ComponentProps<"textarea"> {
 }
 
 export function Textarea(props: TextareaProps) {
-  const [local, rest] = splitProps(props, ["class", "error", "autoresize"]);
+  const local = props;
+  const rest = omit(props, "class", "error", "autoresize");
 
   return (
     <textarea

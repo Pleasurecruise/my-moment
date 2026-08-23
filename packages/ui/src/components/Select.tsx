@@ -1,23 +1,26 @@
-import { splitProps, type ComponentProps } from "solid-js";
-import { Select as KobalteSelect } from "@kobalte/core";
+import type { ComponentProps } from "@solidjs/web";
+import { Select as KobalteSelect } from "@kobalte/core/select";
 import { ChevronDown, Check } from "lucide-solid";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
-export const Select = KobalteSelect.Root;
+export const Select = KobalteSelect;
 
 export const SelectValue = KobalteSelect.Value;
 
 export const SelectHiddenSelect = KobalteSelect.HiddenSelect;
 
 export function SelectSection(props: ComponentProps<typeof KobalteSelect.Section>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSelect.Section {...rest} class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} />
   );
 }
 
 export function SelectTrigger(props: ComponentProps<typeof KobalteSelect.Trigger>) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <KobalteSelect.Trigger
       {...rest}
@@ -39,7 +42,8 @@ export function SelectTrigger(props: ComponentProps<typeof KobalteSelect.Trigger
 }
 
 export function SelectContent(props: ComponentProps<typeof KobalteSelect.Content>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSelect.Portal>
       <KobalteSelect.Content
@@ -62,10 +66,12 @@ export interface SelectItemProps extends ComponentProps<typeof KobalteSelect.Ite
 }
 
 export function SelectItem(props: SelectItemProps) {
-  const [local, rest] = splitProps(props, ["class", "children"]);
+  const local = props;
+  const rest = omit(props, "class", "children");
   return (
     <KobalteSelect.Item
       {...rest}
+      item={props.item}
       class={cn(
         "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm",
         "outline-none",
@@ -83,26 +89,30 @@ export function SelectItem(props: SelectItemProps) {
 }
 
 export function SelectLabel(props: ComponentProps<typeof KobalteSelect.Label>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSelect.Label {...rest} class={cn("px-2 py-1.5 text-sm font-semibold", local.class)} />
   );
 }
 
 export function SelectSeparator(props: ComponentProps<"div">) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return <div {...rest} class={cn("-mx-1 my-1 h-px bg-muted", local.class)} />;
 }
 
 export function SelectDescription(props: ComponentProps<typeof KobalteSelect.Description>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSelect.Description {...rest} class={cn("text-xs text-muted-foreground", local.class)} />
   );
 }
 
 export function SelectErrorMessage(props: ComponentProps<typeof KobalteSelect.ErrorMessage>) {
-  const [local, rest] = splitProps(props, ["class"]);
+  const local = props;
+  const rest = omit(props, "class");
   return (
     <KobalteSelect.ErrorMessage {...rest} class={cn("text-xs text-destructive", local.class)} />
   );

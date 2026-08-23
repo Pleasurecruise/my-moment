@@ -1,0 +1,21 @@
+diff --git a/dist/client/solid/solid-store.mjs b/dist/client/solid/solid-store.mjs
+--- a/dist/client/solid/solid-store.mjs
++++ b/dist/client/solid/solid-store.mjs
+@@ -1,5 +1,5 @@
+ import { onCleanup } from "solid-js";
+-import { createStore, reconcile } from "solid-js/store";
++import { createStore } from "solid-js/store";
+ //#region src/client/solid/solid-store.ts
+ /**
+ * Subscribes to store changes and gets store’s value.
+@@ -11,7 +11,9 @@ function useStore(store) {
+ 	const unbindActivation = store.listen(() => {});
+ 	const [state, setState] = createStore({ value: store.get() });
+ 	const unsubscribe = store.subscribe((newValue) => {
+-		setState("value", reconcile(newValue));
++		setState((draft) => {
++			draft.value = newValue;
++		});
+ 	});
+ 	onCleanup(() => unsubscribe());
+ 	unbindActivation();

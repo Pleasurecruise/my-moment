@@ -226,7 +226,7 @@ function UploadPage() {
                 value={title()}
                 onInput={(e) => setTitle(e.currentTarget.value)}
                 placeholder="Photo title"
-                maxLength={120}
+                maxlength={120}
               />
             </div>
 

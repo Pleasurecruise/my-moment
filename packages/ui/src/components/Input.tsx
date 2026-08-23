@@ -1,12 +1,14 @@
-import { splitProps, type ComponentProps } from "solid-js";
+import type { ComponentProps } from "@solidjs/web";
 import { cn } from "../lib/utils";
+import { omit } from "solid-js";
 
 export interface InputProps extends ComponentProps<"input"> {
   error?: boolean;
 }
 
 export function Input(props: InputProps) {
-  const [local, rest] = splitProps(props, ["class", "error"]);
+  const local = props;
+  const rest = omit(props, "class", "error");
 
   return (
     <input

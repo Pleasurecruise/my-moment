@@ -1,5 +1,5 @@
-import { createSignal, createEffect, onCleanup, onMount, Show } from "solid-js";
-import { Portal } from "solid-js/web";
+import { createSignal, createEffect, onSettled, Show } from "solid-js";
+import { Portal } from "@solidjs/web";
 import {
   ChevronLeft,
   ChevronRight,
@@ -42,20 +42,18 @@ export function PhotoViewer(props: PhotoViewerProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
   const [deleting, setDeleting] = createSignal(false);
 
-  createEffect(() => {
-    const idx = props.index;
-    [idx - 1, idx + 1]
-      .filter((i) => i >= 0 && i < props.photos.length)
-      .forEach((i) => {
-        const img = new Image();
-        img.src = props.photos[i].url;
-      });
-  });
-
-  createEffect(() => {
-    void props.index; // Trigger dependency tracking
-    setHighResLoaded(false);
-  });
+  createEffect(
+    () => ({ index: props.index, photos: props.photos }),
+    ({ index: idx, photos }) => {
+      setHighResLoaded(false);
+      [idx - 1, idx + 1]
+        .filter((i) => i >= 0 && i < photos.length)
+        .forEach((i) => {
+          const img = new Image();
+          img.src = photos[i].url;
+        });
+    },
+  );
 
   const goPrev = () => {
     if (props.index > 0) props.onIndexChange(props.index - 1);
@@ -84,7 +82,7 @@ export function PhotoViewer(props: PhotoViewerProps) {
     props.onDeleted(currentPhoto);
   };
 
-  onMount(() => {
+  onSettled(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") props.onClose();
       if (e.key === "ArrowLeft") goPrev();
@@ -92,10 +90,10 @@ export function PhotoViewer(props: PhotoViewerProps) {
     };
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    onCleanup(() => {
+    return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
-    });
+    };
   });
 
   return (

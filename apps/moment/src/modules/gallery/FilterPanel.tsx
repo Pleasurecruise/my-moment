@@ -57,7 +57,7 @@ export function FilterPanel(props: FilterPanelProps) {
               <button
                 type="button"
                 onClick={() => updateSettings({ tagFilterMode: "union" })}
-                aria-pressed={settings().tagFilterMode === "union"}
+                aria-pressed={settings().tagFilterMode === "union" ? "true" : "false"}
                 class={cn(
                   "rounded px-2.5 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   settings().tagFilterMode === "union"
@@ -70,7 +70,7 @@ export function FilterPanel(props: FilterPanelProps) {
               <button
                 type="button"
                 onClick={() => updateSettings({ tagFilterMode: "intersection" })}
-                aria-pressed={settings().tagFilterMode === "intersection"}
+                aria-pressed={settings().tagFilterMode === "intersection" ? "true" : "false"}
                 class={cn(
                   "rounded px-2.5 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   settings().tagFilterMode === "intersection"
@@ -95,7 +95,7 @@ export function FilterPanel(props: FilterPanelProps) {
                     <button
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      aria-pressed={selected()}
+                      aria-pressed={selected() ? "true" : "false"}
                       class={cn(
                         "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         selected()
@@ -129,7 +129,7 @@ export function FilterPanel(props: FilterPanelProps) {
             <button
               type="button"
               onClick={() => updateSettings({ sortOrder: "desc" })}
-              aria-pressed={settings().sortOrder === "desc"}
+              aria-pressed={settings().sortOrder === "desc" ? "true" : "false"}
               class={cn(
                 "rounded px-3 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 settings().sortOrder === "desc"
@@ -142,7 +142,7 @@ export function FilterPanel(props: FilterPanelProps) {
             <button
               type="button"
               onClick={() => updateSettings({ sortOrder: "asc" })}
-              aria-pressed={settings().sortOrder === "asc"}
+              aria-pressed={settings().sortOrder === "asc" ? "true" : "false"}
               class={cn(
                 "rounded px-3 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 settings().sortOrder === "asc"

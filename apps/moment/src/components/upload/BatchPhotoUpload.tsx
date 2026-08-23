@@ -1,17 +1,8 @@
-import {
-  createSignal,
-  createMemo,
-  createEffect,
-  on,
-  onCleanup,
-  Show,
-  splitProps,
-  type ComponentProps,
-  type JSX,
-} from "solid-js";
-import { Button } from "@my-moment/ui";
+import { createSignal, createMemo, createEffect, onCleanup, Show } from "solid-js";
+import type { ComponentProps, JSX } from "@solidjs/web";
+import { Button, cn } from "@my-moment/ui";
+import { omit } from "solid-js";
 import { Upload } from "lucide-solid";
-import { cn } from "@my-moment/ui";
 import { FileUploadList } from "./FileUploadList";
 import type { FileProgressEntry, PreviewCache, WorkflowPhase } from "~/types";
 import {
@@ -89,7 +80,9 @@ function validateFile(file: File, opts: { accept?: string; maxSize?: number }): 
 }
 
 export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
-  const [local, rest] = splitProps(props, [
+  const local = props;
+  const rest = omit(
+    props,
     "accept",
     "maxSize",
     "maxFiles",
@@ -109,7 +102,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
     "triggerUpload",
     "onUploadTriggered",
     "class",
-  ]);
+  );
 
   const [zoneStatus, setZoneStatus] = createSignal<BatchUploadStatus>("idle");
   const [files, setFiles] = createSignal<File[]>([]);
@@ -130,15 +123,13 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
 
   // Watch for external upload trigger
   createEffect(
-    on(
-      () => local.triggerUpload?.(),
-      (triggered) => {
-        if (triggered && phase() === "review" && entries().some((e) => e.status === "pending")) {
-          uploadPending();
-          local.onUploadTriggered?.();
-        }
-      },
-    ),
+    () => local.triggerUpload?.(),
+    (triggered) => {
+      if (triggered && phase() === "review" && entries().some((e) => e.status === "pending")) {
+        uploadPending();
+        local.onUploadTriggered?.();
+      }
+    },
   );
 
   const accept = () => local.accept ?? DEFAULT_ACCEPT;
@@ -401,7 +392,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
 
       <div
         role="button"
-        tabIndex={local.disabled ? -1 : 0}
+        tabindex={local.disabled ? -1 : 0}
         class={dropZoneClasses()}
         onClick={onClick}
         onDragOver={onDragOver}
@@ -409,7 +400,7 @@ export function BatchPhotoUpload(props: BatchPhotoUploadProps) {
         onDrop={onDrop}
         onKeyDown={onKeyDown}
         aria-label={local.label ?? "Click or drag to upload"}
-        aria-disabled={local.disabled}
+        aria-disabled={local.disabled ? "true" : undefined}
       >
         <div class="flex flex-col items-center gap-2">
           {local.icon ?? <Upload class="size-8" />}
