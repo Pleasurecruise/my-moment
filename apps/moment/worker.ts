@@ -418,7 +418,7 @@ app.get("/api/og/:section", async (c) => {
       title: "Haul",
       subtitle: count(total, "item"),
       domain,
-      siteName: "My Moment",
+      siteName: SITE_NAME,
       type: "haul",
     };
   } else if (section === "wishlist") {
@@ -428,7 +428,7 @@ app.get("/api/og/:section", async (c) => {
       title: "Wishlist",
       subtitle: count(total, "item"),
       domain,
-      siteName: "My Moment",
+      siteName: SITE_NAME,
       type: "wish",
     };
   } else if (section === "collection") {

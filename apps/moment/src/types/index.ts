@@ -55,4 +55,4 @@ export type {
   UploadWorkflowState,
   WorkflowPhase,
 } from "./upload";
-export type { OgSection, WorkerBindings } from "./worker";
+export type { WorkerBindings } from "./worker";

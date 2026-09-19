@@ -150,11 +150,14 @@ export function MediaForm(props: MediaFormProps) {
         </div>
 
         <div>
-          <Label class="mb-1 text-xs text-muted-foreground">Date</Label>
+          <Label class="mb-1 text-xs text-muted-foreground">Year</Label>
           <Input
-            type="date"
+            type="text"
+            inputmode="numeric"
+            placeholder="e.g. 2026"
             value={form().date}
-            onInput={(e) => updateField("date", e.currentTarget.value)}
+            onInput={(e) => updateField("date", e.currentTarget.value.replace(/\D/g, "").slice(0, 4))}
+            maxlength={4}
           />
         </div>
       </div>

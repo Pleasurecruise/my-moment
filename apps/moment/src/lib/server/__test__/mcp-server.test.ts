@@ -10,9 +10,6 @@ describe("MCP photo tools", () => {
       MOMENT_BUCKET: {} as R2Bucket,
       MOMENT_CACHE: {} as KVNamespace,
       API_KEY: { getByName: () => ({ fetch: async () => new Response() }) },
-      CF_ACCOUNT_ID: "",
-      CF_GATEWAY_NAME: "",
-      AI_GATEWAY_PROVIDER_SLUG: "",
       ASSETS: {} as Fetcher,
     };
     const handler = createMomentMcpHandler(env);

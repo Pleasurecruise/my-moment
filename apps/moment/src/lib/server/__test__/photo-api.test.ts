@@ -16,9 +16,6 @@ function authenticatedEnv(apiKey: string): WorkerBindings {
       }),
     },
     ALLOWED_EMAIL: "owner@example.com",
-    CF_ACCOUNT_ID: "",
-    CF_GATEWAY_NAME: "",
-    AI_GATEWAY_PROVIDER_SLUG: "",
     ASSETS: {} as Fetcher,
   };
 }
