@@ -3,9 +3,8 @@ packages:
   - "apps/*"
 
 patchedDependencies:
-  better-auth@1.7.1: patches/better-auth@1.7.1.patch
-  lucide-solid@1.33.0: patches/lucide-solid@1.33.0.patch
-  void@0.10.12: patches/void@0.10.12.patch
+  better-auth@1.7.5: patches/better-auth@1.7.5.patch
+  lucide-solid@1.47.0: patches/lucide-solid@1.47.0.patch
 
 allowBuilds:
   "@swc/core": true
@@ -16,7 +15,7 @@ allowBuilds:
   sharp: true
   workerd: true
 
-minimumReleaseAge: 1440
+minimumReleaseAge: 0
 
 overrides:
-  "wrangler@>=4.107.0 <5.0.0-0": "4.125.0"
+  "wrangler@>=4.107.0 <5.0.0-0": "4.135.0"

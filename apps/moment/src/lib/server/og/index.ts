@@ -139,7 +139,7 @@ export interface OgImageOptions {
   date?: string | null;
   siteName?: string;
   logoDataUrl?: string;
-  type?: "photo" | "haul" | "wish" | "journey" | "guestbook" | "default";
+  type?: "photo" | "haul" | "wish" | "journey" | "guestbook" | "collection" | "default";
 }
 
 const BRAND_ACCENT = "#df9c45";
@@ -150,6 +150,7 @@ const typeMeta: Record<string, { code: string; kicker: string }> = {
   wish: { code: "03", kicker: "Wish list" },
   journey: { code: "04", kicker: "Travel notes" },
   guestbook: { code: "05", kicker: "Guestbook" },
+  collection: { code: "06", kicker: "Collection" },
   default: { code: "00", kicker: "Personal archive" },
 };
 

@@ -46,6 +46,15 @@
     - label: Leeds
       coords: [-1.5491, 53.8008]
       size: 0.08
+    - label: Edinburgh
+      coords: [-3.1883, 55.9533]
+      size: 0.08
+    - label: Loch Ness
+      coords: [-4.45, 57.31]
+      size: 0.08
+    - label: Three Sisters
+      coords: [-5.02, 56.67]
+      size: 0.08
     - label: Marseille
       coords: [5.3698, 43.2965]
       size: 0.08
@@ -97,9 +106,6 @@
       size: 0.08
     - label: Bergen
       coords: [5.3221, 60.393]
-      size: 0.08
-    - label: Edinburgh
-      coords: [-3.1883, 55.9533]
       size: 0.08
     - label: Glasgow
       coords: [-4.2518, 55.8642]

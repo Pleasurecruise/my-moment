@@ -8,6 +8,7 @@ export interface WorkerBindings {
   MOMENT_CACHE: KVNamespace;
   API_KEY: ApiKeyBinding;
   ALLOWED_EMAIL?: string;
+  SPOTIFY_PLAYLIST_ID?: string;
   CF_ACCOUNT_ID: string;
   CF_GATEWAY_NAME: string;
   AI_GATEWAY_PROVIDER_SLUG: string;

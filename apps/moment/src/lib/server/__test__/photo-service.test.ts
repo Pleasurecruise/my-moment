@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createPhoto, deletePhoto as deletePhotoMetadata, getPhoto } from "../photos/repository";
 import { createPhotoFromUpload, deletePhoto } from "../photos/service";
 

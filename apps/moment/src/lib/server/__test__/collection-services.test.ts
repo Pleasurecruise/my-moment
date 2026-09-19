@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { GoodsItem, WishItem } from "~/types";
 import { deleteHaulItem as deleteHaulItemMetadata, getOwnedHaulItem } from "../haul/repository";
 import { deleteHaulItem } from "../haul/service";

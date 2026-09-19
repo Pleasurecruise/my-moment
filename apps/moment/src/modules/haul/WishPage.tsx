@@ -1,5 +1,4 @@
 import { Show, For, Match, Switch, createSignal, createEffect, type Accessor } from "solid-js";
-import type { JSX } from "@solidjs/web";
 import {
   Dialog,
   DialogContent,
@@ -29,7 +28,6 @@ interface WishPageProps {
   wishes: Accessor<{ items: WishItem[] }>;
   onRetry: () => void;
   initialOpenItem?: string;
-  viewSwitcher?: JSX.Element;
 }
 
 export function WishPage(props: WishPageProps) {
@@ -46,13 +44,13 @@ export function WishPage(props: WishPageProps) {
 
   const shareWishlistLink = () =>
     void shareLink({
-      url: `${window.location.origin}/collection?view=wishlist`,
+      url: `${window.location.origin}/wish`,
       title: "My Wishlist",
     });
 
   const shareWishLink = (wishId: string, name?: string) =>
     void shareLink({
-      url: `${window.location.origin}/collection?view=wishlist&item=${wishId}`,
+      url: `${window.location.origin}/wish?item=${wishId}`,
       title: name,
     });
 
@@ -90,7 +88,7 @@ export function WishPage(props: WishPageProps) {
   return (
     <div>
       <PageHeader
-        title="Collection"
+        title="Wishlist"
         actions={
           <>
             <button
@@ -102,8 +100,7 @@ export function WishPage(props: WishPageProps) {
             </button>
             <Show when={user()}>
               <Link
-                to="/collection/add"
-                search={{ view: "wishlist" }}
+                to="/wish/add"
                 class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Add wish"
               >
@@ -121,7 +118,6 @@ export function WishPage(props: WishPageProps) {
             )}
           </Show>
         }
-        controls={props.viewSwitcher}
       />
 
       <Switch>
@@ -174,8 +170,8 @@ export function WishPage(props: WishPageProps) {
                         onClick={() => {
                           setShowWishDetail(false);
                           navigate({
-                            to: "/collection/add",
-                            search: { view: "haul", convert: item().id },
+                            to: "/haul/add",
+                            search: { convert: item().id },
                           });
                         }}
                         aria-label="Mark as purchased"
@@ -198,8 +194,8 @@ export function WishPage(props: WishPageProps) {
                         onClick={() => {
                           setShowWishDetail(false);
                           navigate({
-                            to: "/collection/add",
-                            search: { view: "wishlist", edit: item().id },
+                            to: "/wish/add",
+                            search: { edit: item().id },
                           });
                         }}
                         aria-label="Edit wish"

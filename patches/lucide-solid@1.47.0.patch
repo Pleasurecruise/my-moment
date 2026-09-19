@@ -1,20 +1,21 @@
 diff --git a/dist/source/Icon.jsx b/dist/source/Icon.jsx
-index 6c18291d7bc23a0b40328627ac17f42a59f95f88..48095d1c994fed3146a044caedc3ea8b12baa619 100644
+index a713a9a..19509b7 100644
 --- a/dist/source/Icon.jsx
 +++ b/dist/source/Icon.jsx
-@@ -6,7 +6,7 @@
+@@ -6,8 +6,8 @@
  */
  
  // src/Icon.tsx
--import { For, splitProps, useContext } from "solid-js";
+-import { createMemo, For, splitProps, useContext } from "solid-js";
 -import { Dynamic } from "solid-js/web";
-+import { For, omit, useContext } from "solid-js";
++import { createMemo, For, omit, useContext } from "solid-js";
 +import { Dynamic } from "@solidjs/web";
- import defaultAttributes from "./defaultAttributes";
- import { LucideContext } from "./context";
-@@ -43,7 +43,9 @@ var toPascalCase = (string) => {
  
+ // ../shared/src/build/defaultAttributes.ts
+ var defaultAttributes = {
+@@ -95,7 +95,9 @@ var hasA11yProp = (props) => {
  // src/Icon.tsx
+ import { LucideContext } from "./context";
  var Icon = (props) => {
 -  const [localProps, rest] = splitProps(props, [
 +  const localProps = props;
@@ -22,18 +23,18 @@ index 6c18291d7bc23a0b40328627ac17f42a59f95f88..48095d1c994fed3146a044caedc3ea8b
 +    props,
      "color",
      "size",
-     "strokeWidth",
-@@ -52,7 +54,7 @@ var Icon = (props) => {
-     "name",
+     "width",
+@@ -107,7 +109,7 @@ var Icon = (props) => {
      "iconNode",
-     "absoluteStrokeWidth"
+     "absoluteStrokeWidth",
+     "nonScalingStroke"
 -  ]);
 +  );
    const globalProps = useContext(LucideContext);
-   return <svg
-     {...defaultAttributes}
+   const icon = createMemo(
+     () => localProps.icon ?? {
 diff --git a/dist/source/context.jsx b/dist/source/context.jsx
-index a92719c9ba161e544d83586f9a6ccdef04eba151..718cd9099a9928a319b00a91d6daa30f7be0c563 100644
+index 5aa4c9b..d70b17e 100644
 --- a/dist/source/context.jsx
 +++ b/dist/source/context.jsx
 @@ -6,7 +6,7 @@
@@ -45,7 +46,7 @@ index a92719c9ba161e544d83586f9a6ccdef04eba151..718cd9099a9928a319b00a91d6daa30f
  var LucideContext = createContext({
    size: 24,
    color: "currentColor",
-@@ -15,12 +15,6 @@ var LucideContext = createContext({
+@@ -16,15 +16,8 @@ var LucideContext = createContext({
    class: ""
  });
  function LucideProvider(props) {
@@ -54,18 +55,21 @@ index a92719c9ba161e544d83586f9a6ccdef04eba151..718cd9099a9928a319b00a91d6daa30f
 -    "color",
 -    "strokeWidth",
 -    "absoluteStrokeWidth",
+-    "nonScalingStroke",
 -    "class"
 -  ]);
 -  return <LucideContext.Provider value={value}>{rest.children}</LucideContext.Provider>;
 +  const value = omit(props, "children");
 +  return <LucideContext value={value}>{props.children}</LucideContext>;
  }
+ export {
+   LucideContext,
 diff --git a/package.json b/package.json
+index f4acc31..66fc242 100644
 --- a/package.json
 +++ b/package.json
-@@ -73,8 +73,9 @@
-     "@lucide/rollup-plugins": "1.0.0",
-     "@lucide/shared": "1.0.0"
+@@ -74,7 +74,8 @@
+     "@lucide/rollup-plugins": "1.0.0"
    },
    "peerDependencies": {
 -    "solid-js": "^1.4.7"

@@ -79,6 +79,29 @@ export const wishlistItems = sqliteTable(
 
 export type WishlistItemRow = typeof wishlistItems.$inferSelect;
 
+// ---- Media (anime / film) ----
+
+export const mediaItems = sqliteTable(
+  "media_items",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    kind: text("kind", { enum: ["anime", "film"] }).notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    watchedDate: text("watched_date"),
+    imageKey: text("image_key"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (t) => [
+    index("media_user_idx").on(t.userId),
+    index("media_kind_date_idx").on(t.kind, t.watchedDate),
+  ],
+);
+
+export type MediaItemRow = typeof mediaItems.$inferSelect;
+
 // ---- Photos ----
 
 export const photos = sqliteTable(

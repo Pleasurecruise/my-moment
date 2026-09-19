@@ -28,6 +28,16 @@ import {
   updateWishlistItem,
   uploadWishlistImage,
 } from "~/lib/server/wishlist/service";
+import {
+  createMediaItem,
+  deleteMediaItem,
+  getMediaItem,
+  listMediaItems,
+  updateMediaItem,
+  uploadMediaImage,
+} from "~/lib/server/media/service";
+import { getSpotifyMusic } from "~/lib/server/spotify";
+import { mediaFormSchema, mediaKindSchema } from "~/types/media";
 import { goodsFormSchema, wishFormSchema } from "~/types/haul";
 import { photoUpdateSchema } from "~/types/photo";
 import { renderOgImage, renderOgPng, type OgImageOptions } from "~/lib/server/og";
@@ -156,11 +166,8 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
     }
   }
 
-  if (path === "/haul") return staticPageMeta(url.origin, "haul");
-  if (path === "/wish") return staticPageMeta(url.origin, "wishlist");
-
-  if (path === "/collection") {
-    const view = url.searchParams.get("view") === "wishlist" ? "wishlist" : "haul";
+  if (path === "/haul" || path === "/wish") {
+    const view = path === "/wish" ? "wishlist" : "haul";
     const itemId = url.searchParams.get("item");
     if (itemId) {
       const resolved = await (async () => {
@@ -188,10 +195,7 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
         return {
           title: `${item.name} — ${SITE_NAME}`,
           description: description.slice(0, 160),
-          canonical: absoluteUrl(
-            url.origin,
-            `/collection?view=${view}&item=${encodeURIComponent(item.id)}`,
-          ),
+          canonical: absoluteUrl(url.origin, `${path}?item=${encodeURIComponent(item.id)}`),
           image: item.imageUrl
             ? absoluteUrl(url.origin, item.imageUrl)
             : ogImageUrl(url.origin, PUBLIC_PAGE_META[view].image),
@@ -200,6 +204,10 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
       }
     }
     return staticPageMeta(url.origin, view);
+  }
+
+  if (path === "/collection") {
+    return staticPageMeta(url.origin, "collection");
   }
 
   return {
@@ -424,17 +432,13 @@ app.get("/api/og/:section", async (c) => {
       type: "wish",
     };
   } else if (section === "collection") {
-    const [haul, wishes] = await Promise.all([
-      listAllHaulItems(c.env.DB),
-      listAllWishlistItems(c.env.DB),
-    ]);
-    total = haul.length + wishes.length;
+    total = 0;
     options = {
       title: "Collection",
-      subtitle: `${haul.length} collected · ${wishes.length} wished`,
+      subtitle: "Playlists, anime, films, and the things I love",
       domain,
-      siteName: "My Moment",
-      type: "haul",
+      siteName: SITE_NAME,
+      type: "collection",
     };
   } else if (section === "journey") {
     total = 0;
@@ -585,9 +589,7 @@ app.get("/api/debug/photos", async (c) => {
 
 app.get("/api/haul", async (c) => {
   const items = await listAllHaulItems(c.env.DB);
-  const canManage = await requestIsOwner(c);
-
-  return c.json({ items, canManage });
+  return c.json({ items });
 });
 
 app.get("/api/haul/:id", async (c) => {
@@ -631,9 +633,7 @@ app.delete("/api/haul/:id", ownerOnly, async (c) => {
 
 app.get("/api/wish", async (c) => {
   const items = await listAllWishlistItems(c.env.DB);
-  const canManage = await requestIsOwner(c);
-
-  return c.json({ items, canManage });
+  return c.json({ items });
 });
 
 app.get("/api/wish/:id", async (c) => {
@@ -686,6 +686,68 @@ app.post("/api/wish/:id/convert", ownerOnly, async (c) => {
   );
   if (!item) return c.json({ error: "Wish not found" }, 404);
   return c.json(item, 201);
+});
+
+app.get("/api/media", async (c) => {
+  const kind = mediaKindSchema.safeParse(c.req.query("kind"));
+  if (!kind.success) return c.json({ error: "kind must be anime or film" }, 400);
+  const items = await listMediaItems(c.env.DB, kind.data);
+  return c.json({ items });
+});
+
+app.post("/api/media/upload", ownerOnly, async (c) => {
+  const form = await c.req.formData();
+  const kind = mediaKindSchema.safeParse(form.get("kind"));
+  if (!kind.success) return c.json({ error: "kind must be anime or film" }, 400);
+  const result = await uploadMediaImage(c.env.MOMENT_BUCKET, kind.data, form.get("file"));
+  if (!result.ok) return c.json({ error: result.error }, 400);
+  return c.json({ key: result.key, url: result.url });
+});
+
+app.get("/api/media/:id", async (c) => {
+  const item = await getMediaItem(c.env.DB, c.req.param("id"));
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
+app.post("/api/media", ownerOnly, async (c) => {
+  const parsed = mediaFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message ?? "Invalid media" }, 400);
+  }
+  const item = await createMediaItem(c.env.DB, c.get("ownerId"), parsed.data);
+  return c.json(item, 201);
+});
+
+app.put("/api/media/:id", ownerOnly, async (c) => {
+  const parsed = mediaFormSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues[0]?.message ?? "Invalid media" }, 400);
+  }
+  const item = await updateMediaItem(c.env.DB, c.get("ownerId"), c.req.param("id"), parsed.data);
+  if (!item) return c.json({ error: "Not found" }, 404);
+  return c.json(item);
+});
+
+app.delete("/api/media/:id", ownerOnly, async (c) => {
+  const deleted = await deleteMediaItem(
+    c.env.DB,
+    c.env.MOMENT_BUCKET,
+    c.get("ownerId"),
+    c.req.param("id"),
+  );
+  if (!deleted) return c.json({ error: "Not found" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/api/music", async (c) => {
+  const playlistId = c.env.SPOTIFY_PLAYLIST_ID;
+  if (!playlistId) return c.json({ error: "Spotify playlist is not configured" }, 500);
+  try {
+    return c.json(await getSpotifyMusic(playlistId));
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Spotify unavailable" }, 502);
+  }
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

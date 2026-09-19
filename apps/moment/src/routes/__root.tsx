@@ -4,8 +4,10 @@ import { useSession, signIn, signOut } from "~/lib/services/auth";
 import {
   Images,
   Map,
-  MessageCircle,
   Library,
+  MessageCircle,
+  ShoppingBag,
+  Heart,
   Sun,
   Moon,
   LogIn,
@@ -49,8 +51,13 @@ const THEME_KEY = "my-moment:theme";
 const TABS = [
   { href: "/", label: "Gallery", Icon: Images },
   { href: "/journey", label: "Journey", Icon: Map },
-  { href: "/messages", label: "Guestbook", Icon: MessageCircle },
   { href: "/collection", label: "Collection", Icon: Library },
+] as const;
+
+const SECONDARY_LINKS = [
+  { href: "/messages", label: "Guestbook", Icon: MessageCircle },
+  { href: "/haul", label: "Haul", Icon: ShoppingBag },
+  { href: "/wish", label: "Wishlist", Icon: Heart },
 ] as const;
 
 function RootLayout() {
@@ -121,6 +128,12 @@ function RootLayout() {
   });
 
   const isJourney = () => currentPath() === "/journey" || currentPath().startsWith("/journey/");
+  const isMusicView = () => {
+    if (currentPath() !== "/collection" && currentPath() !== "/collection/") return false;
+    const search = router.state.location.search as Record<string, unknown> | undefined;
+    return search?.view === "music";
+  };
+  const isFullBleed = () => isJourney() || isMusicView();
   const tabIsActive = (href: string) =>
     href === "/"
       ? currentPath() === "/" || currentPath().startsWith("/photos/")
@@ -310,7 +323,7 @@ function RootLayout() {
 
       <div
         class={
-          isJourney()
+          isFullBleed()
             ? "flex h-[calc(100dvh-3rem)] flex-col pt-4 lg:h-dvh lg:pt-7"
             : "pb-24 pt-7 max-lg:pt-4"
         }
@@ -353,6 +366,24 @@ function RootLayout() {
                   >
                     <Icon size={13} aria-hidden="true" />
                     <span>{label}</span>
+                  </Link>
+                );
+              })}
+              {SECONDARY_LINKS.map(({ href, label, Icon }) => {
+                const active = tabIsActive(href);
+                return (
+                  <Link
+                    to={href}
+                    aria-current={active ? "page" : undefined}
+                    class={`flex h-8 w-8 items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      active
+                        ? "text-foreground bg-accent/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                    aria-label={label}
+                    title={label}
+                  >
+                    <Icon size={15} aria-hidden="true" />
                   </Link>
                 );
               })}
@@ -399,9 +430,27 @@ function RootLayout() {
               </Link>
             );
           })}
+          {SECONDARY_LINKS.map(({ href, label, Icon }) => {
+            const active = tabIsActive(href);
+            return (
+              <Link
+                to={href}
+                aria-current={active ? "page" : undefined}
+                class={`flex min-h-12 min-w-0 flex-1 items-center justify-center rounded-md px-1 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-0 sm:flex-none sm:px-2 sm:py-2 ${
+                  active
+                    ? "text-foreground bg-accent/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+                aria-label={label}
+                title={label}
+              >
+                <Icon size={14} aria-hidden="true" />
+              </Link>
+            );
+          })}
         </nav>
 
-        <div class={isJourney() ? "min-h-0 w-full flex-1" : "mx-auto max-w-[70rem] px-4 sm:px-8"}>
+        <div class={isFullBleed() ? "min-h-0 w-full flex-1" : "mx-auto max-w-[70rem] px-4 sm:px-8"}>
           <GallerySettingsProvider>
             <Show when={currentPath()} keyed>
               <Outlet />

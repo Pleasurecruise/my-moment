@@ -8,7 +8,6 @@ import {
   createEffect,
   type Accessor,
 } from "solid-js";
-import type { JSX } from "@solidjs/web";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +38,6 @@ interface HaulPageProps {
   haul: Accessor<{ items: GoodsItem[] }>;
   onRetry: () => void;
   initialOpenItem?: string;
-  viewSwitcher?: JSX.Element;
 }
 
 export function HaulPage(props: HaulPageProps) {
@@ -132,13 +130,13 @@ export function HaulPage(props: HaulPageProps) {
 
   const shareHaulLink = () =>
     void shareLink({
-      url: `${window.location.origin}/collection?view=haul`,
+      url: `${window.location.origin}/haul`,
       title: "My Haul",
     });
 
   const shareItemLink = (itemId: string, name?: string) =>
     void shareLink({
-      url: `${window.location.origin}/collection?view=haul&item=${itemId}`,
+      url: `${window.location.origin}/haul?item=${itemId}`,
       title: name,
     });
 
@@ -176,7 +174,7 @@ export function HaulPage(props: HaulPageProps) {
   return (
     <div>
       <PageHeader
-        title="Collection"
+        title="Haul"
         actions={
           <>
             <button
@@ -188,8 +186,7 @@ export function HaulPage(props: HaulPageProps) {
             </button>
             <Show when={user()}>
               <Link
-                to="/collection/add"
-                search={{ view: "haul" }}
+                to="/haul/add"
                 class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Add item"
               >
@@ -227,7 +224,6 @@ export function HaulPage(props: HaulPageProps) {
             >
               <SlidersHorizontal size={16} />
             </Button>
-            {props.viewSwitcher}
           </>
         }
       />
@@ -312,8 +308,8 @@ export function HaulPage(props: HaulPageProps) {
                         onClick={() => {
                           setShowDetail(false);
                           navigate({
-                            to: "/collection/add",
-                            search: { view: "haul", edit: item().id },
+                            to: "/haul/add",
+                            search: { edit: item().id },
                           });
                         }}
                         aria-label="Edit item"

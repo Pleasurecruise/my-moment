@@ -8,7 +8,7 @@ const IMAGE_EXTENSIONS = {
 
 const INVALID_IMAGE_TYPE_ERROR = "Invalid file type. Allowed: JPG, PNG, WebP, GIF, AVIF";
 
-export type CollectionImageKind = "haul" | "wishlist";
+export type CollectionImageKind = "haul" | "wishlist" | "anime" | "film";
 
 export type CollectionImageResult =
   | { ok: true; key: string; url: string }

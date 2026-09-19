@@ -22,20 +22,20 @@ export const PUBLIC_PAGE_META = {
   },
   collection: {
     title: "Collection — My Moment",
-    description: "Things collected, considered, and remembered.",
+    description: "Playlists, anime, films, and the things I love.",
     path: "/collection",
     image: "/api/og/collection",
   },
   haul: {
     title: "Haul — My Moment",
     description: "Things I bought and what I think of them.",
-    path: "/collection?view=haul",
+    path: "/haul",
     image: "/api/og/haul",
   },
   wishlist: {
     title: "Wishlist — My Moment",
     description: "Things I'm hoping to get.",
-    path: "/collection?view=wishlist",
+    path: "/wish",
     image: "/api/og/wishlist",
   },
 } as const;

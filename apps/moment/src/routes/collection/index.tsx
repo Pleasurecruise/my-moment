@@ -1,96 +1,145 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
-import { Errored, Loading, Match, Switch, createMemo, refresh } from "solid-js";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/solid-router";
+import { Errored, Loading, Match, Show, Switch, createMemo } from "solid-js";
 import { z } from "zod";
+import { Plus } from "lucide-solid";
 import { Button, Spinner } from "@my-moment/ui";
+import { PageHeader } from "~/components/PageHeader";
 import { Segment, type SegmentOption } from "~/components/Segment";
 import { EmptyState } from "~/components/EmptyState";
-import { HaulPage, WishPage } from "~/modules/haul";
-import type { CollectionResponse, GoodsItem, WishItem } from "~/types";
+import { MusicView, PosterGrid } from "~/modules/collection";
+import { useSession } from "~/lib/services/auth";
+import type { MediaItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
-const collectionViewSchema = z.enum(["haul", "wishlist"]);
-type CollectionView = z.infer<typeof collectionViewSchema>;
+type CollectionSection = "music" | "anime" | "film";
+
+const SECTION_OPTIONS: SegmentOption<CollectionSection>[] = [
+  { value: "anime", label: "Anime" },
+  { value: "film", label: "Film" },
+  { value: "music", label: "Music" },
+];
+
+const collectionSearchSchema = z.object({
+  view: z.enum(["music", "anime", "film"]).catch("anime"),
+});
 
 export const Route = createFileRoute("/collection/")({
   component: CollectionPage,
-  validateSearch: z.object({
-    view: collectionViewSchema.catch("haul"),
-    item: z.string().optional(),
-  }),
+  validateSearch: collectionSearchSchema,
   head: () => ({
     meta: publicPageMeta("collection"),
   }),
 });
 
 function CollectionPage() {
+  const session = useSession();
+  const user = () => session()?.data?.user ?? null;
   const search = useSearch({ from: "/collection/" });
   const navigate = useNavigate({ from: "/collection/" });
-  const haul = createMemo<CollectionResponse<GoodsItem>>(async () => {
-    const response = await fetch("/api/haul");
-    if (!response.ok) throw new Error("Failed to load haul");
+  const section = () => search().view;
+
+  const anime = createMemo<{ items: MediaItem[] }>(async () => {
+    const response = await fetch("/api/media?kind=anime");
+    if (!response.ok) throw new Error("Failed to load anime");
     return response.json();
   });
-  const wishes = createMemo<CollectionResponse<WishItem>>(async () => {
-    const response = await fetch("/api/wish");
-    if (!response.ok) throw new Error("Failed to load wishlist");
+  const films = createMemo<{ items: MediaItem[] }>(async () => {
+    const response = await fetch("/api/media?kind=film");
+    if (!response.ok) throw new Error("Failed to load films");
     return response.json();
   });
 
-  const options = (): SegmentOption<CollectionView>[] => [
-    { value: "haul", label: `Haul ${haul()?.items.length ?? "—"}` },
-    { value: "wishlist", label: `Wishlist ${wishes()?.items.length ?? "—"}` },
-  ];
-  const viewSwitcher = () => (
-    <Segment
-      options={options()}
-      value={search().view}
-      onChange={(view) => navigate({ search: { view }, replace: true })}
-    />
-  );
+  const addHref = () => (section() === "anime" ? "anime" : "film");
+  const isMusic = () => section() === "music";
 
   return (
-    <Errored
-      fallback={(_, reset) => (
-        <EmptyState
-          title="Could not load collection"
-          description="The collection is temporarily unavailable."
-          action={
-            <Button variant="link" size="sm" onClick={reset}>
-              Retry
-            </Button>
+    <main class={isMusic() ? "flex h-full min-h-0 flex-col" : "pb-10"}>
+      <div class={isMusic() ? "mx-auto w-full max-w-[70rem] shrink-0 px-4 sm:px-8" : undefined}>
+        <PageHeader
+          title="Collection"
+          class={isMusic() ? "mb-4" : undefined}
+          subtitle="Playlists, anime, films, and the things I love."
+          actions={
+            <Show when={user() && !isMusic()}>
+              <Link
+                to="/collection/add"
+                search={{ kind: addHref() }}
+                class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Add item"
+              >
+                <Plus size={12} />
+              </Link>
+            </Show>
+          }
+          controls={
+            <Segment<CollectionSection>
+              options={SECTION_OPTIONS}
+              value={section()}
+              onChange={(view) => navigate({ search: { view }, replace: true })}
+            />
           }
         />
-      )}
-    >
-      <Loading
-        fallback={
-          <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-            <Spinner size="sm" />
-            <p class="text-sm">Loading...</p>
-          </div>
-        }
-      >
-        <main class="pb-10">
-          <Switch>
-            <Match when={search().view === "haul"}>
-              <HaulPage
-                haul={haul}
-                onRetry={() => refresh(haul)}
-                initialOpenItem={search().item}
-                viewSwitcher={viewSwitcher()}
-              />
-            </Match>
-            <Match when={search().view === "wishlist"}>
-              <WishPage
-                wishes={wishes}
-                onRetry={() => refresh(wishes)}
-                initialOpenItem={search().item}
-                viewSwitcher={viewSwitcher()}
-              />
-            </Match>
-          </Switch>
-        </main>
-      </Loading>
-    </Errored>
+      </div>
+
+      <div class={isMusic() ? "min-h-0 flex-1" : undefined}>
+        <Switch>
+          <Match when={isMusic()}>
+            <MusicView />
+          </Match>
+          <Match when={section() === "anime"}>
+            <Errored
+              fallback={(_, reset) => (
+                <EmptyState
+                  title="Could not load anime"
+                  description="This section is temporarily unavailable."
+                  action={
+                    <Button variant="link" size="sm" onClick={reset}>
+                      Retry
+                    </Button>
+                  }
+                />
+              )}
+            >
+              <Loading
+                fallback={
+                  <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+                    <Spinner size="sm" />
+                    <p class="text-sm">Loading...</p>
+                  </div>
+                }
+              >
+                <PosterGrid items={anime().items} kind="anime" />
+              </Loading>
+            </Errored>
+          </Match>
+          <Match when={section() === "film"}>
+            <Errored
+              fallback={(_, reset) => (
+                <EmptyState
+                  title="Could not load films"
+                  description="This section is temporarily unavailable."
+                  action={
+                    <Button variant="link" size="sm" onClick={reset}>
+                      Retry
+                    </Button>
+                  }
+                />
+              )}
+            >
+              <Loading
+                fallback={
+                  <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+                    <Spinner size="sm" />
+                    <p class="text-sm">Loading...</p>
+                  </div>
+                }
+              >
+                <PosterGrid items={films().items} kind="film" />
+              </Loading>
+            </Errored>
+          </Match>
+        </Switch>
+      </div>
+    </main>
   );
 }

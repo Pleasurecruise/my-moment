@@ -1,20 +1,56 @@
-import { createFileRoute, redirect } from "@tanstack/solid-router";
+import { createFileRoute, useSearch } from "@tanstack/solid-router";
+import { Errored, Loading, createMemo, refresh } from "solid-js";
 import { z } from "zod";
+import { Button, Spinner } from "@my-moment/ui";
+import { EmptyState } from "~/components/EmptyState";
+import { HaulPage } from "~/modules/haul";
+import type { CollectionResponse, GoodsItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/haul/")({
   validateSearch: z.object({
     item: z.string().optional(),
   }),
-  beforeLoad: ({ search }) => {
-    throw redirect({
-      to: "/collection",
-      search: { view: "haul", item: search.item },
-      replace: true,
-    });
-  },
+  component: HaulRoutePage,
   head: () => ({
     meta: publicPageMeta("haul"),
   }),
-  staleTime: 0,
 });
+
+function HaulRoutePage() {
+  const search = useSearch({ from: "/haul/" });
+  const haul = createMemo<CollectionResponse<GoodsItem>>(async () => {
+    const response = await fetch("/api/haul");
+    if (!response.ok) throw new Error("Failed to load haul");
+    return response.json();
+  });
+
+  return (
+    <Errored
+      fallback={(_, reset) => (
+        <EmptyState
+          title="Could not load haul"
+          description="Your haul is temporarily unavailable."
+          action={
+            <Button variant="link" size="sm" onClick={reset}>
+              Retry
+            </Button>
+          }
+        />
+      )}
+    >
+      <Loading
+        fallback={
+          <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
+            <Spinner size="sm" />
+            <p class="text-sm">Loading...</p>
+          </div>
+        }
+      >
+        <main class="pb-10">
+          <HaulPage haul={haul} onRetry={() => refresh(haul)} initialOpenItem={search().item} />
+        </main>
+      </Loading>
+    </Errored>
+  );
+}
