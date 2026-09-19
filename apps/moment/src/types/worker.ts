@@ -11,4 +11,3 @@ export interface WorkerBindings {
   SPOTIFY_PLAYLIST_ID?: string;
   ASSETS: Fetcher;
 }
-

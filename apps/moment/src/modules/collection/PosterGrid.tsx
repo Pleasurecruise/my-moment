@@ -8,53 +8,11 @@ interface PosterGridProps {
   kind: "anime" | "film";
 }
 
-function PosterCard(props: { item: MediaItem; kind: "anime" | "film" }) {
-  return (
-    <div class="group flex flex-col">
-      <div class="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted shadow-sm transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lg">
-        <Show
-          when={props.item.imageUrl}
-          fallback={
-            <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50 text-muted-foreground">
-              {props.kind === "film" ? (
-                <Film size={30} strokeWidth={1.25} aria-hidden="true" />
-              ) : (
-                <Clapperboard size={30} strokeWidth={1.25} aria-hidden="true" />
-              )}
-            </div>
-          }
-        >
-          <img
-            src={props.item.imageUrl}
-            alt={props.item.title}
-            class="h-full w-full object-cover"
-            loading="lazy"
-          />
-        </Show>
-      </div>
-
-      <div class="mt-2 flex flex-col items-center gap-0.5 text-center">
-        <span class="text-sm font-medium leading-snug text-foreground">{props.item.title}</span>
-        <Show when={props.item.date}>
-          <span class="text-xs text-muted-foreground">{props.item.date}</span>
-        </Show>
-      </div>
-    </div>
-  );
-}
-
-function PosterGridRow(props: { items: MediaItem[]; kind: "anime" | "film" }) {
-  return (
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      <For each={props.items}>{(item) => <PosterCard item={item} kind={props.kind} />}</For>
-    </div>
-  );
-}
-
 export function PosterGrid(props: PosterGridProps) {
-  const hasDates = () => props.items.some((item) => item.date);
+  const sections = createMemo(() => {
+    const hasDates = props.items.some((item) => item.date);
+    if (!hasDates) return [{ heading: null as string | null, items: props.items }];
 
-  const groups = createMemo(() => {
     const map = new Map<string, MediaItem[]>();
     for (const item of props.items) {
       const year = (item.date ?? "").slice(0, 4) || "Others";
@@ -62,11 +20,13 @@ export function PosterGrid(props: PosterGridProps) {
       list.push(item);
       map.set(year, list);
     }
-    return Array.from(map.entries()).sort(([a], [b]) => {
-      if (a === "Others") return 1;
-      if (b === "Others") return -1;
-      return Number(b) - Number(a);
-    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => {
+        if (a === "Others") return 1;
+        if (b === "Others") return -1;
+        return Number(b) - Number(a);
+      })
+      .map(([heading, items]) => ({ heading, items }));
   });
 
   return (
@@ -76,20 +36,57 @@ export function PosterGrid(props: PosterGridProps) {
         <EmptyState title="Nothing here yet" description="This corner is still being set up." />
       }
     >
-      <Show when={hasDates()} fallback={<PosterGridRow items={props.items} kind={props.kind} />}>
-        <div class="space-y-8">
-          <For each={groups()}>
-            {([year, items]) => (
-              <section>
+      <div class="space-y-8">
+        <For each={sections()}>
+          {(section) => (
+            <section>
+              <Show when={section.heading}>
                 <h2 class="mb-4 text-2xl font-bold tracking-tight text-muted-foreground/70">
-                  {year}
+                  {section.heading}
                 </h2>
-                <PosterGridRow items={items} kind={props.kind} />
-              </section>
-            )}
-          </For>
-        </div>
-      </Show>
+              </Show>
+              <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                <For each={section.items}>
+                  {(item) => (
+                    <div class="group flex flex-col">
+                      <div class="relative aspect-[2/3] overflow-hidden rounded-lg bg-muted shadow-sm transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lg">
+                        <Show
+                          when={item.imageUrl}
+                          fallback={
+                            <div class="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-muted/50 text-muted-foreground">
+                              {props.kind === "film" ? (
+                                <Film size={30} strokeWidth={1.25} aria-hidden="true" />
+                              ) : (
+                                <Clapperboard size={30} strokeWidth={1.25} aria-hidden="true" />
+                              )}
+                            </div>
+                          }
+                        >
+                          <img
+                            src={item.imageUrl}
+                            alt={item.title}
+                            class="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </Show>
+                      </div>
+
+                      <div class="mt-2 flex flex-col items-center gap-0.5 text-center">
+                        <span class="text-sm font-medium leading-snug text-foreground">
+                          {item.title}
+                        </span>
+                        <Show when={item.date}>
+                          <span class="text-xs text-muted-foreground">{item.date}</span>
+                        </Show>
+                      </div>
+                    </div>
+                  )}
+                </For>
+              </div>
+            </section>
+          )}
+        </For>
+      </div>
     </Show>
   );
 }

@@ -44,11 +44,7 @@ export function MediaForm(props: MediaFormProps) {
 
   const displayImage = () => previewUrl() ?? form().imageUrl;
 
-  const onImageInputChange = (e: Event) => {
-    const input = e.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
+  const applyImageFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
@@ -156,7 +152,9 @@ export function MediaForm(props: MediaFormProps) {
             inputmode="numeric"
             placeholder="e.g. 2026"
             value={form().date}
-            onInput={(e) => updateField("date", e.currentTarget.value.replace(/\D/g, "").slice(0, 4))}
+            onInput={(e) =>
+              updateField("date", e.currentTarget.value.replace(/\D/g, "").slice(0, 4))
+            }
             maxlength={4}
           />
         </div>
@@ -164,7 +162,7 @@ export function MediaForm(props: MediaFormProps) {
 
       <div class="space-y-2">
         <Label class="text-xs text-muted-foreground">Cover image</Label>
-        <Show when={displayImage()} fallback={<ImageUploadInput onChange={onImageInputChange} />}>
+        <Show when={displayImage()} fallback={<ImageUploadInput onFile={applyImageFile} />}>
           <div class="relative overflow-hidden rounded-lg border border-border">
             <img src={displayImage()} alt="Cover" class="h-48 w-full object-cover" />
             <button
@@ -193,13 +191,31 @@ export function MediaForm(props: MediaFormProps) {
   );
 }
 
-function ImageUploadInput(props: { onChange: (event: Event) => void }) {
+function ImageUploadInput(props: { onFile: (file: File) => void }) {
   return (
-    <label class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-all hover:border-primary/50 hover:bg-accent/50">
+    <label
+      class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-6 transition-all hover:border-primary/50 hover:bg-accent/50"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const file = e.dataTransfer?.files?.[0];
+        if (file) props.onFile(file);
+      }}
+    >
       <Upload class="size-8 text-muted-foreground" />
       <span class="text-sm font-medium">Click or drag to upload</span>
       <span class="text-xs text-muted-foreground">JPG/PNG/WebP, max 10MB</span>
-      <input type="file" accept="image/*" class="hidden" onChange={props.onChange} />
+      <input
+        type="file"
+        accept="image/*"
+        class="hidden"
+        onChange={(e) => {
+          const input = e.currentTarget;
+          const file = input.files?.[0];
+          input.value = "";
+          if (file) props.onFile(file);
+        }}
+      />
     </label>
   );
 }
