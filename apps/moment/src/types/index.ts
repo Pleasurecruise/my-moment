@@ -1,4 +1,3 @@
-export type { CollectionResponse } from "./collection";
 export { mediaFormSchema, mediaItemSchema, mediaKindSchema } from "./media";
 export type { MediaFormData, MediaFormInput, MediaItem, MediaKind } from "./media";
 export type { MusicResponse } from "./music";

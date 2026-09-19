@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Button, Spinner } from "@my-moment/ui";
 import { EmptyState } from "~/components/EmptyState";
 import { HaulPage } from "~/modules/haul";
-import type { CollectionResponse, GoodsItem } from "~/types";
+import type { GoodsItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/haul/")({
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/haul/")({
 
 function HaulRoutePage() {
   const search = useSearch({ from: "/haul/" });
-  const haul = createMemo<CollectionResponse<GoodsItem>>(async () => {
+  const haul = createMemo<{ items: GoodsItem[] }>(async () => {
     const response = await fetch("/api/haul");
     if (!response.ok) throw new Error("Failed to load haul");
     return response.json();

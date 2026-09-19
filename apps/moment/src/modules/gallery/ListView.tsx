@@ -50,15 +50,13 @@ function PhotoCard(props: { photo: PhotoItem; onClick?: () => void }) {
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return null;
-    try {
-      return new Date(dateStr).toLocaleDateString("zh-CN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-    } catch {
-      return dateStr;
-    }
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   };
 
   return (

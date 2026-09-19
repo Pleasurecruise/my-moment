@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Button, Spinner } from "@my-moment/ui";
 import { EmptyState } from "~/components/EmptyState";
 import { WishPage } from "~/modules/haul";
-import type { CollectionResponse, WishItem } from "~/types";
+import type { WishItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/wish/")({
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/wish/")({
 
 function WishRoutePage() {
   const search = useSearch({ from: "/wish/" });
-  const wishes = createMemo<CollectionResponse<WishItem>>(async () => {
+  const wishes = createMemo<{ items: WishItem[] }>(async () => {
     const response = await fetch("/api/wish");
     if (!response.ok) throw new Error("Failed to load wishlist");
     return response.json();
