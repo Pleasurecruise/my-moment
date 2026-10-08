@@ -1,6 +1,7 @@
 import { deleteCollectionImage, uploadCollectionImage } from "../collection/storage";
 import {
   convertWishlistItem,
+  countWishlist,
   createWishlistItem,
   deleteWishlistItem as deleteWishlistItemMetadata,
   getOwnedWishlistItem,
@@ -11,6 +12,7 @@ import {
 
 export {
   convertWishlistItem,
+  countWishlist,
   createWishlistItem,
   getWishlistItem,
   listAllWishlistItems,

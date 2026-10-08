@@ -39,4 +39,27 @@ describe("photo REST API errors", () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "Invalid photo payload." });
   });
+
+  it.each(["POST /", "PATCH /photo-1"])(
+    "returns JSON 400 for malformed JSON on %s",
+    async (route) => {
+      const apiKey = "sk-moment-test";
+      const [method, path] = route.split(" ");
+      const response = await photoApi.request(
+        path!,
+        {
+          method,
+          headers: {
+            authorization: `Bearer ${apiKey}`,
+            "content-type": "application/json",
+          },
+          body: "{not json",
+        },
+        authenticatedEnv(apiKey),
+      );
+
+      expect(response.status).toBe(400);
+      await expect(response.json()).resolves.toEqual({ error: "Invalid photo payload." });
+    },
+  );
 });

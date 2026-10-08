@@ -2,16 +2,22 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getSession } from "void/auth";
 import { createOwnerGuard, requestIsOwner, type WorkerEnv } from "~/lib/server/access";
-import { readManifest, writeManifest, deleteManifest, type PhotoManifest } from "~/lib/kv";
 import {
+  countPhotos,
   createPhotoFromUpload,
   deletePhoto,
   getPhoto,
+  isValidCursor,
   listPhotos,
+  listRecentPhotos,
+  listTagCounts,
   updatePhoto,
 } from "~/lib/server/photos/service";
-import { getAllTags, renameTag, deleteTag } from "~/lib/server/photos/repository";
+import { renameTag, deleteTag } from "~/lib/server/photos/repository";
+import { photoListQuerySchema } from "~/lib/server/photos/schema";
+import type { JsonObject } from "~/types/json";
 import {
+  countHaul,
   createHaulItem,
   deleteHaulItem,
   getHaulItem,
@@ -21,6 +27,7 @@ import {
 } from "~/lib/server/haul/service";
 import {
   convertWishlistItem,
+  countWishlist,
   createWishlistItem,
   deleteWishlistItem,
   getWishlistItem,
@@ -50,10 +57,27 @@ import {
   updateMessage,
 } from "~/lib/server/messages/repository";
 import type { MessageCursor, WorkerBindings } from "~/types";
-import { PUBLIC_PAGE_META, SITE_NAME, type PublicPageKey } from "~/lib/seo";
+import { PUBLIC_PAGE_META, SITE_NAME, SITE_ORIGIN, type PublicPageKey } from "~/lib/seo";
 import { generateApiKey, getApiKeyStatus, verifyApiKey } from "~/lib/server/apikey";
 import { photoApi, tagApi } from "~/lib/server/api";
 import { createMomentMcpHandler } from "~/lib/server/mcp";
+import {
+  API_LINK_HEADER,
+  DISCOVERY_LIMIT,
+  apiCatalog,
+  llmsTxt,
+  robotsTxt,
+  rssXml,
+  sitemapXml,
+  publicResponse,
+  mimeType,
+  photoJsonLd,
+  photoSummary,
+  photoTitle,
+  toJsonLd,
+  websiteJsonLd,
+  edgeCache,
+} from "~/lib/server/discovery";
 
 const app = new Hono<WorkerEnv>();
 const ownerOnly = createOwnerGuard();
@@ -90,7 +114,12 @@ interface PageMeta {
   imageWidth?: number;
   imageHeight?: number;
   type?: "website" | "article";
+  imageType?: string;
   robots?: string;
+  notFound?: boolean;
+  jsonLd?: JsonObject;
+  /** Plain-text body for crawlers that do not run JavaScript. */
+  fallback?: { heading: string; text: string; imageUrl?: string };
 }
 
 function absoluteUrl(origin: string, path: string): string {
@@ -119,6 +148,8 @@ function staticPageMeta(origin: string, key: PublicPageKey): PageMeta {
     image: ogImageUrl(origin, page.image),
     imageWidth: 1200,
     imageHeight: 630,
+    imageType: "image/png",
+    fallback: { heading: page.title, text: page.description },
   };
 }
 
@@ -140,7 +171,9 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
     };
   }
 
-  if (path === "/") return staticPageMeta(url.origin, "gallery");
+  if (path === "/") {
+    return { ...staticPageMeta(url.origin, "gallery"), jsonLd: websiteJsonLd(url.origin) };
+  }
   if (path === "/journey") return staticPageMeta(url.origin, "journey");
   if (path === "/messages" || path === "/snapshot") {
     return staticPageMeta(url.origin, "guestbook");
@@ -150,18 +183,23 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
   if (photoMatch?.[1]) {
     const photo = await getPhoto(env.DB, decodeURIComponent(photoMatch[1]));
     if (photo) {
-      const title = photo.title.trim() || "Untitled moment";
+      const title = photoTitle(photo);
+      const image = absoluteUrl(url.origin, photo.url);
       return {
         title: `${title} — ${SITE_NAME}`,
-        description: (photo.description || `A photographed moment from ${SITE_NAME}.`).slice(
-          0,
-          160,
-        ),
+        description: photoSummary(photo),
         canonical: absoluteUrl(url.origin, `/photos/${photo.id}`),
-        image: absoluteUrl(url.origin, photo.url),
+        image,
+        imageType: mimeType(photo.url),
         ...(photo.width > 0 ? { imageWidth: photo.width } : {}),
         ...(photo.height > 0 ? { imageHeight: photo.height } : {}),
         type: "article",
+        jsonLd: photoJsonLd(photo, url.origin),
+        fallback: {
+          heading: title,
+          text: photo.description ? photo.description.trim() : "",
+          imageUrl: image,
+        },
       };
     }
   }
@@ -192,14 +230,21 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
       })();
       if (resolved) {
         const { item, description } = resolved;
+        const image = item.imageUrl
+          ? absoluteUrl(url.origin, item.imageUrl)
+          : ogImageUrl(url.origin, PUBLIC_PAGE_META[view].image);
         return {
           title: `${item.name} — ${SITE_NAME}`,
           description: description.slice(0, 160),
           canonical: absoluteUrl(url.origin, `${path}?item=${encodeURIComponent(item.id)}`),
-          image: item.imageUrl
-            ? absoluteUrl(url.origin, item.imageUrl)
-            : ogImageUrl(url.origin, PUBLIC_PAGE_META[view].image),
+          image,
+          imageType: item.imageUrl ? mimeType(item.imageUrl) : "image/png",
           type: "article",
+          fallback: {
+            heading: item.name,
+            text: description,
+            ...(item.imageUrl ? { imageUrl: image } : {}),
+          },
         };
       }
     }
@@ -212,7 +257,10 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
 
   return {
     ...staticPageMeta(url.origin, "gallery"),
+    title: `Not found — ${SITE_NAME}`,
     canonical: absoluteUrl(url.origin, path),
+    robots: "noindex",
+    notFound: true,
   };
 }
 
@@ -334,11 +382,31 @@ app.delete("/api/messages/:id", async (c) => {
   return c.json({ ok: true, deletedReplies: owner.isTopLevel });
 });
 
+// First gallery page with the filter panel's tag counts, like memos' page load.
 app.get("/api/gallery", async (c) => {
-  const canUpload = await requestIsOwner(c);
-  const photos = await listPhotos(c.env.DB);
+  const query = photoListQuerySchema.safeParse(c.req.query());
+  if (!query.success) return c.json({ error: query.error.issues[0]?.message }, 400);
+  if (query.data.cursor && !isValidCursor(query.data.cursor)) {
+    return c.json({ error: "Invalid cursor." }, 400);
+  }
 
-  return c.json({ photos, canUpload });
+  const [page, tags, total, canUpload] = await Promise.all([
+    listPhotos(c.env.DB, query.data),
+    listTagCounts(c.env.DB),
+    countPhotos(c.env.DB),
+    requestIsOwner(c),
+  ]);
+  return c.json({ ...page, tags, total, canUpload });
+});
+
+// Later gallery pages, like memos' GET /api/memos.
+app.get("/api/photos", async (c) => {
+  const query = photoListQuerySchema.safeParse(c.req.query());
+  if (!query.success) return c.json({ error: query.error.issues[0]?.message }, 400);
+  if (query.data.cursor && !isValidCursor(query.data.cursor)) {
+    return c.json({ error: "Invalid cursor." }, 400);
+  }
+  return c.json(await listPhotos(c.env.DB, query.data));
 });
 
 app.post("/api/photos/upload", uploadOwnerOnly, async (c) => {
@@ -352,7 +420,8 @@ app.post("/api/photos/upload", uploadOwnerOnly, async (c) => {
   return c.json(result.photo);
 });
 
-app.get("/api/photos/:id", async (c) => {
+// Photo ids never contain a dot, so stored files such as image1.png reach the R2 route below.
+app.get("/api/photos/:id{[^./]+}", async (c) => {
   const id = c.req.param("id");
   const photo = await getPhoto(c.env.DB, id);
   if (!photo) return c.json({ error: "Photo not found" }, 404);
@@ -402,8 +471,7 @@ app.get("/api/og/:section", async (c) => {
   let options: OgImageOptions;
   let total: number;
   if (section === "gallery") {
-    const photos = await listPhotos(c.env.DB);
-    total = photos.length;
+    total = await countPhotos(c.env.DB);
     options = {
       title: "Gallery",
       subtitle: count(total, "moment"),
@@ -412,8 +480,7 @@ app.get("/api/og/:section", async (c) => {
       type: "photo",
     };
   } else if (section === "haul") {
-    const items = await listAllHaulItems(c.env.DB);
-    total = items.length;
+    total = await countHaul(c.env.DB);
     options = {
       title: "Haul",
       subtitle: count(total, "item"),
@@ -422,8 +489,7 @@ app.get("/api/og/:section", async (c) => {
       type: "haul",
     };
   } else if (section === "wishlist") {
-    const items = await listAllWishlistItems(c.env.DB);
-    total = items.length;
+    total = await countWishlist(c.env.DB);
     options = {
       title: "Wishlist",
       subtitle: count(total, "item"),
@@ -502,17 +568,7 @@ app.get("/api/photos/*", async (c) => {
   const obj = await c.env.MOMENT_BUCKET.get(key);
   if (!obj) return c.notFound();
 
-  const mimeMap: Record<string, string> = {
-    webp: "image/webp",
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    avif: "image/avif",
-  };
-  const parts = filename.split(".");
-  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "bin";
-  const mime = mimeMap[ext] ?? "application/octet-stream";
+  const mime = mimeType(filename);
 
   if (!obj.body) return c.notFound();
   return new Response(obj.body, {
@@ -524,8 +580,7 @@ app.get("/api/photos/*", async (c) => {
 });
 
 app.get("/api/tags", async (c) => {
-  const allTags = await getAllTags(c.env.DB);
-  return c.json({ tags: allTags });
+  return c.json({ tags: await listTagCounts(c.env.DB) });
 });
 
 app.put("/api/tags/:name", ownerOnly, async (c) => {
@@ -547,44 +602,6 @@ app.delete("/api/tags/:name", ownerOnly, async (c) => {
   const ok = await deleteTag(c.env.DB, name);
   if (!ok) return c.json({ error: "Tag not found" }, 404);
   return c.json({ ok: true });
-});
-
-app.post("/api/migrate", async (c) => {
-  const force = c.req.query("force") === "true";
-  const existing = await readManifest(c.env.MOMENT_CACHE);
-  if (existing.length > 0 && !force) {
-    return c.json({
-      migrated: false,
-      count: existing.length,
-      message: "KV already has data. Pass ?force=true to overwrite.",
-    });
-  }
-  if (force) {
-    await deleteManifest(c.env.MOMENT_CACHE);
-  }
-
-  const obj = await c.env.MOMENT_BUCKET.get("manifest.json");
-  if (!obj) {
-    return c.json({
-      migrated: false,
-      count: 0,
-      message: "No manifest.json in R2",
-    });
-  }
-
-  const data = await obj.json();
-  const photos = Array.isArray(data) ? data : [];
-
-  if (photos.length > 0) {
-    await writeManifest(c.env.MOMENT_CACHE, photos as PhotoManifest[]);
-  }
-
-  return c.json({ migrated: true, count: photos.length });
-});
-
-app.get("/api/debug/photos", async (c) => {
-  const photos = await listPhotos(c.env.DB);
-  return c.json(photos);
 });
 
 app.get("/api/haul", async (c) => {
@@ -750,6 +767,8 @@ app.get("/api/music", async (c) => {
   }
 });
 
+app.get("/api/v1/openapi.json", (c) => c.env.ASSETS.fetch(c.req.raw));
+
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 function escAttr(s: string): string {
@@ -773,6 +792,42 @@ function buildHeadMeta(tags: Record<string, string>): string {
     })
     .join("\n    ");
 }
+
+app.get("/robots.txt", () => publicResponse(robotsTxt(SITE_ORIGIN), "text/plain; charset=utf-8"));
+
+app.get("/.well-known/api-catalog", (c) =>
+  c.json(apiCatalog(SITE_ORIGIN), 200, {
+    "Content-Type": 'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+    Link: '</.well-known/api-catalog>; rel="api-catalog"',
+  }),
+);
+
+app.get("/sitemap.xml", (c) =>
+  edgeCache(c.req.raw, c.executionCtx, async () =>
+    publicResponse(
+      sitemapXml(await listRecentPhotos(c.env.DB, DISCOVERY_LIMIT), SITE_ORIGIN),
+      "application/xml; charset=utf-8",
+    ),
+  ),
+);
+
+app.get("/rss.xml", (c) =>
+  edgeCache(c.req.raw, c.executionCtx, async () =>
+    publicResponse(
+      rssXml(await listRecentPhotos(c.env.DB, DISCOVERY_LIMIT), SITE_ORIGIN),
+      "application/rss+xml; charset=utf-8",
+    ),
+  ),
+);
+
+app.get("/llms.txt", (c) =>
+  edgeCache(c.req.raw, c.executionCtx, async () =>
+    publicResponse(
+      llmsTxt(await listRecentPhotos(c.env.DB, DISCOVERY_LIMIT), SITE_ORIGIN),
+      "text/plain; charset=utf-8",
+    ),
+  ),
+);
 
 app.get("*", async (c) => {
   if (!c.env.ASSETS) return c.notFound();
@@ -811,7 +866,7 @@ app.get("*", async (c) => {
   if (page.image) {
     ogTags["og:image"] = page.image;
     ogTags["og:image:secure_url"] = page.image;
-    ogTags["og:image:type"] = "image/png";
+    if (page.imageType) ogTags["og:image:type"] = page.imageType;
     ogTags["og:image:alt"] = page.title;
     ogTags["twitter:image"] = page.image;
     ogTags["twitter:image:alt"] = page.title;
@@ -820,8 +875,31 @@ app.get("*", async (c) => {
   if (page.imageHeight) ogTags["og:image:height"] = String(page.imageHeight);
   if (page.robots) ogTags.robots = page.robots;
 
-  const injected = buildHeadMeta(ogTags);
-  return new HTMLRewriter()
+  const injected = [
+    buildHeadMeta(ogTags),
+    '<link rel="alternate" type="application/rss+xml" title="My Moment" href="/rss.xml" data-static-head />',
+    ...(page.jsonLd
+      ? [`<script type="application/ld+json" data-static-head>${toJsonLd(page.jsonLd)}</script>`]
+      : []),
+  ].join("\n    ");
+  const fallback = page.fallback;
+  const fallbackBody = fallback
+    ? [
+        "<noscript><main>",
+        `<h1>${escAttr(fallback.heading)}</h1>`,
+        fallback.imageUrl
+          ? `<img src="${escAttr(fallback.imageUrl)}" alt="${escAttr(fallback.heading)}" />`
+          : "",
+        fallback.text ? `<p>${escAttr(fallback.text)}</p>` : "",
+        "<nav>",
+        ...Object.values(PUBLIC_PAGE_META).map(
+          (item) => `<a href="${escAttr(item.path)}">${escAttr(item.title)}</a>`,
+        ),
+        "</nav>",
+        "</main></noscript>",
+      ].join("")
+    : "";
+  const response = new HTMLRewriter()
     .on("title", {
       element(element) {
         element.setInnerContent(page.title);
@@ -833,7 +911,15 @@ app.get("*", async (c) => {
         el.append(injected, { html: true });
       },
     })
+    .on("body", {
+      element(el) {
+        if (fallbackBody) el.prepend(fallbackBody, { html: true });
+      },
+    })
     .transform(htmlRes);
+  const headers = new Headers(response.headers);
+  if (url.pathname === "/") headers.append("Link", API_LINK_HEADER);
+  return new Response(response.body, { status: page.notFound ? 404 : response.status, headers });
 });
 
 export default app;

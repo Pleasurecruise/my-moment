@@ -1,5 +1,6 @@
 import { deleteCollectionImage, uploadCollectionImage } from "../collection/storage";
 import {
+  countHaul,
   createHaulItem,
   deleteHaulItem as deleteHaulItemMetadata,
   getHaulItem,
@@ -8,7 +9,7 @@ import {
   updateHaulItem,
 } from "./repository";
 
-export { createHaulItem, getHaulItem, listAllHaulItems, updateHaulItem };
+export { countHaul, createHaulItem, getHaulItem, listAllHaulItems, updateHaulItem };
 
 export const uploadHaulImage = (bucket: R2Bucket, value: FormDataEntryValue | null) =>
   uploadCollectionImage(bucket, "haul", value);

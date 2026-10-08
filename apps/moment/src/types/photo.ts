@@ -48,7 +48,15 @@ export const photoItemSchema = z.object({
   description: z.string().optional(),
   size: z.number().optional(),
   format: z.string().optional(),
+  updatedAt: z.string(),
   geo: geoSchema.optional(),
 });
 
 export type PhotoItem = z.infer<typeof photoItemSchema>;
+
+export const tagCountSchema = z.object({
+  name: z.string(),
+  count: z.number().int(),
+});
+
+export type TagCount = z.infer<typeof tagCountSchema>;

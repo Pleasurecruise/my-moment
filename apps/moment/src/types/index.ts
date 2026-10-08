@@ -38,8 +38,8 @@ export type {
   MessageTimestampRecord,
 } from "./messages";
 export { messageMutationResponseSchema, messagesResponseSchema } from "./messages";
-export { photoItemSchema } from "./photo";
-export type { PhotoItem } from "./photo";
+export { photoItemSchema, tagCountSchema } from "./photo";
+export type { PhotoItem, TagCount } from "./photo";
 export type {
   EmptyStateProps,
   LabelValueProps,

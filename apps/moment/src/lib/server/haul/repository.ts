@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import { eq, desc, and } from "drizzle-orm";
+import { count, eq, desc, and } from "drizzle-orm";
 import { haulItems, type HaulItemRow } from "../db/schema";
 import type { GoodsFormData, GoodsItem } from "~/types";
 
@@ -18,6 +18,12 @@ function rowToItem(row: HaulItemRow): GoodsItem {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+export async function countHaul(d1: D1Database): Promise<number> {
+  const [row] = await drizzle(d1).select({ total: count() }).from(haulItems);
+  if (!row) throw new Error("Count query returned no row.");
+  return row.total;
 }
 
 export async function getHaulItem(d1: D1Database, id: string): Promise<GoodsItem | null> {

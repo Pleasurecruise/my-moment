@@ -6,6 +6,7 @@ vi.mock("../photos/repository", () => ({
   createPhoto: vi.fn(),
   deletePhoto: vi.fn(),
   getPhoto: vi.fn(),
+  isObjectInUse: vi.fn(),
   listPhotos: vi.fn(),
   updatePhoto: vi.fn(),
 }));
@@ -61,6 +62,7 @@ describe("photo service create", () => {
       width: 1200,
       height: 800,
       tags: ["travel"],
+      updatedAt: "2026-08-01T00:00:00.000Z",
     };
     vi.mocked(createPhoto).mockResolvedValue(photo);
 
@@ -121,6 +123,7 @@ describe("photo service delete", () => {
       width: 100,
       height: 100,
       tags: [],
+      updatedAt: "2026-08-01T00:00:00.000Z",
     });
     vi.mocked(deletePhotoMetadata).mockResolvedValue(true);
     const { bucket, remove } = createBucket();
@@ -144,6 +147,7 @@ describe("photo service delete", () => {
       width: 100,
       height: 100,
       tags: [],
+      updatedAt: "2026-08-01T00:00:00.000Z",
     });
     const failure = new Error("R2 unavailable");
     const remove = vi.fn().mockRejectedValue(failure);

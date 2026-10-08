@@ -1,17 +1,31 @@
 import { photoUploadSchema } from "~/types/photo";
 import type { PhotoItem, WorkerBindings } from "~/types";
-import type { CreatePhotoFromR2Input, PhotoListInput, PhotoSearchInput } from "./types";
+import type { CreatePhotoFromR2Input } from "./types";
 import { PhotoDomainError } from "./errors";
 import { deletePhotoObjects, storePhotoObjects } from "./storage";
 import {
+  countPhotos,
   createPhoto,
+  isValidCursor,
+  listRecentPhotos,
+  listTagCounts,
   deletePhoto as deletePhotoMetadata,
   getPhoto,
+  isObjectInUse,
   listPhotos,
   updatePhoto,
 } from "./repository";
 
-export { createPhoto, getPhoto, listPhotos, updatePhoto };
+export {
+  countPhotos,
+  createPhoto,
+  getPhoto,
+  isValidCursor,
+  listRecentPhotos,
+  listPhotos,
+  listTagCounts,
+  updatePhoto,
+};
 
 export type CreatePhotoFromUploadResult =
   | { ok: true; photo: PhotoItem }
@@ -86,34 +100,6 @@ export async function createPhotoFromUpload(
   }
 }
 
-export async function listPhotoMetadata(
-  d1: D1Database,
-  input: PhotoListInput,
-): Promise<PhotoItem[]> {
-  const photos = await listPhotos(d1);
-  return photos
-    .filter((photo) => !input.fromDate || (photo.date && photo.date >= input.fromDate))
-    .filter((photo) => !input.toDate || (photo.date && photo.date <= input.toDate))
-    .filter((photo) => !input.tags?.length || input.tags.every((tag) => photo.tags.includes(tag)))
-    .slice(0, input.limit);
-}
-
-export async function searchPhotoMetadata(
-  d1: D1Database,
-  input: PhotoSearchInput,
-): Promise<PhotoItem[]> {
-  const query = input.query.toLowerCase();
-  const photos = await listPhotos(d1);
-  return photos
-    .filter(
-      (photo) =>
-        photo.title.toLowerCase().includes(query) ||
-        (photo.description && photo.description.toLowerCase().includes(query)) ||
-        photo.tags.some((tag) => tag.toLowerCase().includes(query)),
-    )
-    .slice(0, input.limit);
-}
-
 export async function createPhotoFromR2(
   d1: D1Database,
   bucket: R2Bucket,
@@ -145,6 +131,16 @@ export async function createPhotoFromR2(
     );
   }
 
+  const url = `/api/photos/${input.r2Key}`;
+  const thumbnailUrl = `/api/photos/${input.thumbnailR2Key}`;
+  if (await isObjectInUse(d1, [url, thumbnailUrl])) {
+    throw new PhotoDomainError(
+      "R2_OBJECT_IN_USE",
+      "An R2 object is already used by another photo.",
+      409,
+    );
+  }
+
   return createPhoto(d1, owner.id, {
     title: input.title,
     description: input.description,
@@ -157,8 +153,8 @@ export async function createPhotoFromR2(
     aspectRatio: input.aspectRatio,
     format: input.format,
     size: original.size,
-    url: `/api/photos/${input.r2Key}`,
-    thumbnailUrl: `/api/photos/${input.thumbnailR2Key}`,
+    url,
+    thumbnailUrl,
   });
 }
 

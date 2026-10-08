@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/d1";
-import { eq, desc, and } from "drizzle-orm";
+import { count, eq, desc, and } from "drizzle-orm";
 import { wishlistItems, type WishlistItemRow } from "../db/schema";
 import type { GoodsFormData, GoodsItem, WishFormData, WishItem } from "~/types";
 
@@ -14,6 +14,12 @@ function rowToWishItem(row: WishlistItemRow): WishItem {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+export async function countWishlist(d1: D1Database): Promise<number> {
+  const [row] = await drizzle(d1).select({ total: count() }).from(wishlistItems);
+  if (!row) throw new Error("Count query returned no row.");
+  return row.total;
 }
 
 export async function listAllWishlistItems(d1: D1Database): Promise<WishItem[]> {

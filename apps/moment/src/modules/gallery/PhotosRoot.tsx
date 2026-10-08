@@ -1,17 +1,16 @@
-import { createSignal, createMemo, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { Link, useNavigate } from "@tanstack/solid-router";
 import { Share2, SlidersHorizontal, Upload } from "lucide-solid";
 import { Segment } from "~/components/Segment";
 import { PageHeader } from "~/components/PageHeader";
-import { Button } from "@my-moment/ui";
+import { Button, Spinner } from "@my-moment/ui";
 import { shareLink } from "~/lib/share";
 import { MasonryView } from "./MasonryView";
 import { ListView } from "./ListView";
 import { FilterPanel, ActiveFilterChips } from "./FilterPanel";
 import { PhotoViewer } from "~/modules/viewer/PhotoViewer";
-import type { PhotoItem } from "~/types";
+import type { PhotoItem, TagCount } from "~/types";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
-import { filterAndSortPhotos } from "~/types/gallery";
 
 type ViewMode = "grid" | "list";
 
@@ -21,8 +20,15 @@ const VIEW_OPTIONS = [
 ];
 
 interface PhotosRootProps {
+  /** Loaded pages, already filtered and ordered by the server. */
   photos: PhotoItem[];
-  canUpload?: boolean;
+  tags: TagCount[];
+  total: number;
+  canUpload: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  loadMoreRef: (element: HTMLDivElement) => void;
 }
 
 export function PhotosRoot(props: PhotosRootProps) {
@@ -33,15 +39,11 @@ export function PhotosRoot(props: PhotosRootProps) {
   const [showFilters, setShowFilters] = createSignal(false);
   const [deletedPhotoIds, setDeletedPhotoIds] = createSignal(new Set<string>());
 
-  const allPhotos = () => props.photos.filter((photo) => !deletedPhotoIds().has(photo.id));
+  const photos = () => props.photos.filter((photo) => !deletedPhotoIds().has(photo.id));
+  const filtered = () => settings().selectedTags.length > 0;
 
   const shareGalleryLink = () =>
     void shareLink({ url: `${window.location.origin}/`, title: "Gallery" });
-
-  const filteredPhotos = createMemo(() => {
-    const { selectedTags, sortOrder, tagFilterMode } = settings();
-    return filterAndSortPhotos(allPhotos(), selectedTags, sortOrder, tagFilterMode);
-  });
 
   return (
     <main class="pb-10">
@@ -68,12 +70,18 @@ export function PhotosRoot(props: PhotosRootProps) {
           </>
         }
         subtitle={
-          <>
-            {filteredPhotos().length} photo{filteredPhotos().length !== 1 ? "s" : ""}
-            <Show when={filteredPhotos().length !== allPhotos().length}>
-              <span class="text-muted-foreground/60"> (filtered from {allPhotos().length})</span>
-            </Show>
-          </>
+          <Show
+            when={filtered()}
+            fallback={
+              <>
+                {props.total} photo{props.total !== 1 ? "s" : ""}
+              </>
+            }
+          >
+            {photos().length}
+            {props.hasMore ? "+" : ""} matching
+            <span class="text-muted-foreground/60"> (of {props.total})</span>
+          </Show>
         }
         controls={
           <>
@@ -99,24 +107,38 @@ export function PhotosRoot(props: PhotosRootProps) {
 
       <Show when={showFilters()}>
         <div class="mb-6 border-y border-border/70 py-4">
-          <FilterPanel photos={allPhotos()} />
+          <FilterPanel tags={props.tags} />
         </div>
       </Show>
 
       <div id="gallery-scroll-container">
         {viewMode() === "grid" ? (
-          <MasonryView photos={filteredPhotos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <MasonryView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
         ) : (
-          <ListView photos={filteredPhotos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <ListView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
         )}
       </div>
 
+      <Show when={props.hasMore}>
+        <div ref={props.loadMoreRef} class="mt-8 flex justify-center">
+          <Button variant="outline" disabled={props.loadingMore} onClick={props.onLoadMore}>
+            <Show when={!props.loadingMore} fallback={<Spinner size="sm" />}>
+              Load more
+            </Show>
+          </Button>
+        </div>
+      </Show>
+
       <Show when={viewerIndex() !== null}>
         <PhotoViewer
-          photos={filteredPhotos()}
+          photos={photos()}
           index={viewerIndex()!}
           onClose={() => setViewerIndex(null)}
-          onIndexChange={(i) => setViewerIndex(i)}
+          onIndexChange={(i) => {
+            setViewerIndex(i);
+            // Fetch the next page before the viewer reaches the last loaded photo.
+            if (props.hasMore && i >= photos().length - 2) props.onLoadMore();
+          }}
           onEdit={(photo) => {
             setViewerIndex(null);
             navigate({ to: `/photos/${photo.id}/edit` });

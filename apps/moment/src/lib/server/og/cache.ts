@@ -1,5 +1,6 @@
 const KV_PREFIX = "moment-og:";
-const PNG_TTL = 60 * 60 * 24 * 30;
+// The image version rolls over daily, so older keys are never read again.
+const PNG_TTL = 60 * 60 * 48;
 
 export function getOgImageVersion(date = new Date()): string {
   return encodeURIComponent(date.toISOString().slice(0, 10));

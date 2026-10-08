@@ -1,17 +1,15 @@
-import { For, Show, createMemo } from "solid-js";
+import { For, Show } from "solid-js";
 import { Check, RotateCcw } from "lucide-solid";
 import { Tag, cn } from "@my-moment/ui";
 import { useGallerySettings } from "~/providers/gallery-settings-provider";
-import { getAllTags } from "~/types/gallery";
-import type { PhotoItem } from "~/types";
+import type { TagCount } from "~/types";
 
 interface FilterPanelProps {
-  photos: PhotoItem[];
+  tags: TagCount[];
 }
 
 export function FilterPanel(props: FilterPanelProps) {
   const { settings, updateSettings } = useGallerySettings();
-  const allTags = createMemo(() => getAllTags(props.photos));
 
   const toggleTag = (tag: string) => {
     const currentTags = settings().selectedTags;
@@ -46,7 +44,7 @@ export function FilterPanel(props: FilterPanelProps) {
               >
                 Filter by tag
               </h4>
-              <p class="mt-1 text-xs text-muted-foreground/70">{allTags().length} available</p>
+              <p class="mt-1 text-xs text-muted-foreground/70">{props.tags.length} available</p>
             </div>
 
             <div
@@ -84,17 +82,17 @@ export function FilterPanel(props: FilterPanelProps) {
           </div>
 
           <Show
-            when={allTags().length > 0}
+            when={props.tags.length > 0}
             fallback={<p class="py-2 text-sm text-muted-foreground">No tags yet.</p>}
           >
             <div class="flex flex-wrap gap-1.5">
-              <For each={allTags()}>
+              <For each={props.tags}>
                 {(tag) => {
-                  const selected = () => settings().selectedTags.includes(tag);
+                  const selected = () => settings().selectedTags.includes(tag.name);
                   return (
                     <button
                       type="button"
-                      onClick={() => toggleTag(tag)}
+                      onClick={() => toggleTag(tag.name)}
                       aria-pressed={selected() ? "true" : "false"}
                       class={cn(
                         "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -103,7 +101,8 @@ export function FilterPanel(props: FilterPanelProps) {
                           : "border-border/80 bg-background/40 text-muted-foreground hover:border-foreground/25 hover:bg-muted hover:text-foreground",
                       )}
                     >
-                      {tag}
+                      {tag.name}
+                      <span class="tabular-nums opacity-60">{tag.count}</span>
                       <Show when={selected()}>
                         <Check size={11} aria-hidden="true" />
                       </Show>

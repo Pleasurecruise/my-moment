@@ -1,17 +1,26 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { createMemo, Errored, Loading } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup, onSettled } from "solid-js";
 import { z } from "zod";
-import { Spinner } from "@my-moment/ui";
+import { Spinner, toast } from "@my-moment/ui";
 import { PhotosRoot } from "~/modules/gallery/PhotosRoot";
-import { photoItemSchema } from "~/types";
+import { photoItemSchema, tagCountSchema, type PhotoItem, type TagCount } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
+import { useGallerySettings } from "~/providers/gallery-settings-provider";
 
-const galleryResponseSchema = z.object({
+const PAGE_LIMIT = 25;
+
+const TAG_MODES = { union: "any", intersection: "all" } as const;
+
+const photoPageSchema = z.object({
   photos: z.array(photoItemSchema),
-  canUpload: z.boolean(),
+  nextCursor: z.string().nullable(),
 });
 
-type GalleryResponse = z.infer<typeof galleryResponseSchema>;
+const galleryResponseSchema = photoPageSchema.extend({
+  tags: z.array(tagCountSchema),
+  total: z.number().int(),
+  canUpload: z.boolean(),
+});
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -22,20 +31,95 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const gallery = createMemo<GalleryResponse>(async () => {
-    const res = await fetch("/api/gallery");
-    if (!res.ok) throw new Error("Failed to load gallery");
-    return galleryResponseSchema.parse(await res.json());
-  });
+  const { settings } = useGallerySettings();
+  const [photos, setPhotos] = createSignal<PhotoItem[]>([]);
+  const [tags, setTags] = createSignal<TagCount[]>([]);
+  const [total, setTotal] = createSignal(0);
+  const [canUpload, setCanUpload] = createSignal(false);
+  const [cursor, setCursor] = createSignal<string | null>(null);
+  const [loading, setLoading] = createSignal(true);
+  const [loadingMore, setLoadingMore] = createSignal(false);
+  const [error, setError] = createSignal("");
+  const [loadMoreElement, setLoadMoreElement] = createSignal<HTMLDivElement>();
+  // Filter changes can overlap; only the latest first-page request may apply.
+  let latestRequest = 0;
 
-  const photos = () => gallery().photos;
-  const canUpload = () => gallery().canUpload;
+  const load = async (append = false) => {
+    const request = append ? latestRequest : ++latestRequest;
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+    setError("");
+    try {
+      const { selectedTags, sortOrder, tagFilterMode } = settings();
+      const query = new URLSearchParams({
+        limit: String(PAGE_LIMIT),
+        tags: selectedTags.join(","),
+        tagMode: TAG_MODES[tagFilterMode],
+        order: sortOrder,
+      });
+      if (append && cursor()) query.set("cursor", cursor()!);
+      const response = await fetch(`${append ? "/api/photos" : "/api/gallery"}?${query}`);
+      if (!response.ok) throw new Error("Failed to load gallery.");
+      if (append) {
+        const page = photoPageSchema.parse(await response.json());
+        if (request !== latestRequest) return;
+        setPhotos((current) => [...current, ...page.photos]);
+        setCursor(page.nextCursor);
+      } else {
+        const gallery = galleryResponseSchema.parse(await response.json());
+        if (request !== latestRequest) return;
+        setPhotos(gallery.photos);
+        setCursor(gallery.nextCursor);
+        setTags(gallery.tags);
+        setTotal(gallery.total);
+        setCanUpload(gallery.canUpload);
+      }
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Failed to load gallery.";
+      if (append) toast.error(message);
+      else setError(message);
+    } finally {
+      if (request === latestRequest) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  };
+
+  const loadMore = () => {
+    if (cursor() && !loading() && !loadingMore()) void load(true);
+  };
+
+  let infiniteScrollObserver: IntersectionObserver | null = null;
+  onSettled(() => void load());
+  onCleanup(() => infiniteScrollObserver?.disconnect());
+  createEffect(
+    () => ({ element: loadMoreElement(), nextCursor: cursor() }),
+    ({ element, nextCursor }) => {
+      infiniteScrollObserver?.disconnect();
+      if (!element || !nextCursor || !("IntersectionObserver" in window)) return;
+      infiniteScrollObserver = new IntersectionObserver(
+        ([entry]) => {
+          if (entry?.isIntersecting) loadMore();
+        },
+        { rootMargin: "800px 0px" },
+      );
+      infiniteScrollObserver.observe(element);
+    },
+  );
+  createEffect(
+    () => settings(),
+    () => void load(),
+    { defer: true },
+  );
 
   return (
-    <Errored
-      fallback={<p class="py-16 text-center text-sm text-destructive">Failed to load gallery.</p>}
+    <Show
+      when={!error()}
+      fallback={<p class="py-16 text-center text-sm text-destructive">{error()}</p>}
     >
-      <Loading
+      <Show
+        when={!loading() || photos().length > 0}
         fallback={
           <div class="flex items-center justify-center gap-2 py-20 text-muted-foreground">
             <Spinner size="sm" />
@@ -43,8 +127,17 @@ function HomePage() {
           </div>
         }
       >
-        <PhotosRoot photos={photos()} canUpload={canUpload()} />
-      </Loading>
-    </Errored>
+        <PhotosRoot
+          photos={photos()}
+          tags={tags()}
+          total={total()}
+          canUpload={canUpload()}
+          hasMore={cursor() !== null}
+          loadingMore={loadingMore()}
+          onLoadMore={loadMore}
+          loadMoreRef={setLoadMoreElement}
+        />
+      </Show>
+    </Show>
   );
 }
