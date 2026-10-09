@@ -17,9 +17,12 @@ const IMAGE_MIME_TYPES: Record<string, string> = {
   avif: "image/avif",
 };
 
+const API_DOCUMENTATION_URL = "https://github.com/Pleasurecruise/my-moment#api";
+
 export const API_LINK_HEADER = [
   '</.well-known/api-catalog>; rel="api-catalog"',
-  '</api/v1/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"',
+  '</api/openapi.json>; rel="service-desc"; type="application/vnd.oai.openapi+json"',
+  `<${API_DOCUMENTATION_URL}>; rel="service-doc"; type="text/html"`,
   '</llms.txt>; rel="describedby"; type="text/plain"',
 ].join(", ");
 
@@ -61,7 +64,7 @@ export function robotsTxt(origin: string): string {
     "Allow: /",
     "Allow: /api/og/",
     "Allow: /api/photos/",
-    "Allow: /api/v1/openapi.json",
+    "Allow: /api/openapi.json",
     "Disallow: /api/",
     ...DISALLOWED_PATHS.map((path) => `Disallow: ${path}`),
     "",
@@ -157,6 +160,15 @@ export function llmsTxt(photos: readonly PhotoItem[], origin: string): string {
     "Each photo page is canonical. Photos are listed most recently updated first.",
     `An RSS feed of recent photos is available at ${new URL("/rss.xml", origin).href}.`,
     "",
+    "## API",
+    "",
+    `- [REST API](${new URL("/api/openapi.json", origin).href}): ${new URL("/api", origin).href} for photos (list, search, read, write) and tags. Reads need no key; writes require \`Authorization: Bearer <API key>\` or the owner session.`,
+    `- [MCP](${new URL("/api/mcp", origin).href}): Stateless MCP endpoint with the same Bearer key.`,
+    `- [Anime](${new URL("/api/media?kind=anime", origin).href}): Watched anime with notes and dates, no key required; films at ${new URL("/api/media?kind=film", origin).href}.`,
+    `- [Haul](${new URL("/api/haul", origin).href}): Purchases with brand, price, rating and comments, no key required.`,
+    `- [Wishlist](${new URL("/api/wish", origin).href}): Wanted items with brand and price, no key required.`,
+    `- [Music](${new URL("/api/music", origin).href}): The public Spotify playlist, no key required.`,
+    "",
     "## Sections",
     "",
     ...sections,
@@ -172,13 +184,14 @@ export function apiCatalog(origin: string): JsonObject {
   return {
     linkset: [
       {
-        anchor: new URL("/api/v1", origin).href,
+        anchor: new URL("/api", origin).href,
         "service-desc": [
           {
-            href: new URL("/api/v1/openapi.json", origin).href,
+            href: new URL("/api/openapi.json", origin).href,
             type: "application/vnd.oai.openapi+json",
           },
         ],
+        "service-doc": [{ href: API_DOCUMENTATION_URL, type: "text/html" }],
       },
     ],
   };

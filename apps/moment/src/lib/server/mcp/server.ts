@@ -10,6 +10,7 @@ import { photoUpdateSchema } from "~/types/photo";
 import {
   createPhotoFromR2,
   deletePhoto,
+  getPhoto,
   listPhotos,
   listTagCounts,
   updatePhoto,
@@ -27,7 +28,7 @@ export function createMomentMcpHandler(env: WorkerBindings): McpHttpHandler {
       );
 
       server.registerTool(
-        "get_tags",
+        "list_tags",
         {
           description:
             "List all photo tags with counts. Call this before filtering by a user-provided tag.",
@@ -49,22 +50,49 @@ export function createMomentMcpHandler(env: WorkerBindings): McpHttpHandler {
           description:
             "Browse photos newest first by date range and tags without requiring keywords.",
           inputSchema: z.object({
-            from_date: dateSchema.optional(),
-            to_date: dateSchema.optional(),
+            fromDate: dateSchema.optional(),
+            toDate: dateSchema.optional(),
             tags: z.array(z.string()).max(MAX_FILTER_TAGS).default([]),
             limit: z.number().int().min(1).max(20).default(10),
           }),
           annotations: { readOnlyHint: true, destructiveHint: false },
         },
-        async ({ from_date, to_date, tags, limit }): Promise<CallToolResult> => {
+        async ({ fromDate, toDate, tags, limit }): Promise<CallToolResult> => {
           const { photos } = await listPhotos(env.DB, {
-            fromDate: from_date,
-            toDate: to_date,
+            fromDate,
+            toDate,
             tags: { names: tags, mode: "all" },
             order: "desc",
             limit,
           });
           const value = { photos };
+          return {
+            content: [{ type: "text", text: JSON.stringify(value) }],
+            structuredContent: value,
+          };
+        },
+      );
+
+      server.registerTool(
+        "get_photo",
+        {
+          description: "Read one photo with its full metadata by ID.",
+          inputSchema: z.object({ id: z.string().uuid() }),
+          annotations: { readOnlyHint: true, destructiveHint: false },
+        },
+        async ({ id }): Promise<CallToolResult> => {
+          const photo = await getPhoto(env.DB, id);
+          if (!photo) {
+            const value = {
+              error: { code: "PHOTO_NOT_FOUND", message: "Photo not found." },
+            };
+            return {
+              isError: true,
+              content: [{ type: "text", text: "Photo not found." }],
+              structuredContent: value,
+            };
+          }
+          const value = { photo };
           return {
             content: [{ type: "text", text: JSON.stringify(value) }],
             structuredContent: value,
@@ -79,17 +107,17 @@ export function createMomentMcpHandler(env: WorkerBindings): McpHttpHandler {
             "Search photo titles, descriptions, and tags by keyword, optionally constrained by dates and tags.",
           inputSchema: z.object({
             query: searchSchema,
-            from_date: dateSchema.optional(),
-            to_date: dateSchema.optional(),
+            fromDate: dateSchema.optional(),
+            toDate: dateSchema.optional(),
             tags: z.array(z.string()).max(MAX_FILTER_TAGS).default([]),
           }),
           annotations: { readOnlyHint: true, destructiveHint: false },
         },
-        async ({ query, from_date, to_date, tags }): Promise<CallToolResult> => {
+        async ({ query, fromDate, toDate, tags }): Promise<CallToolResult> => {
           const { photos } = await listPhotos(env.DB, {
             search: query,
-            fromDate: from_date,
-            toDate: to_date,
+            fromDate,
+            toDate,
             tags: { names: tags, mode: "all" },
             order: "desc",
             limit: SEARCH_LIMIT,

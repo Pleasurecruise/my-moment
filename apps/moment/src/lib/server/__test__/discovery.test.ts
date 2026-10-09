@@ -30,6 +30,13 @@ describe("discovery documents", () => {
     );
   });
 
+  it("lists the public and owner API entry points before the content in llms.txt", () => {
+    const llms = llmsTxt([photo()], origin);
+    expect(llms).toContain("- [Anime](https://moment.example/api/media?kind=anime)");
+    expect(llms).toContain("- [MCP](https://moment.example/api/mcp)");
+    expect(llms.indexOf("## API")).toBeLessThan(llms.indexOf("## Moments"));
+  });
+
   it("escapes XML in the RSS feed", () => {
     const rss = rssXml([photo()], origin);
     expect(rss).toContain("<description>Boats at &lt;night&gt; &amp; rain</description>");

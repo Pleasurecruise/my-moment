@@ -16,16 +16,31 @@ Vite+ · Void · SolidJS · TypeScript · TailwindCSS v4 · Hono · TanStack Rou
 
 ## API
 
-The owner can generate or rotate a one-time-view API key from the site header. Send it as a bearer
-token to `/api/v1/photos`, `/api/v1/tags`, or the stateless MCP endpoint at `/api/mcp`.
+The web app and external clients share one REST surface under `/api`, described by
+[`/api/openapi.json`](https://moment.you-find.me/api/openapi.json). Reads need no key: photos
+(`/api/photos`, `/api/photos/{id}`, `/api/gallery`), tags (`/api/tags`), and the collection
+(`/api/media?kind=anime|film`, `/api/haul`, `/api/wish`, `/api/music`). Writes accept the owner
+session or the one-time-view API key the owner generates or rotates from the site header; a request
+that sends `Authorization` is checked only against the key.
 
 ```sh
-curl -H "Authorization: Bearer $MOMENT_API_KEY" \
-  https://moment.you-find.me/api/v1/photos
+curl https://moment.you-find.me/api/photos?search=edinburgh
+curl -X PATCH -H "Authorization: Bearer $MOMENT_API_KEY" -H "Content-Type: application/json" \
+  -d '{"tags":["travel"]}' https://moment.you-find.me/api/photos/<id>
 ```
 
-`API_KEY` uses the `ApiKeyDurableObject` exported by `my-knowledge`. Photo creation expects the
-original and thumbnail to exist in R2 before their metadata is submitted.
+`POST /api/photos` registers an original and thumbnail that already exist in R2;
+`POST /api/photos/upload` is the browser's multipart upload. `API_KEY` uses the
+`ApiKeyDurableObject` exported by `my-knowledge`.
+
+The stateless MCP endpoint at `/api/mcp` takes the same key. Its tools follow the shared
+`verb_noun` naming of my-memos and my-knowledge: `list_photos`, `search_photos`, `get_photo`,
+`create_photo`, `update_photo`, `delete_photo`, and `list_tags`. Arguments reuse the REST field names
+(`fromDate`, `toDate`, `tags`, `limit`); single photos return `{ photo }`, searches
+`{ type: "photo-search-results", query, photos }`, and deletion `{ id, deleted: true }`.
+
+`/llms.txt` lists these entry points before the photo index, and `/.well-known/api-catalog` links
+the OpenAPI document and this section.
 
 ## References
 

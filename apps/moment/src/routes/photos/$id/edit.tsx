@@ -4,6 +4,7 @@ import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
 import { photoItemSchema } from "~/types";
+import { z } from "zod";
 import { privatePageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/photos/$id/edit")({
@@ -19,7 +20,7 @@ function PhotoEditPage() {
     const photoId = params().id;
     const res = await fetch(`/api/photos/${photoId}`);
     if (!res.ok) return null;
-    return photoItemSchema.parse(await res.json());
+    return z.object({ photo: photoItemSchema }).parse(await res.json()).photo;
   });
 
   const [title, setTitle] = createSignal("");
@@ -51,7 +52,7 @@ function PhotoEditPage() {
       const geo = !Number.isNaN(lat) && !Number.isNaN(lng) ? { lat, lng } : null;
 
       const res = await fetch(`/api/photos/${p.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title(),

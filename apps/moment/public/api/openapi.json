@@ -3,11 +3,11 @@
   "info": {
     "title": "My Moment API",
     "version": "1.0.0",
-    "description": "Read and manage photos and tags. Every route requires the generated API key."
+    "description": "Read and manage photos and tags. Reads are public; writes require the generated API key or the owner session."
   },
   "servers": [
     {
-      "url": "https://moment.you-find.me/api/v1"
+      "url": "https://moment.you-find.me/api"
     }
   ],
   "security": [
@@ -27,6 +27,12 @@
     "/photos": {
       "get": {
         "summary": "List or search photos",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
         "parameters": [
           {
             "name": "cursor",
@@ -210,26 +216,6 @@
           },
           "400": {
             "description": "Invalid request.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["error"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid API key.",
             "content": {
               "application/json": {
                 "schema": {
@@ -526,6 +512,12 @@
       ],
       "get": {
         "summary": "Get a photo",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
         "responses": {
           "200": {
             "description": "Photo.",
@@ -622,26 +614,6 @@
                     }
                   },
                   "required": ["photo"]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid API key.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["error"],
-                  "additionalProperties": false
                 }
               }
             }
@@ -940,6 +912,12 @@
     "/tags": {
       "get": {
         "summary": "List tags with photo counts",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {}
+        ],
         "responses": {
           "200": {
             "description": "Tags, most used first.",
@@ -966,26 +944,6 @@
                     }
                   },
                   "required": ["tags"]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid API key.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["error"],
-                  "additionalProperties": false
                 }
               }
             }

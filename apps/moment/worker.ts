@@ -4,6 +4,7 @@ import { getSession } from "void/auth";
 import { createOwnerGuard, requestIsOwner, type WorkerEnv } from "~/lib/server/access";
 import {
   countPhotos,
+  createPhotoFromR2,
   createPhotoFromUpload,
   deletePhoto,
   getPhoto,
@@ -14,7 +15,8 @@ import {
   updatePhoto,
 } from "~/lib/server/photos/service";
 import { renameTag, deleteTag } from "~/lib/server/photos/repository";
-import { photoListQuerySchema } from "~/lib/server/photos/schema";
+import { photoCreateSchema, photoListQuerySchema } from "~/lib/server/photos/schema";
+import { PhotoDomainError } from "~/lib/server/photos/errors";
 import type { JsonObject } from "~/types/json";
 import {
   countHaul,
@@ -59,7 +61,6 @@ import {
 import type { MessageCursor, WorkerBindings } from "~/types";
 import { PUBLIC_PAGE_META, SITE_NAME, SITE_ORIGIN, type PublicPageKey } from "~/lib/seo";
 import { generateApiKey, getApiKeyStatus, verifyApiKey } from "~/lib/server/apikey";
-import { photoApi, tagApi } from "~/lib/server/api";
 import { createMomentMcpHandler } from "~/lib/server/mcp";
 import {
   API_LINK_HEADER,
@@ -80,6 +81,12 @@ import {
 } from "~/lib/server/discovery";
 
 const app = new Hono<WorkerEnv>();
+app.onError((error, c) => {
+  if (error instanceof PhotoDomainError) {
+    return c.json({ error: error.message, code: error.code }, error.httpStatus);
+  }
+  throw error;
+});
 const ownerOnly = createOwnerGuard();
 const uploadOwnerOnly = createOwnerGuard("Upload not configured");
 
@@ -298,9 +305,6 @@ app.post("/api/mcp", async (c) => {
   return createMomentMcpHandler(c.env).fetch(c.req.raw);
 });
 
-app.route("/api/v1/photos", photoApi);
-app.route("/api/v1/tags", tagApi);
-
 app.get("/api/messages", async (c) => {
   const query = messageListQuerySchema.safeParse(c.req.query());
   if (!query.success) return c.json({ error: query.error.issues[0]?.message }, 400);
@@ -409,6 +413,18 @@ app.get("/api/photos", async (c) => {
   return c.json(await listPhotos(c.env.DB, query.data));
 });
 
+app.post("/api/photos", ownerOnly, async (c) => {
+  const input = photoCreateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!input.success) return c.json({ error: "Invalid photo payload." }, 400);
+  const photo = await createPhotoFromR2(
+    c.env.DB,
+    c.env.MOMENT_BUCKET,
+    c.env.ALLOWED_EMAIL,
+    input.data,
+  );
+  return c.json({ photo }, 201);
+});
+
 app.post("/api/photos/upload", uploadOwnerOnly, async (c) => {
   const result = await createPhotoFromUpload(
     c.env.DB,
@@ -425,41 +441,29 @@ app.get("/api/photos/:id{[^./]+}", async (c) => {
   const id = c.req.param("id");
   const photo = await getPhoto(c.env.DB, id);
   if (!photo) return c.json({ error: "Photo not found" }, 404);
-  return c.json(photo);
+  return c.json({ photo });
 });
 
-app.put("/api/photos/:id", ownerOnly, async (c) => {
+app.patch("/api/photos/:id", ownerOnly, async (c) => {
   const parsed = photoUpdateSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return c.json({ error: parsed.error.issues[0]?.message }, 400);
+  }
+  if (Object.keys(parsed.data).length === 0) {
+    return c.json({ error: "No photo changes provided." }, 400);
   }
 
   const id = c.req.param("id");
   const photo = await updatePhoto(c.env.DB, id, parsed.data);
   if (!photo) return c.json({ error: "Photo not found" }, 404);
-  return c.json(photo);
+  return c.json({ photo });
 });
 
 app.delete("/api/photos/:id", ownerOnly, async (c) => {
   const id = c.req.param("id");
   const deleted = await deletePhoto(c.env.DB, c.env.MOMENT_BUCKET, id);
   if (!deleted) return c.json({ error: "Photo not found" }, 404);
-  return c.json({ ok: true });
-});
-
-app.patch("/api/photos/:id/tags", ownerOnly, async (c) => {
-  const parsed = photoUpdateSchema
-    .pick({ tags: true })
-    .safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    return c.json({ error: parsed.error.issues[0]?.message }, 400);
-  }
-
-  const id = c.req.param("id");
-  const photo = await updatePhoto(c.env.DB, id, { tags: parsed.data.tags });
-
-  if (!photo) return c.json({ error: "Photo not found" }, 404);
-  return c.json(photo);
+  return c.body(null, 204);
 });
 
 app.get("/api/og/:section", async (c) => {
@@ -767,7 +771,7 @@ app.get("/api/music", async (c) => {
   }
 });
 
-app.get("/api/v1/openapi.json", (c) => c.env.ASSETS.fetch(c.req.raw));
+app.get("/api/openapi.json", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
@@ -877,7 +881,7 @@ app.get("*", async (c) => {
 
   const injected = [
     buildHeadMeta(ogTags),
-    '<link rel="alternate" type="application/rss+xml" title="My Moment" href="/rss.xml" data-static-head />',
+    `<link rel="alternate" type="application/rss+xml" title="${SITE_NAME} RSS" href="/rss.xml" data-static-head />`,
     ...(page.jsonLd
       ? [`<script type="application/ld+json" data-static-head>${toJsonLd(page.jsonLd)}</script>`]
       : []),

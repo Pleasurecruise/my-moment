@@ -36,8 +36,9 @@ describe("MCP photo tools", () => {
     expect(result.result.tools.map(({ name }) => name).sort()).toEqual([
       "create_photo",
       "delete_photo",
-      "get_tags",
+      "get_photo",
       "list_photos",
+      "list_tags",
       "search_photos",
       "update_photo",
     ]);

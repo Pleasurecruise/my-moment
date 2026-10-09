@@ -3,7 +3,8 @@ import { Show } from "solid-js";
 import { ArrowLeft, Share2, Edit3 } from "lucide-solid";
 import { Button } from "@my-moment/ui";
 import { shareLink } from "~/lib/share";
-import type { PhotoItem } from "~/types";
+import { photoItemSchema, type PhotoItem } from "~/types";
+import { z } from "zod";
 import { PhotoDetails } from "~/modules/viewer/PhotoDetails";
 import { EmptyState } from "~/components/EmptyState";
 import { socialMeta } from "~/lib/seo";
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/photos/$id/")({
     const res = await fetch(`/api/photos/${params.id}`);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`Could not load photo (${res.status}).`);
-    return (await res.json()) as PhotoItem;
+    return z.object({ photo: photoItemSchema }).parse(await res.json()).photo;
   },
 });
 
