@@ -8,13 +8,15 @@ const TTF_USER_AGENT =
 export const OG_FONT_FAMILIES = {
   sans: "Inter",
   cjk: "Noto Sans SC",
-  display: "Noto Serif SC",
+  display: "La Belle Aurore",
+  kai: "LXGW WenKai TC",
 } as const;
 
 const FONT_FAMILIES = [
   OG_FONT_FAMILIES.sans,
   OG_FONT_FAMILIES.cjk,
   OG_FONT_FAMILIES.display,
+  OG_FONT_FAMILIES.kai,
 ] as const;
 
 // Color emoji fonts are ~20MB even subset, so we fall back to monochrome Noto Emoji.

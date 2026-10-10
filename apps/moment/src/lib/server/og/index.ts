@@ -7,19 +7,34 @@ const H = 630;
 // Resolved equivalents of the semantic light-theme tokens. The generated SVG is
 // rendered outside the document, so browser CSS custom properties are unavailable.
 const semantic = {
-  background: "#f4f0e7",
-  card: "#fffdf8",
-  foreground: "#20211e",
-  mutedForeground: "#716f68",
-  border: "#d9d3c7",
-  primary: "#e7ad45",
+  background: "#faf8f3",
+  card: "#fdfcfb",
+  muted: "#eeebe4",
+  foreground: "#1e1a14",
+  mutedForeground: "#59554e",
 } as const;
 
 const font = {
   sans: '"Inter", "Noto Sans SC", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif',
-  display: '"Noto Serif SC", Georgia, "Songti SC", serif',
-  mono: '"Geist Mono", "JetBrains Mono", "Fira Code", Consolas, Monaco, monospace',
+  display: '"La Belle Aurore", "LXGW WenKai TC", cursive',
+  kai: '"LXGW WenKai TC", "Noto Sans SC", "PingFang SC", sans-serif',
 } as const;
+
+const PILES: [number, number, number, number, number][][] = [
+  [],
+  [[900, 315, 500, 500, 2]],
+  [
+    [790, 300, 300, 400, -7],
+    [1010, 335, 300, 400, 6],
+  ],
+  [
+    [765, 300, 280, 372, -10],
+    [1040, 332, 280, 372, 9],
+    [902, 318, 312, 414, -2],
+  ],
+];
+
+const SHADOW = `<filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#3a2f1c" flood-opacity="0.2" /></filter>`;
 
 function esc(s: string): string {
   return s
@@ -30,329 +45,109 @@ function esc(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function isWideChar(ch: string): boolean {
-  const code = ch.codePointAt(0) ?? 0;
-  return (
-    (code >= 0x1100 && code <= 0x115f) ||
-    (code >= 0x2e80 && code <= 0xa4cf) ||
-    (code >= 0xac00 && code <= 0xd7a3) ||
-    (code >= 0xf900 && code <= 0xfaff) ||
-    (code >= 0xfe30 && code <= 0xfe4f) ||
-    (code >= 0xff00 && code <= 0xff60) ||
-    (code >= 0xffe0 && code <= 0xffe6)
-  );
-}
-
-function wrapText(
-  text: string,
-  maxWidth: number,
-  firstSize: number,
-  restSize: number,
-  maxLines: number,
-): string[] {
-  const chars = Array.from(text.replace(/\s+/g, " ").trim());
-
-  const fill = (budget: number): string[] => {
-    const lines: string[] = [];
-    let line: string[] = [];
-    let width = 0;
-    const charWidth = (ch: string) => {
-      const size = lines.length === 0 ? firstSize : restSize;
-      return isWideChar(ch) ? size : size * 0.6;
-    };
-
-    for (const ch of chars) {
-      if (width + charWidth(ch) > budget && line.length > 0) {
-        const lastSpace = line.lastIndexOf(" ");
-        const carried = lastSpace > 0 ? line.slice(lastSpace + 1) : [];
-        lines.push(line.slice(0, lastSpace > 0 ? lastSpace : line.length).join(""));
-        line = carried;
-        width = line.reduce((sum, c) => sum + charWidth(c), 0);
-        if (lines.length >= maxLines) {
-          line = [];
-          break;
-        }
-      }
-      line.push(ch);
-      width += charWidth(ch);
-    }
-
-    if (line.length > 0 && lines.length < maxLines) lines.push(line.join(""));
-    return lines.length > 0 ? lines : [""];
-  };
-
-  const greedy = fill(maxWidth);
-  if (greedy.length < 2) return greedy;
-
-  let low = 0;
-  let high = maxWidth;
-  let best = greedy;
-  for (let i = 0; i < 16; i++) {
-    const mid = (low + high) / 2;
-    const candidate = fill(mid);
-    if (candidate.length <= greedy.length) {
-      best = candidate;
-      high = mid;
-    } else {
-      low = mid;
-    }
-  }
-  return best;
-}
-
-function txt(
-  text: string,
-  o: {
-    x: number;
-    y: number;
-    ff: string;
-    fs: number;
-    fw: number;
-    fill: string;
-    opacity?: number;
-    ls?: string;
-    tt?: string;
-    anchor?: "start" | "middle" | "end";
-  },
-): string {
-  const a = [
-    `x="${o.x}"`,
-    `y="${o.y}"`,
-    `font-family="${o.ff.replace(/"/g, "&quot;")}"`,
-    `font-size="${o.fs}"`,
-    `font-weight="${o.fw}"`,
-    `fill="${o.fill}"`,
-    o.opacity != null ? `opacity="${o.opacity}"` : "",
-    o.ls ? `letter-spacing="${o.ls}"` : "",
-    o.tt ? `text-transform="${o.tt}"` : "",
-    o.anchor ? `text-anchor="${o.anchor}"` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return `<text ${a}>${esc(text)}</text>`;
+export interface OgDot {
+  x: number;
+  y: number;
+  color: string;
 }
 
 export interface OgImageOptions {
   title: string;
-  subtitle?: string;
-  domain?: string;
-  date?: string | null;
-  siteName?: string;
-  logoDataUrl?: string;
-  type?: "photo" | "haul" | "wish" | "journey" | "guestbook" | "collection" | "default";
+  subtitle: string;
+  logo: string;
+  images: string[];
+  dots: OgDot[];
 }
 
-const BRAND_ACCENT = "#df9c45";
-
-const typeMeta: Record<string, { code: string; kicker: string }> = {
-  photo: { code: "01", kicker: "Photo journal" },
-  haul: { code: "02", kicker: "Collected things" },
-  wish: { code: "03", kicker: "Wish list" },
-  journey: { code: "04", kicker: "Travel notes" },
-  guestbook: { code: "05", kicker: "Guestbook" },
-  collection: { code: "06", kicker: "Collection" },
-  default: { code: "00", kicker: "Personal archive" },
-};
-
 export function renderOgImage(options: OgImageOptions): string {
-  const {
-    title,
-    subtitle,
-    domain = "my-moment.pages.dev",
-    date = null,
-    siteName = "My Moment",
-    logoDataUrl,
-    type = "default",
-  } = options;
-
-  const meta = typeMeta[type] || typeMeta.default;
-
-  const X = 68;
-  const CONTENT_R = 746;
-  const len = Array.from(title).length;
-  const titleSize = len <= 11 ? 90 : len <= 22 ? 76 : len <= 36 ? 62 : 52;
-  const lines = wrapText(title, CONTENT_R - X, titleSize, titleSize, 3);
-  const lineH = titleSize * 1.02;
-  const firstBaseline = lines.length === 1 ? 337 : lines.length === 2 ? 294 : 249;
-  const parts: string[] = [];
-
-  parts.push(`
-    <defs>
-      <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#f8f5ee" />
-        <stop offset="1" stop-color="${semantic.background}" />
-      </linearGradient>
-      <clipPath id="portrait"><rect x="838" y="91" width="266" height="329" rx="18" /></clipPath>
-    </defs>
-    <rect width="${W}" height="${H}" fill="url(#paper)" />
-    <circle cx="1110" cy="-48" r="258" fill="${BRAND_ACCENT}" opacity="0.1" />
-    <circle cx="1091" cy="-42" r="199" fill="none" stroke="${BRAND_ACCENT}" stroke-width="2" opacity="0.18" />
-    <path d="M0 533 C190 475 360 596 564 538 S938 458 1200 527 L1200 630 L0 630 Z" fill="${BRAND_ACCENT}" opacity="0.04" />
-    <path d="M26 576 C213 507 370 622 575 565 S945 490 1191 548" fill="none" stroke="${BRAND_ACCENT}" stroke-width="2" opacity="0.13" />
-    <rect x="818" y="61" width="326" height="510" rx="28" fill="${BRAND_ACCENT}" opacity="0.17" transform="rotate(3 981 316)" />
-    <rect x="802" y="52" width="334" height="522" rx="28" fill="${semantic.card}" stroke="${semantic.border}" stroke-width="1.5" />
-  `);
-
-  parts.push(`<circle cx="${X + 6}" cy="74" r="6" fill="${BRAND_ACCENT}" />`);
-  parts.push(
-    txt(siteName.toUpperCase(), {
-      x: X + 24,
-      y: 81,
-      ff: font.display,
-      fs: 18,
-      fw: 650,
-      fill: semantic.foreground,
-      ls: "0.08em",
-    }),
-  );
-  parts.push(
-    txt("PRIVATE NOTES · " + meta.code, {
-      x: CONTENT_R,
-      y: 80,
-      ff: font.mono,
-      fs: 13,
-      fw: 500,
-      fill: semantic.mutedForeground,
-      ls: "0.05em",
-      anchor: "end",
-    }),
-  );
-  parts.push(`<line x1="${X}" y1="109" x2="${CONTENT_R}" y2="109" stroke="${semantic.border}" />`);
-
-  parts.push(
-    `<rect x="${X}" y="153" width="${Math.max(130, meta.kicker.length * 10 + 34)}" height="36" rx="18" fill="${BRAND_ACCENT}" opacity="0.13" />`,
-  );
-  parts.push(
-    txt(meta.kicker.toUpperCase(), {
-      x: X + 17,
-      y: 177,
-      ff: font.sans,
-      fs: 14,
-      fw: 650,
-      fill: BRAND_ACCENT,
-      ls: "0.07em",
-    }),
-  );
-
-  lines.forEach((line, i) => {
-    parts.push(
-      txt(line, {
-        x: X,
-        y: firstBaseline + i * lineH,
-        ff: font.display,
-        fs: titleSize,
-        fw: 650,
-        fill: semantic.foreground,
-        ls: "-0.035em",
-      }),
-    );
+  const images = options.images.slice(0, 3);
+  const pile = PILES[images.length];
+  const dots = options.dots
+    .map(
+      (dot) =>
+        `<circle cx="${dot.x}" cy="${dot.y}" r="5" fill="${dot.color}" stroke="#ffffff" stroke-width="1.5" />`,
+    )
+    .join("");
+  const cards = pile.map(([cx, cy, w, h, tilt], i) => {
+    const front = i === pile.length - 1;
+    const box = `x="${cx - w / 2}" y="${cy - h / 2}" width="${w}" height="${h}"`;
+    return `<g transform="rotate(${tilt} ${cx} ${cy})" filter="url(#shadow)">
+      <clipPath id="card${i}"><rect ${box} rx="22" /></clipPath>
+      <rect ${box} rx="22" fill="${semantic.muted}" />
+      <g clip-path="url(#card${i})">
+        <image href="${esc(images[front ? 0 : i + 1])}" ${box} preserveAspectRatio="xMidYMid slice" />
+        <g transform="translate(${cx - w / 2} ${cy - h / 2})">${front ? dots : ""}</g>
+      </g>
+      <rect ${box} rx="22" fill="none" stroke="${semantic.card}" stroke-width="6" />
+    </g>`;
   });
 
-  if (subtitle) {
-    parts.push(
-      txt(subtitle, {
-        x: X,
-        y: 505,
-        ff: font.sans,
-        fs: 22,
-        fw: 400,
-        fill: semantic.mutedForeground,
-      }),
-    );
-  }
-  parts.push(`<line x1="${X}" y1="549" x2="${CONTENT_R}" y2="549" stroke="${semantic.border}" />`);
-  parts.push(
-    txt(domain, {
-      x: X,
-      y: 583,
-      ff: font.mono,
-      fs: 14,
-      fw: 500,
-      fill: semantic.mutedForeground,
-      ls: "0.04em",
-    }),
-  );
-  parts.push(
-    txt(date || "KEEPING THE SMALL THINGS", {
-      x: CONTENT_R,
-      y: 583,
-      ff: font.mono,
-      fs: 12,
-      fw: 500,
-      fill: semantic.mutedForeground,
-      ls: "0.05em",
-      anchor: "end",
-    }),
-  );
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>${SHADOW}</defs>
+    <rect width="${W}" height="${H}" fill="${semantic.background}" />
+    <clipPath id="logo"><circle cx="96" cy="92" r="24" /></clipPath>
+    <image href="${esc(options.logo)}" x="72" y="68" width="48" height="48" clip-path="url(#logo)" preserveAspectRatio="xMidYMid slice" />
+    <text x="136" y="100" font-family="${esc(font.sans)}" font-size="23" fill="${semantic.foreground}">My Moment</text>
+    <text x="68" y="418" font-family="${esc(font.display)}" font-size="132" fill="${semantic.foreground}">${esc(options.title)}</text>
+    <text x="72" y="562" font-family="${esc(font.sans)}" font-size="26" fill="${semantic.mutedForeground}">${esc(options.subtitle)}</text>
+    ${cards.join("\n    ")}
+  </svg>`;
+}
 
-  parts.push(`<rect x="838" y="91" width="266" height="329" rx="18" fill="#eee8dc" />`);
-  if (logoDataUrl) {
-    parts.push(
-      `<image href="${esc(logoDataUrl)}" x="838" y="91" width="266" height="329" clip-path="url(#portrait)" preserveAspectRatio="xMidYMid slice" />`,
-    );
-  } else {
-    parts.push(
-      txt("M", {
-        x: 971,
-        y: 314,
-        ff: font.sans,
-        fs: 190,
-        fw: 650,
-        fill: BRAND_ACCENT,
-        anchor: "middle",
-      }),
-    );
-  }
-  parts.push(`<circle cx="851" cy="446" r="5" fill="${BRAND_ACCENT}" />`);
-  parts.push(
-    txt(meta.kicker, {
-      x: 869,
-      y: 452,
-      ff: font.sans,
-      fs: 15,
-      fw: 600,
-      fill: semantic.foreground,
-    }),
-  );
-  parts.push(
-    txt("A quiet place for moments, places,", {
-      x: 838,
-      y: 499,
-      ff: font.sans,
-      fs: 14,
-      fw: 400,
-      fill: semantic.mutedForeground,
-    }),
-  );
-  parts.push(
-    txt("and the things worth remembering.", {
-      x: 838,
-      y: 522,
-      ff: font.sans,
-      fs: 14,
-      fw: 400,
-      fill: semantic.mutedForeground,
-    }),
-  );
-  parts.push(`<line x1="838" y1="544" x2="1104" y2="544" stroke="${semantic.border}" />`);
-  parts.push(
-    txt("MY MOMENT", {
-      x: 1104,
-      y: 561,
-      ff: font.mono,
-      fs: 11,
-      fw: 600,
-      fill: semantic.mutedForeground,
-      ls: "0.08em",
-      anchor: "end",
-    }),
-  );
+export interface OgPhotoOptions {
+  title: string;
+  meta: string;
+  logo: string;
+  image: string;
+  ratio: number;
+}
 
-  return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`,
-    ...parts,
-    `</svg>`,
-  ].join("\n");
+export function renderOgPhoto(options: OgPhotoOptions): string {
+  const w = Math.min(620, 480 * options.ratio);
+  const h = w / options.ratio;
+  const cx = 1150 - w / 2 - 20;
+  const box = `x="${cx - w / 2}" y="${315 - h / 2}" width="${w}" height="${h}"`;
+  const chars = Array.from(options.title.replace(/\s+/g, " ").trim());
+  const size = chars.length <= 6 ? 76 : chars.length <= 12 ? 60 : 48;
+  const budget = (cx - w / 2 - 72 - 44) / size;
+  const lines: string[] = [];
+  let line = "";
+  let width = 0;
+  for (const ch of chars) {
+    const wide = /[\u2e80-\uffef]/.test(ch) ? 1 : 0.55;
+    if (width + wide > budget && line) {
+      lines.push(line);
+      line = "";
+      width = 0;
+    }
+    line += ch;
+    width += wide;
+  }
+  lines.push(line);
+  const shown = lines.slice(0, 3);
+  if (lines.length > 3) shown[2] = `${shown[2].slice(0, -1)}…`;
+  const lineHeight = size * 1.28;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>${SHADOW}</defs>
+    <rect width="${W}" height="${H}" fill="${semantic.background}" />
+    <clipPath id="logo"><circle cx="96" cy="92" r="24" /></clipPath>
+    <image href="${esc(options.logo)}" x="72" y="68" width="48" height="48" clip-path="url(#logo)" preserveAspectRatio="xMidYMid slice" />
+    <text x="136" y="100" font-family="${esc(font.sans)}" font-size="23" fill="${semantic.foreground}">My Moment</text>
+    ${shown
+      .map(
+        (text, i) =>
+          `<text x="72" y="${486 - (shown.length - 1 - i) * lineHeight}" font-family="${esc(font.kai)}" font-size="${size}" fill="${semantic.foreground}">${esc(text)}</text>`,
+      )
+      .join("\n    ")}
+    <text x="72" y="548" font-family="${esc(font.sans)}" font-size="24" fill="${semantic.mutedForeground}">${esc(options.meta)}</text>
+    <g transform="rotate(-2 ${cx} 315)" filter="url(#shadow)">
+      <clipPath id="photo"><rect ${box} rx="22" /></clipPath>
+      <rect ${box} rx="22" fill="${semantic.muted}" />
+      <image href="${esc(options.image)}" ${box} clip-path="url(#photo)" preserveAspectRatio="xMidYMid slice" />
+      <rect ${box} rx="22" fill="none" stroke="${semantic.card}" stroke-width="6" />
+    </g>
+  </svg>`;
 }
 
 let wasmReady: Promise<void> | null = null;

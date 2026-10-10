@@ -3,7 +3,7 @@ packages:
   - "apps/*"
 
 patchedDependencies:
-  lucide-solid@1.53.0: patches/lucide-solid@1.53.0.patch
+  lucide-solid@1.55.0: patches/lucide-solid@1.55.0.patch
 
 allowBuilds:
   "@swc/core": true

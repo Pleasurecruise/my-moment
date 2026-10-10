@@ -38,14 +38,13 @@ interface PhotoViewerProps {
 export function PhotoViewer(props: PhotoViewerProps) {
   const photo = () => props.photos[props.index];
   const [sidebarOpen, setSidebarOpen] = createSignal(true);
-  const [highResLoaded, setHighResLoaded] = createSignal(false);
+  const [loadedUrl, setLoadedUrl] = createSignal("");
   const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
   const [deleting, setDeleting] = createSignal(false);
 
   createEffect(
     () => ({ index: props.index, photos: props.photos }),
     ({ index: idx, photos }) => {
-      setHighResLoaded(false);
       [idx - 1, idx + 1]
         .filter((i) => i >= 0 && i < photos.length)
         .forEach((i) => {
@@ -172,15 +171,18 @@ export function PhotoViewer(props: PhotoViewerProps) {
 
             <div class="relative flex h-full w-full items-center justify-center overflow-hidden p-4">
               <img
-                src={highResLoaded() ? photo().url : photo().thumbnailUrl || photo().url}
+                src={
+                  loadedUrl() === photo().url ? photo().url : photo().thumbnailUrl || photo().url
+                }
                 alt={photo().title}
-                class="max-h-full max-w-full object-contain transition-opacity duration-300"
+                class="h-full w-full object-contain transition-opacity duration-300"
                 draggable={false}
                 onLoad={() => {
-                  if (!highResLoaded()) {
+                  const url = photo().url;
+                  if (loadedUrl() !== url) {
                     const img = new Image();
-                    img.src = photo().url;
-                    img.onload = () => setHighResLoaded(true);
+                    img.src = url;
+                    img.onload = () => setLoadedUrl(url);
                   }
                 }}
               />

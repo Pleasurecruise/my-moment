@@ -32,7 +32,7 @@ export const Route = createFileRoute("/photos/$id/")({
         title: `${photo.title || "Untitled moment"} — My Moment`,
         description: description.slice(0, 160),
         path: `/photos/${photo.id}`,
-        image: photo.url,
+        image: `/api/og/photos/${photo.id}`,
         type: "article",
       }),
     };

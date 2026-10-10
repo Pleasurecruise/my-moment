@@ -1,34 +1,16 @@
 import { For, Show, createSignal, onCleanup, onSettled } from "solid-js";
 import mapboxgl from "mapbox-gl";
 import MapboxLanguage from "@mapbox/mapbox-gl-language";
-import { parse } from "yaml";
 import { Globe2, LocateFixed, Map as MapIcon } from "lucide-solid";
 import { Button, Spinner, cn } from "@my-moment/ui";
 import { PageHeader } from "~/components/PageHeader";
-import rawJourneyData from "./data.yaml?raw";
-import type { JourneyGroup, JourneyMarkerEntry, JourneyProjection } from "~/types";
+import { MAPBOX_TOKEN } from "~/lib/map";
+import { DEFAULT_GROUPS, groups } from "./groups";
+import type { JourneyMarkerEntry, JourneyProjection } from "~/types";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const PROJECTION_KEY = "my-moment:journey-projection";
-const MAPBOX_TOKEN =
-  "pk.eyJ1IjoicGxlYXN1cmUxMjM0IiwiYSI6ImNtazJ2MXFwZDBiaDUzY3M4aXhnNGRxaWwifQ.v_BxUgGMO-diXUrd_juyQw";
-
-function readGroups(): JourneyGroup[] {
-  const value = parse(rawJourneyData) as unknown;
-  if (!Array.isArray(value)) return [];
-  return value.filter((group): group is JourneyGroup =>
-    Boolean(
-      group &&
-      typeof group === "object" &&
-      "label" in group &&
-      "color" in group &&
-      "places" in group,
-    ),
-  );
-}
-
 export function JourneyMap() {
-  const groups = readGroups();
   let container!: HTMLDivElement;
   let map: mapboxgl.Map | undefined;
   let observer: MutationObserver | undefined;
@@ -38,9 +20,7 @@ export function JourneyMap() {
   const markers: JourneyMarkerEntry[] = [];
   const [enabled, setEnabled] = createSignal(
     new Set(
-      groups
-        .filter((group) => ["Visited", "Stay", "Residence"].includes(group.label))
-        .map((group) => group.label),
+      groups.filter((group) => DEFAULT_GROUPS.includes(group.label)).map((group) => group.label),
     ),
   );
   const [projection, setProjection] = createSignal<JourneyProjection>("globe");

@@ -49,7 +49,7 @@ import { getSpotifyMusic } from "~/lib/server/spotify";
 import { mediaFormSchema, mediaKindSchema } from "~/types/media";
 import { goodsFormSchema, wishFormSchema } from "~/types/haul";
 import { photoUpdateSchema } from "~/types/photo";
-import { renderOgImage, renderOgPng, type OgImageOptions } from "~/lib/server/og";
+import { renderOgImage, renderOgPhoto, renderOgPng, type OgDot } from "~/lib/server/og";
 import { getOgImageVersion, readOgImageKv, writeOgImageKv } from "~/lib/server/og/cache";
 import {
   createMessage,
@@ -60,6 +60,8 @@ import {
 } from "~/lib/server/messages/repository";
 import type { MessageCursor, WorkerBindings } from "~/types";
 import { PUBLIC_PAGE_META, SITE_NAME, SITE_ORIGIN, type PublicPageKey } from "~/lib/seo";
+import { MAPBOX_TOKEN } from "~/lib/map";
+import { DEFAULT_GROUPS, groups } from "~/modules/journey/groups";
 import { generateApiKey, getApiKeyStatus, verifyApiKey } from "~/lib/server/apikey";
 import { createMomentMcpHandler } from "~/lib/server/mcp";
 import {
@@ -196,10 +198,10 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
         title: `${title} — ${SITE_NAME}`,
         description: photoSummary(photo),
         canonical: absoluteUrl(url.origin, `/photos/${photo.id}`),
-        image,
-        imageType: mimeType(photo.url),
-        ...(photo.width > 0 ? { imageWidth: photo.width } : {}),
-        ...(photo.height > 0 ? { imageHeight: photo.height } : {}),
+        image: ogImageUrl(url.origin, `/api/og/photos/${photo.id}`),
+        imageType: "image/png",
+        imageWidth: 1200,
+        imageHeight: 630,
         type: "article",
         jsonLd: photoJsonLd(photo, url.origin),
         fallback: {
@@ -238,19 +240,24 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
       if (resolved) {
         const { item, description } = resolved;
         const image = item.imageUrl
-          ? absoluteUrl(url.origin, item.imageUrl)
+          ? absoluteUrl(
+              url.origin,
+              `/cdn-cgi/image/width=1200,height=630,fit=pad,background=%23faf8f3,format=jpeg${item.imageUrl}`,
+            )
           : ogImageUrl(url.origin, PUBLIC_PAGE_META[view].image);
         return {
           title: `${item.name} — ${SITE_NAME}`,
           description: description.slice(0, 160),
           canonical: absoluteUrl(url.origin, `${path}?item=${encodeURIComponent(item.id)}`),
           image,
-          imageType: item.imageUrl ? mimeType(item.imageUrl) : "image/png",
+          imageType: item.imageUrl ? "image/jpeg" : "image/png",
+          imageWidth: 1200,
+          imageHeight: 630,
           type: "article",
           fallback: {
             heading: item.name,
             text: description,
-            ...(item.imageUrl ? { imageUrl: image } : {}),
+            ...(item.imageUrl ? { imageUrl: absoluteUrl(url.origin, item.imageUrl) } : {}),
           },
         };
       }
@@ -466,68 +473,106 @@ app.delete("/api/photos/:id", ownerOnly, async (c) => {
   return c.body(null, 204);
 });
 
+app.get("/api/og/photos/:id", async (c) => {
+  const photo = await getPhoto(c.env.DB, c.req.param("id"));
+  if (!photo) return c.notFound();
+
+  const pngHeaders = {
+    "Content-Type": "image/png",
+    "Cache-Control": "public, max-age=86400, s-maxage=86400",
+  };
+  const section = `photo-${photo.id}`;
+  const stamp = Date.parse(photo.updatedAt);
+  const imageVersion = getOgImageVersion();
+  const cached = await readOgImageKv(c.env.MOMENT_CACHE, section, stamp, imageVersion);
+  if (cached) return new Response(cached, { headers: pngHeaders });
+
+  const crop = await fetch(
+    new URL(
+      `/cdn-cgi/image/width=1240,height=1240,fit=scale-down,format=jpeg${photo.url}`,
+      SITE_ORIGIN,
+    ),
+  );
+  let image: string;
+  if (crop.ok && crop.headers.get("Content-Type") === "image/jpeg") {
+    image = `data:image/jpeg;base64,${arrayBufferToBase64(await crop.arrayBuffer())}`;
+  } else {
+    const thumbnail = await c.env.MOMENT_BUCKET.get(photo.thumbnailR2Key);
+    if (!thumbnail) return c.notFound();
+    image = `data:${mimeType(photo.thumbnailUrl)};base64,${arrayBufferToBase64(await thumbnail.arrayBuffer())}`;
+  }
+
+  const logo = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
+  const svg = renderOgPhoto({
+    title: photoTitle(photo),
+    meta: [
+      ...(photo.date
+        ? [
+            new Date(photo.date).toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            }),
+          ]
+        : []),
+      ...photo.tags.slice(0, 1),
+    ].join(" · "),
+    logo: `data:image/png;base64,${arrayBufferToBase64(await logo.arrayBuffer())}`,
+    image,
+    ratio: photo.height > 0 ? photo.width / photo.height : 4 / 3,
+  });
+  const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
+  await writeOgImageKv(c.env.MOMENT_CACHE, section, stamp, imageVersion, png);
+  return new Response(png, { headers: pngHeaders });
+});
+
 app.get("/api/og/:section", async (c) => {
   const section = c.req.param("section");
   const preview = c.req.query("preview") === "1";
-  const domain = new URL(c.req.url).hostname;
   const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
-  let options: OgImageOptions;
+  let title: string;
+  let subtitle: string;
   let total: number;
+  let urls: string[] = [];
   if (section === "gallery") {
     total = await countPhotos(c.env.DB);
-    options = {
-      title: "Gallery",
-      subtitle: count(total, "moment"),
-      domain,
-      siteName: "My Moment",
-      type: "photo",
-    };
+    title = "Gallery";
+    subtitle = count(total, "moment");
+    urls = (await listRecentPhotos(c.env.DB, 3)).map((photo) => photo.thumbnailUrl);
   } else if (section === "haul") {
     total = await countHaul(c.env.DB);
-    options = {
-      title: "Haul",
-      subtitle: count(total, "item"),
-      domain,
-      siteName: SITE_NAME,
-      type: "haul",
-    };
+    title = "Haul";
+    subtitle = count(total, "item");
+    urls = (await listAllHaulItems(c.env.DB))
+      .flatMap((item) => (item.imageUrl ? [item.imageUrl] : []))
+      .slice(0, 3);
   } else if (section === "wishlist") {
     total = await countWishlist(c.env.DB);
-    options = {
-      title: "Wishlist",
-      subtitle: count(total, "item"),
-      domain,
-      siteName: SITE_NAME,
-      type: "wish",
-    };
+    title = "Wishlist";
+    subtitle = count(total, "item");
+    urls = (await listAllWishlistItems(c.env.DB))
+      .flatMap((item) => (item.imageUrl ? [item.imageUrl] : []))
+      .slice(0, 3);
   } else if (section === "collection") {
-    total = 0;
-    options = {
-      title: "Collection",
-      subtitle: "Playlists, anime, films, and the things I love",
-      domain,
-      siteName: SITE_NAME,
-      type: "collection",
-    };
+    const [anime, film] = await Promise.all([
+      listMediaItems(c.env.DB, "anime"),
+      listMediaItems(c.env.DB, "film"),
+    ]);
+    total = anime.length + film.length;
+    title = "Collection";
+    subtitle = "Playlists, anime, films, and the things I love";
+    urls = [anime, film].flatMap((items) =>
+      items.flatMap((item) => (item.imageUrl ? [item.imageUrl] : [])).slice(0, 2),
+    );
   } else if (section === "journey") {
     total = 0;
-    options = {
-      title: "Journey",
-      subtitle: "Places that became part of the story",
-      domain,
-      siteName: SITE_NAME,
-      type: "journey",
-    };
+    title = "Journey";
+    subtitle = "Places that became part of the story";
   } else if (section === "guestbook") {
     total = 0;
-    options = {
-      title: "Guestbook",
-      subtitle: "Notes left along the way",
-      domain,
-      siteName: SITE_NAME,
-      type: "guestbook",
-    };
+    title = "Guestbook";
+    subtitle = "Notes left along the way";
   } else {
     return c.notFound();
   }
@@ -547,13 +592,56 @@ app.get("/api/og/:section", async (c) => {
     }
   }
 
-  const logoResponse = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
-  const svg = logoResponse.ok
-    ? renderOgImage({
-        ...options,
-        logoDataUrl: `data:${logoResponse.headers.get("Content-Type") || "image/png"};base64,${arrayBufferToBase64(await logoResponse.arrayBuffer())}`,
-      })
-    : renderOgImage(options);
+  const images = (
+    await Promise.all(
+      urls.map(async (url) => {
+        const name = url.replace(/^\/api\/photos\//, "");
+        const obj = await c.env.MOMENT_BUCKET.get(name.startsWith("img/") ? name : `img/${name}`);
+        return obj
+          ? `data:${mimeType(url)};base64,${arrayBufferToBase64(await obj.arrayBuffer())}`
+          : null;
+      }),
+    )
+  ).filter((image) => image !== null);
+
+  let dots: OgDot[] = [];
+  if (section === "journey") {
+    const zoom = 1.15;
+    const center: [number, number] = [58.5, 44];
+    const map = await fetch(
+      `https://api.mapbox.com/styles/v1/mapbox/light-v10/static/${center[0]},${center[1]},${zoom},0/500x500@2x?access_token=${MAPBOX_TOKEN}&logo=false&attribution=false`,
+      { headers: { Referer: `${SITE_ORIGIN}/` } },
+    );
+    if (map.ok) {
+      images.push(`data:image/png;base64,${arrayBufferToBase64(await map.arrayBuffer())}`);
+      const world = 512 * 2 ** zoom;
+      const [[cx, cy], ...points] = [
+        { coords: center, color: "" },
+        ...groups
+          .filter((group) => DEFAULT_GROUPS.includes(group.label))
+          .flatMap((group) =>
+            group.places.map((place) => ({ coords: place.coords, color: group.color })),
+          ),
+      ].map(({ coords: [lng, lat], color }): [number, number, string] => {
+        const sin = Math.sin((lat * Math.PI) / 180);
+        return [
+          ((lng + 180) / 360) * world,
+          (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * world,
+          color,
+        ];
+      });
+      dots = points.map(([x, y, color]) => ({ x: x - cx + 250, y: y - cy + 250, color }));
+    }
+  }
+
+  const logo = await c.env.ASSETS.fetch(new Request(new URL("/favicon.png", c.req.url)));
+  const svg = renderOgImage({
+    title,
+    subtitle,
+    logo: `data:image/png;base64,${arrayBufferToBase64(await logo.arrayBuffer())}`,
+    images,
+    dots,
+  });
   const png = await renderOgPng(svg, c.env.MOMENT_CACHE);
   if (!preview) {
     await writeOgImageKv(c.env.MOMENT_CACHE, section, total, imageVersion, png);
