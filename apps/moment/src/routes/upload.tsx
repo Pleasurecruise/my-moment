@@ -1,12 +1,16 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/solid-router";
 import { Upload, ArrowLeft, X } from "lucide-solid";
 import { Show, createSignal, createMemo, onCleanup } from "solid-js";
 import { Button, Input, Textarea, TagInput, Label, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
 import { isAcceptedImageFile, processImage, type ImageProcessResult } from "~/lib/image";
+import { apiGetOwner } from "~/lib/services/auth";
 import { privatePageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/upload")({
+  beforeLoad: async () => {
+    if (!(await apiGetOwner())) throw redirect({ to: "/", replace: true });
+  },
   component: UploadPage,
   head: () => ({ meta: privatePageMeta("Upload") }),
 });

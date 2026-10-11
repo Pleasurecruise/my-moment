@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
+import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/solid-router";
 import { Errored, Loading, Show, createMemo } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, ShoppingBag } from "lucide-solid";
@@ -11,6 +11,7 @@ import {
   type GoodsItem,
   type WishItem,
 } from "~/types";
+import { apiGetOwner } from "~/lib/services/auth";
 import { privatePageMeta } from "~/lib/seo";
 
 const haulFormSearchSchema = z
@@ -35,6 +36,9 @@ type SourceState =
   | { status: "wishlist"; item: WishItem };
 
 export const Route = createFileRoute("/haul/add")({
+  beforeLoad: async () => {
+    if (!(await apiGetOwner())) throw redirect({ to: "/haul", replace: true });
+  },
   component: HaulFormPage,
   validateSearch: haulFormSearchSchema,
   head: () => ({ meta: privatePageMeta("Add to Haul") }),

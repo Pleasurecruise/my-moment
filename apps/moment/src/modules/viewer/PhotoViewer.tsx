@@ -29,6 +29,7 @@ import { PhotoDetails } from "./PhotoDetails";
 interface PhotoViewerProps {
   photos: PhotoItem[];
   index: number;
+  canEdit: boolean;
   onClose: () => void;
   onIndexChange: (i: number) => void;
   onEdit: (photo: PhotoItem) => void;
@@ -117,25 +118,27 @@ export function PhotoViewer(props: PhotoViewerProps) {
               >
                 <Share2 size={15} />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => props.onEdit(photo())}
-              >
-                <Edit3 size={15} />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="size-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setDeleteDialogOpen(true)}
-                aria-label="Delete photo"
-                title="Delete photo"
-              >
-                <Trash2 size={15} />
-              </Button>
+              <Show when={props.canEdit}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  onClick={() => props.onEdit(photo())}
+                >
+                  <Edit3 size={15} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  class="size-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  aria-label="Delete photo"
+                  title="Delete photo"
+                >
+                  <Trash2 size={15} />
+                </Button>
+              </Show>
               <Show when={!sidebarOpen()}>
                 <Button
                   variant="ghost"

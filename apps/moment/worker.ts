@@ -286,6 +286,11 @@ app.get("/api/health", (c) =>
   }),
 );
 
+app.get("/api/owner", async (c) => {
+  c.header("Cache-Control", "no-store");
+  return c.json({ owner: await requestIsOwner(c) });
+});
+
 app.get("/api/settings/api-key", ownerOnly, async (c) => {
   c.header("Cache-Control", "no-store");
   return c.json(await getApiKeyStatus(c.env.API_KEY));

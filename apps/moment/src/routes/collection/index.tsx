@@ -7,7 +7,7 @@ import { PageHeader } from "~/components/PageHeader";
 import { Segment, type SegmentOption } from "~/components/Segment";
 import { EmptyState } from "~/components/EmptyState";
 import { MusicView, PosterGrid } from "~/modules/collection";
-import { useSession } from "~/lib/services/auth";
+import { useOwner } from "~/lib/services/auth";
 import type { MediaItem } from "~/types";
 import { publicPageMeta } from "~/lib/seo";
 
@@ -32,8 +32,7 @@ export const Route = createFileRoute("/collection/")({
 });
 
 function CollectionPage() {
-  const session = useSession();
-  const user = () => session()?.data?.user ?? null;
+  const owner = useOwner();
   const search = useSearch({ from: "/collection/" });
   const navigate = useNavigate({ from: "/collection/" });
   const section = () => search().view;
@@ -60,7 +59,7 @@ function CollectionPage() {
           class={isMusic() ? "mb-4" : undefined}
           subtitle="Playlists, anime, films, and the things I love."
           actions={
-            <Show when={user() && !isMusic()}>
+            <Show when={owner() && !isMusic()}>
               <Link
                 to="/collection/add"
                 search={{ kind: addHref() }}

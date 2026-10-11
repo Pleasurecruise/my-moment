@@ -1,6 +1,6 @@
 import { createEffect, createSignal, onSettled, Show } from "solid-js";
 import { createRootRoute, HeadContent, Link, Outlet, useRouter } from "@tanstack/solid-router";
-import { useSession, signIn, signOut } from "~/lib/services/auth";
+import { useOwner, useSession, signIn, signOut } from "~/lib/services/auth";
 import {
   Images,
   Map,
@@ -62,6 +62,7 @@ const SECONDARY_LINKS = [
 
 function RootLayout() {
   const session = useSession();
+  const owner = useOwner();
   const router = useRouter();
 
   const [isDark, setIsDark] = createSignal(false);
@@ -141,8 +142,8 @@ function RootLayout() {
 
   const user = () => session()?.data?.user ?? null;
 
-  createEffect(user, (currentUser) => {
-    if (!currentUser) {
+  createEffect(owner, (isOwner) => {
+    if (!isOwner) {
       setApiKeyConfigured(false);
       return;
     }
@@ -197,7 +198,7 @@ function RootLayout() {
   };
 
   const ApiKeyButton = () => (
-    <Show when={user()}>
+    <Show when={owner()}>
       <Button
         variant="ghost"
         size="icon"
@@ -289,6 +290,14 @@ function RootLayout() {
             </div>
           )}
         </Show>
+        <a
+          href="https://github.com/Pleasurecruise/my-moment"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="block border-t border-border px-4 py-2.5 text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Source code
+        </a>
       </PopoverContent>
     </Popover>
   );

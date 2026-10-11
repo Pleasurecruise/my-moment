@@ -16,7 +16,7 @@ import {
 } from "@my-moment/ui";
 import { Plus, Pencil, Trash2, Share2, ShoppingBag } from "lucide-solid";
 import { Link, useNavigate } from "@tanstack/solid-router";
-import { useSession } from "~/lib/services/auth";
+import { useOwner } from "~/lib/services/auth";
 import { shareLink } from "~/lib/share";
 import { PageHeader } from "~/components/PageHeader";
 import { EmptyState } from "~/components/EmptyState";
@@ -31,9 +31,8 @@ interface WishPageProps {
 }
 
 export function WishPage(props: WishPageProps) {
-  const session = useSession();
+  const owner = useOwner();
   const navigate = useNavigate();
-  const user = () => session()?.data?.user ?? null;
 
   const wishItems = () => props.wishes()?.items;
 
@@ -98,7 +97,7 @@ export function WishPage(props: WishPageProps) {
             >
               <Share2 size={11} />
             </button>
-            <Show when={user()}>
+            <Show when={owner()}>
               <Link
                 to="/wish/add"
                 class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -129,7 +128,7 @@ export function WishPage(props: WishPageProps) {
                 <EmptyState
                   title="No wishes yet"
                   description={
-                    user()
+                    owner()
                       ? "Use the add button to save something you want."
                       : "Nothing has been added to this wishlist yet."
                   }
@@ -163,21 +162,23 @@ export function WishPage(props: WishPageProps) {
                   <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-semibold">{item().name}</h2>
                     <div class="flex items-center gap-1 ml-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setShowWishDetail(false);
-                          navigate({
-                            to: "/haul/add",
-                            search: { convert: item().id },
-                          });
-                        }}
-                        aria-label="Mark as purchased"
-                      >
-                        <ShoppingBag size={14} />
-                      </Button>
+                      <Show when={owner()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setShowWishDetail(false);
+                            navigate({
+                              to: "/haul/add",
+                              search: { convert: item().id },
+                            });
+                          }}
+                          aria-label="Mark as purchased"
+                        >
+                          <ShoppingBag size={14} />
+                        </Button>
+                      </Show>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -187,34 +188,36 @@ export function WishPage(props: WishPageProps) {
                       >
                         <Share2 size={14} />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setShowWishDetail(false);
-                          navigate({
-                            to: "/wish/add",
-                            search: { edit: item().id },
-                          });
-                        }}
-                        aria-label="Edit wish"
-                      >
-                        <Pencil size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          setShowWishDetail(false);
-                          setDeletingWish(item());
-                          setShowWishDelete(true);
-                        }}
-                        aria-label="Delete wish"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+                      <Show when={owner()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setShowWishDetail(false);
+                            navigate({
+                              to: "/wish/add",
+                              search: { edit: item().id },
+                            });
+                          }}
+                          aria-label="Edit wish"
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            setShowWishDetail(false);
+                            setDeletingWish(item());
+                            setShowWishDelete(true);
+                          }}
+                          aria-label="Delete wish"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </Show>
                     </div>
                   </div>
                   <Show when={item().imageUrl}>

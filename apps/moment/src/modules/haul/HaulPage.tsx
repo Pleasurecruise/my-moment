@@ -28,7 +28,7 @@ import { Link, useNavigate } from "@tanstack/solid-router";
 import { PageHeader } from "~/components/PageHeader";
 import { EmptyState } from "~/components/EmptyState";
 import { shareLink } from "~/lib/share";
-import { useSession } from "~/lib/services/auth";
+import { useOwner } from "~/lib/services/auth";
 import { GoodsCard } from "./GoodsCard";
 import { FilterBar } from "./FilterBar";
 import type { FilterState, GoodsItem, Rating } from "~/types";
@@ -41,9 +41,8 @@ interface HaulPageProps {
 }
 
 export function HaulPage(props: HaulPageProps) {
-  const session = useSession();
+  const owner = useOwner();
   const navigate = useNavigate();
-  const user = () => session()?.data?.user ?? null;
 
   const items = () => props.haul()?.items;
 
@@ -184,7 +183,7 @@ export function HaulPage(props: HaulPageProps) {
             >
               <Share2 size={11} />
             </button>
-            <Show when={user()}>
+            <Show when={owner()}>
               <Link
                 to="/haul/add"
                 class="flex size-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -244,7 +243,7 @@ export function HaulPage(props: HaulPageProps) {
                   <EmptyState
                     title="No items yet"
                     description={
-                      user()
+                      owner()
                         ? "Use the add button to collect your first item."
                         : "Nothing has been added to this collection yet."
                     }
@@ -301,34 +300,36 @@ export function HaulPage(props: HaulPageProps) {
                       >
                         <Share2 size={14} />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setShowDetail(false);
-                          navigate({
-                            to: "/haul/add",
-                            search: { edit: item().id },
-                          });
-                        }}
-                        aria-label="Edit item"
-                      >
-                        <Pencil size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        class="size-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => {
-                          setShowDetail(false);
-                          setDeletingItem(item());
-                          setShowDeleteAlert(true);
-                        }}
-                        aria-label="Delete item"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
+                      <Show when={owner()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            setShowDetail(false);
+                            navigate({
+                              to: "/haul/add",
+                              search: { edit: item().id },
+                            });
+                          }}
+                          aria-label="Edit item"
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          class="size-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            setShowDetail(false);
+                            setDeletingItem(item());
+                            setShowDeleteAlert(true);
+                          }}
+                          aria-label="Delete item"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </Show>
                     </div>
                   </div>
                   <Show when={item().imageUrl}>

@@ -1,13 +1,19 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/solid-router";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { ArrowLeft, Save } from "lucide-solid";
 import { Button, Input, Textarea, TagInput, Label, Spinner, toast } from "@my-moment/ui";
 import { fromDatetimeLocal, toDatetimeLocal } from "~/lib/date";
 import { photoItemSchema } from "~/types";
 import { z } from "zod";
+import { apiGetOwner } from "~/lib/services/auth";
 import { privatePageMeta } from "~/lib/seo";
 
 export const Route = createFileRoute("/photos/$id/edit")({
+  beforeLoad: async ({ params }) => {
+    if (!(await apiGetOwner())) {
+      throw redirect({ to: "/photos/$id", params: { id: params.id }, replace: true });
+    }
+  },
   component: PhotoEditPage,
   head: () => ({ meta: privatePageMeta("Edit Photo") }),
 });

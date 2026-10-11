@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
+import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/solid-router";
 import { Errored, Loading, Show, createMemo } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, Heart } from "lucide-solid";
 import { Button, Spinner, toast } from "@my-moment/ui";
 import { WishForm } from "~/modules/haul";
 import { wishItemSchema, type WishFormInput, type WishItem } from "~/types";
+import { apiGetOwner } from "~/lib/services/auth";
 import { privatePageMeta } from "~/lib/seo";
 
 type SourceState =
@@ -13,6 +14,9 @@ type SourceState =
   | { status: "wishlist"; item: WishItem };
 
 export const Route = createFileRoute("/wish/add")({
+  beforeLoad: async () => {
+    if (!(await apiGetOwner())) throw redirect({ to: "/wish", replace: true });
+  },
   component: WishFormPage,
   validateSearch: z.object({
     edit: z.string().trim().min(1).optional(),

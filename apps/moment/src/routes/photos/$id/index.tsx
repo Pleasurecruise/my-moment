@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { ArrowLeft, Share2, Edit3 } from "lucide-solid";
 import { Button } from "@my-moment/ui";
+import { useOwner } from "~/lib/services/auth";
 import { shareLink } from "~/lib/share";
 import { photoItemSchema, type PhotoItem } from "~/types";
 import { z } from "zod";
@@ -48,6 +49,7 @@ export const Route = createFileRoute("/photos/$id/")({
 function PhotoDetailPage() {
   const photo = Route.useLoaderData() as () => PhotoItem | null;
   const params = Route.useParams();
+  const owner = useOwner();
 
   const handleShare = () =>
     void shareLink({
@@ -82,7 +84,7 @@ function PhotoDetailPage() {
           >
             <Share2 size={15} />
           </Button>
-          <Show when={photo()}>
+          <Show when={photo() && owner()}>
             <Link
               to="/photos/$id/edit"
               params={{ id: params().id }}

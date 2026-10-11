@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
+import { createFileRoute, redirect, useNavigate, useSearch } from "@tanstack/solid-router";
 import { Errored, Loading, Show, createMemo } from "solid-js";
 import { z } from "zod";
 import { ArrowLeft, Clapperboard, Film } from "lucide-solid";
 import { Button, Spinner, toast } from "@my-moment/ui";
 import { MediaForm } from "~/modules/collection/MediaForm";
 import { mediaItemSchema, mediaKindSchema, type MediaFormInput, type MediaItem } from "~/types";
+import { apiGetOwner } from "~/lib/services/auth";
 import { privatePageMeta } from "~/lib/seo";
 
 const mediaFormSearchSchema = z.object({
@@ -18,6 +19,11 @@ type SourceState =
   | { status: "ready"; item: MediaItem };
 
 export const Route = createFileRoute("/collection/add")({
+  beforeLoad: async ({ search }) => {
+    if (!(await apiGetOwner())) {
+      throw redirect({ to: "/collection", search: { view: search.kind }, replace: true });
+    }
+  },
   component: MediaFormPage,
   validateSearch: mediaFormSearchSchema,
   head: () => ({ meta: privatePageMeta("Add to Collection") }),

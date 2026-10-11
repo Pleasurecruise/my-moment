@@ -133,6 +133,7 @@ export function PhotosRoot(props: PhotosRootProps) {
         <PhotoViewer
           photos={photos()}
           index={viewerIndex()!}
+          canEdit={props.canUpload}
           onClose={() => setViewerIndex(null)}
           onIndexChange={(i) => {
             setViewerIndex(i);
