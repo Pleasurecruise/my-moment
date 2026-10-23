@@ -2,9 +2,6 @@ packages:
   - "packages/*"
   - "apps/*"
 
-patchedDependencies:
-  lucide-solid@1.55.0: patches/lucide-solid@1.55.0.patch
-
 allowBuilds:
   "@swc/core": true
   better-sqlite3: true
@@ -14,4 +11,20 @@ allowBuilds:
   sharp: true
   workerd: true
 
-minimumReleaseAge: 0
+minimumReleaseAgeExclude:
+  - "@tanstack/router-core@1.171.39"
+  - "@tanstack/router-generator@1.167.46"
+  - "@tanstack/router-plugin@1.168.48"
+  - "@voidzero-dev/vite-plus-core@1.4.0"
+  - "@voidzero-dev/vite-plus-darwin-arm64@1.4.0"
+  - "@voidzero-dev/vite-plus-darwin-x64@1.4.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@1.4.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@1.4.0"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@1.4.0"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@1.4.0"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.4.0"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@1.4.0"
+  - vite-plus@1.4.0
+
+patchedDependencies:
+  lucide-solid@1.61.0: patches/lucide-solid@1.61.0.patch

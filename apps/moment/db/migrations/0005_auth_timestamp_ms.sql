@@ -1,3 +1,4 @@
+-- void:allow-destructive
 -- Void's Better Auth adapter maps date fields as millisecond timestamps.
 -- The original schema used TEXT columns, whose affinity coerced newly written
 -- timestamps to strings such as "1786609546059.0". Drizzle then parsed those

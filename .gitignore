@@ -12,6 +12,7 @@ coverage/
 # Tool caches
 .wrangler/
 .void/
+.void-wrangler.jsonc
 apps/moment/drizzle/
 .parcel-cache/
 .cache/

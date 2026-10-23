@@ -6,6 +6,13 @@ export default defineConfig({
   },
   fmt: {
     indent: "tab",
-    ignorePatterns: ["dist/**", "build/**", ".wrangler/**", "**/routeTree.gen.ts"],
+    ignorePatterns: [
+      "dist/**",
+      "build/**",
+      ".wrangler/**",
+      "**/routeTree.gen.ts",
+      "apps/moment/void.lock.json",
+      "apps/moment/db/migrations/meta/**",
+    ],
   },
 });

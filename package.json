@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "pnpm --filter @my-moment/app dev",
     "build": "pnpm --filter @my-moment/app build",
-    "deploy": "pnpm --filter @my-moment/app exec void deploy",
+    "deploy": "pnpm --filter @my-moment/app exec void deploy --platform cloudflare",
     "test": "pnpm --filter @my-moment/app test",
     "storybook": "pnpm --filter @my-moment/ui storybook",
     "storybook:build": "pnpm --filter @my-moment/ui storybook:build",
-    "d1:migrate:local": "wrangler d1 migrations apply DB --cwd apps/moment --local --persist-to .void --config wrangler.json",
-    "d1:migrate:remote": "wrangler d1 migrations apply DB --cwd apps/moment --remote --config wrangler.json",
+    "d1:migrate:local": "pnpm --filter @my-moment/app exec void db migrate",
+    "d1:migrate:remote": "pnpm --filter @my-moment/app exec void db migrate --remote",
     "check": "pnpm --filter @my-moment/app prepare && vp check && pnpm typecheck",
     "typecheck": "tsc --noEmit -p apps/moment/tsconfig.json && tsc --noEmit -p packages/ui/tsconfig.json",
     "lint": "vp lint",
@@ -25,8 +25,7 @@
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite-plugin-solid": "3.0.0-next.27",
-    "vite-plus": "1.1.0",
-    "wrangler": "4.149.0"
+    "vite-plus": "1.4.0"
   },
   "packageManager": "pnpm@12.10.1"
 }
