@@ -77,6 +77,7 @@ import {
   photoJsonLd,
   photoSummary,
   photoTitle,
+  photoUrl,
   toJsonLd,
   websiteJsonLd,
   edgeCache,
@@ -181,24 +182,19 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
   }
 
   if (path === "/") {
-    return { ...staticPageMeta(url.origin, "gallery"), jsonLd: websiteJsonLd(url.origin) };
-  }
-  if (path === "/journey") return staticPageMeta(url.origin, "journey");
-  if (path === "/messages" || path === "/snapshot") {
-    return staticPageMeta(url.origin, "guestbook");
-  }
-
-  const photoMatch = path.match(/^\/photos\/([^/]+)$/);
-  if (photoMatch?.[1]) {
-    const photo = await getPhoto(env.DB, decodeURIComponent(photoMatch[1]));
+    const photoId = url.searchParams.get("photo");
+    const photo = photoId ? await getPhoto(env.DB, photoId) : null;
     if (photo) {
       const title = photoTitle(photo);
       const image = absoluteUrl(url.origin, photo.url);
       return {
         title: `${title} — ${SITE_NAME}`,
         description: photoSummary(photo),
-        canonical: absoluteUrl(url.origin, `/photos/${photo.id}`),
-        image: ogImageUrl(url.origin, `/api/og/photos/${photo.id}`),
+        canonical: photoUrl(url.origin, photo.id),
+        image: absoluteUrl(
+          url.origin,
+          `/api/og/photos/${photo.id}?v=${Date.parse(photo.updatedAt)}`,
+        ),
         imageType: "image/png",
         imageWidth: 1200,
         imageHeight: 630,
@@ -211,6 +207,11 @@ async function resolvePageMeta(url: URL, env: WorkerBindings): Promise<PageMeta>
         },
       };
     }
+    return { ...staticPageMeta(url.origin, "gallery"), jsonLd: websiteJsonLd(url.origin) };
+  }
+  if (path === "/journey") return staticPageMeta(url.origin, "journey");
+  if (path === "/messages" || path === "/snapshot") {
+    return staticPageMeta(url.origin, "guestbook");
   }
 
   if (path === "/haul" || path === "/wish") {
@@ -924,6 +925,10 @@ app.get("/llms.txt", (c) =>
       "text/plain; charset=utf-8",
     ),
   ),
+);
+
+app.get("/photos/:id{[^/]+}", (c) =>
+  c.redirect(photoUrl(new URL(c.req.url).origin, c.req.param("id")), 301),
 );
 
 app.get("*", async (c) => {

@@ -26,7 +26,7 @@ describe("discovery documents", () => {
   it("escapes markdown link text and collapses descriptions in llms.txt", () => {
     const llms = llmsTxt([photo()], origin);
     expect(llms).toContain(
-      "- [Harbor \\[dusk\\]](https://moment.example/photos/photo-1): 2026-08-01 — Boats at <night> & rain (#sea)",
+      "- [Harbor \\[dusk\\]](https://moment.example/?photo=photo-1): 2026-08-01 — Boats at <night> & rain (#sea)",
     );
   });
 

@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js";
-import { Link, useNavigate } from "@tanstack/solid-router";
+import { Link, useNavigate, useSearch } from "@tanstack/solid-router";
 import { Share2, SlidersHorizontal, Upload } from "lucide-solid";
 import { Segment } from "~/components/Segment";
 import { PageHeader } from "~/components/PageHeader";
@@ -33,14 +33,20 @@ interface PhotosRootProps {
 
 export function PhotosRoot(props: PhotosRootProps) {
   const { settings } = useGallerySettings();
-  const navigate = useNavigate();
+  const search = useSearch({ from: "/" });
+  const navigate = useNavigate({ from: "/" });
   const [viewMode, setViewMode] = createSignal<ViewMode>("grid");
-  const [viewerIndex, setViewerIndex] = createSignal<number | null>(null);
   const [showFilters, setShowFilters] = createSignal(false);
   const [deletedPhotoIds, setDeletedPhotoIds] = createSignal(new Set<string>());
 
   const photos = () => props.photos.filter((photo) => !deletedPhotoIds().has(photo.id));
   const filtered = () => settings().selectedTags.length > 0;
+
+  const openPhoto = (photo: string) =>
+    void navigate({ search: { photo }, replace: true, resetScroll: false });
+  const closePhoto = () => void navigate({ search: {}, replace: true, resetScroll: false });
+
+  const viewerIndex = () => photos().findIndex((photo) => photo.id === search().photo);
 
   const shareGalleryLink = () =>
     void shareLink({ url: `${window.location.origin}/`, title: "Gallery" });
@@ -113,9 +119,9 @@ export function PhotosRoot(props: PhotosRootProps) {
 
       <div id="gallery-scroll-container">
         {viewMode() === "grid" ? (
-          <MasonryView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <MasonryView photos={photos()} onPhotoClick={(i) => openPhoto(photos()[i].id)} />
         ) : (
-          <ListView photos={photos()} onPhotoClick={(i) => setViewerIndex(i)} />
+          <ListView photos={photos()} onPhotoClick={(i) => openPhoto(photos()[i].id)} />
         )}
       </div>
 
@@ -129,23 +135,20 @@ export function PhotosRoot(props: PhotosRootProps) {
         </div>
       </Show>
 
-      <Show when={viewerIndex() !== null}>
+      <Show when={viewerIndex() >= 0}>
         <PhotoViewer
           photos={photos()}
-          index={viewerIndex()!}
+          index={viewerIndex()}
           canEdit={props.canUpload}
-          onClose={() => setViewerIndex(null)}
+          onClose={closePhoto}
           onIndexChange={(i) => {
-            setViewerIndex(i);
+            openPhoto(photos()[i].id);
             // Fetch the next page before the viewer reaches the last loaded photo.
             if (props.hasMore && i >= photos().length - 2) props.onLoadMore();
           }}
-          onEdit={(photo) => {
-            setViewerIndex(null);
-            navigate({ to: `/photos/${photo.id}/edit` });
-          }}
+          onEdit={(photo) => navigate({ to: "/photos/$id/edit", params: { id: photo.id } })}
           onDeleted={(photo) => {
-            setViewerIndex(null);
+            closePhoto();
             setDeletedPhotoIds((current) => new Set(current).add(photo.id));
           }}
         />

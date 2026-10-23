@@ -11,7 +11,7 @@ import { privatePageMeta } from "~/lib/seo";
 export const Route = createFileRoute("/photos/$id/edit")({
   beforeLoad: async ({ params }) => {
     if (!(await apiGetOwner())) {
-      throw redirect({ to: "/photos/$id", params: { id: params.id }, replace: true });
+      throw redirect({ to: "/", search: { photo: params.id }, replace: true });
     }
   },
   component: PhotoEditPage,

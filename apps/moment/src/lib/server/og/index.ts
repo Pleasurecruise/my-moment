@@ -108,13 +108,18 @@ export function renderOgPhoto(options: OgPhotoOptions): string {
   const cx = 1150 - w / 2 - 20;
   const box = `x="${cx - w / 2}" y="${315 - h / 2}" width="${w}" height="${h}"`;
   const chars = Array.from(options.title.replace(/\s+/g, " ").trim());
-  const size = chars.length <= 6 ? 76 : chars.length <= 12 ? 60 : 48;
-  const budget = (cx - w / 2 - 72 - 44) / size;
+  const widths = chars.map((ch) => (/[\u2e80-\uffef]/.test(ch) ? 1 : 0.55));
+  const units = widths.reduce((sum, wide) => sum + wide, 0);
+  const room = cx - w / 2 - 72 - 44;
+  const fit = Math.min(76, Math.floor(room / units));
+  const size = fit >= 36 ? fit : 48;
+  const rows = Math.ceil((units * size) / room);
+  const budget = Math.min(room / size, Math.ceil(units / rows));
   const lines: string[] = [];
   let line = "";
   let width = 0;
-  for (const ch of chars) {
-    const wide = /[\u2e80-\uffef]/.test(ch) ? 1 : 0.55;
+  for (const [i, ch] of chars.entries()) {
+    const wide = widths[i];
     if (width + wide > budget && line) {
       lines.push(line);
       line = "";

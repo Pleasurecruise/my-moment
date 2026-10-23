@@ -23,6 +23,9 @@ const galleryResponseSchema = photoPageSchema.extend({
 });
 
 export const Route = createFileRoute("/")({
+  validateSearch: z.object({
+    photo: z.string().optional(),
+  }),
   component: HomePage,
   head: () => ({
     meta: publicPageMeta("gallery"),

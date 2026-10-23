@@ -32,7 +32,7 @@ export function mimeType(path: string): string {
 }
 
 export function photoUrl(origin: string, id: string): string {
-  return new URL(`/photos/${encodeURIComponent(id)}`, origin).href;
+  return new URL(`/?photo=${encodeURIComponent(id)}`, origin).href;
 }
 
 export function photoTitle(photo: Pick<PhotoItem, "title">): string {

@@ -111,7 +111,7 @@ export function PhotoViewer(props: PhotoViewerProps) {
                 class="size-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={() =>
                   void shareLink({
-                    url: `${window.location.origin}/photos/${photo().id}`,
+                    url: `${window.location.origin}/?photo=${encodeURIComponent(photo().id)}`,
                     title: photo().title,
                   })
                 }
